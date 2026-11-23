@@ -1007,3 +1007,74 @@ footer a {
     white-space: nowrap;
     letter-spacing: .08em;
 }
+
+/* --- Remaster: legenda de power-ups ------------------------------------- */
+.how-power {
+    font-size: clamp(11px, 2.9vw, 13px);
+    color: rgba(255, 255, 255, 0.72);
+    max-width: 34ch;
+    margin-inline: auto;
+}
+
+.how-power strong {
+    color: #fff;
+}
+
+.power-legend {
+    margin-top: 22px;
+}
+
+.power-legend ul {
+    list-style: none;
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 0;
+}
+
+.power-legend li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(255, 255, 255, 0.62);
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+}
+
+.pw {
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    clip-path: polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0 50%);
+    background: currentColor;
+    font: 9px 'Press Start 2P', monospace;
+    flex: 0 0 auto;
+}
+
+.pw-w { color: #b7ff4a; }
+.pw-s { color: #59f3ff; }
+.pw-r { color: #ffd23f; }
+.pw-h { color: #ff4f8b; }
+
+.pw {
+    -webkit-text-fill-color: #0a0b16;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .how-power {
+        display: none;
+    }
+}
+
+/* Menu alto em tela baixa: rola dentro do painel em vez de invadir o HUD. */
+.overlay {
+    overflow-y: auto;
+    justify-content: safe center;
+}
+
+@media (max-height: 700px) {
+    .how-power {
+        display: none;
+    }
+}

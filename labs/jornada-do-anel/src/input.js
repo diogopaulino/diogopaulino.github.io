@@ -1,9 +1,17 @@
 /**
  * Teclado, mouse (pointer lock), toque e atalhos de HUD.
+ *
+ * Mapa:  WASD/setas andar · Shift correr · Espaço pular · E/F usar e falar
+ *        clique/J/K atacar · P/Esc pausa · M som · C distância da câmera
+ *
+ * Pulo: `jumpPressed` é a borda de descida (consumida pelo Player com buffer
+ * de 0,12 s); `jumpHeld` diz se o botão segue apertado (pulo variável: soltar
+ * cedo corta a subida). Nada aqui aloca por quadro: `move` e `consumeLook`
+ * devolvem sempre o mesmo objeto.
  */
 
 import { bindGameKeyboard } from '../../shared/game-keyboard.js';
-import { clamp } from './utils.js?v=31';
+import { clamp } from './utils.js?v=32';
 
 const MOVE = {
     KeyW: 'forward',
@@ -16,7 +24,9 @@ const MOVE = {
     ArrowRight: 'right',
     ShiftLeft: 'sprint',
     ShiftRight: 'sprint',
-    Space: 'attack',
+    Space: 'jump',
+    KeyJ: 'attack',
+    KeyK: 'attack',
     KeyE: 'interact',
     KeyF: 'interact'
 };
@@ -40,10 +50,14 @@ export class Input {
         this.enabled = true;
         this.listeners = new Map();
         this.touchMove = { x: 0, y: 0 };
-        this.touchLook = { x: 0, y: 0 };
         this.touchSprint = false;
+        this.touchJump = false;
         this.interactPressed = false;
         this.attackPressed = false;
+        this.jumpPressed = false;
+        this.lockFailed = false;
+        this._move = { x: 0, z: 0, sprint: false };
+        this._look = { x: 0, y: 0 };
         this._bind();
     }
 
@@ -57,12 +71,14 @@ export class Input {
         this.listeners.get(action)?.forEach((fn) => fn(payload));
     }
 
+    /** Soma de movimento do mouse/toque desde o último quadro (objeto reaproveitado). */
     consumeLook() {
-        const x = this.lookX;
-        const y = this.lookY;
+        const o = this._look;
+        o.x = this.lookX;
+        o.y = this.lookY;
         this.lookX = 0;
         this.lookY = 0;
-        return { x, y };
+        return o;
     }
 
     consumeZoom() {
@@ -83,22 +99,47 @@ export class Input {
         return v;
     }
 
+    consumeJump() {
+        const v = this.jumpPressed;
+        this.jumpPressed = false;
+        return v;
+    }
+
+    get jumpHeld() {
+        return this.keys.has('jump') || this.touchJump;
+    }
+
+    /** Direção pedida (−1…1 em x/z, comprimento ≤ √2 antes de normalizar no Player). */
     get move() {
         const f = this.keys.has('forward') ? 1 : 0;
         const b = this.keys.has('back') ? 1 : 0;
         const r = this.keys.has('right') ? 1 : 0;
         const l = this.keys.has('left') ? 1 : 0;
-        return {
-            x: clamp(r - l + this.touchMove.x, -1, 1),
-            z: clamp(f - b + this.touchMove.y, -1, 1),
-            sprint: this.keys.has('sprint') || this.touchSprint
-        };
+        const m = this._move;
+        m.x = clamp(r - l + this.touchMove.x, -1, 1);
+        m.z = clamp(f - b + this.touchMove.y, -1, 1);
+        m.sprint = this.keys.has('sprint') || this.touchSprint;
+        return m;
+    }
+
+    /** Solta tudo (pausa, blur, troca de capítulo): nada fica "apertado" ao voltar. */
+    release() {
+        this.keys.clear();
+        this.interactPressed = false;
+        this.attackPressed = false;
+        this.jumpPressed = false;
+        this.touchJump = false;
+        this.touchMove.x = this.touchMove.y = 0;
+        this.lookX = this.lookY = this.zoomDelta = 0;
+        this.emit('released');
     }
 
     requestLock() {
         if (this.locked) return;
-        const result = this.canvas.requestPointerLock?.();
-        if (result && typeof result.catch === 'function') result.catch(() => {});
+        try {
+            const result = this.canvas.requestPointerLock?.();
+            if (result && typeof result.catch === 'function') result.catch(() => {});
+        } catch { /* navegador recusou (sem gesto): segue sem trava */ }
     }
 
     exitLock() {
@@ -113,28 +154,30 @@ export class Input {
             onPress: key => {
                 if (key === 'interact') this.interactPressed = true;
                 if (key === 'attack') this.attackPressed = true;
+                if (key === 'jump') this.jumpPressed = true;
             },
             onReset: () => {
                 this.interactPressed = false;
                 this.attackPressed = false;
+                this.jumpPressed = false;
+                this.touchJump = false;
                 this.touchMove.x = this.touchMove.y = 0;
                 this.lookX = this.lookY = this.zoomDelta = 0;
-                this.touchLook.x = this.touchLook.y = 0;
+                this.emit('released');
             }
         });
 
         this._onMouseMove = (e) => {
-            if (!this.enabled) return;
-            if (this.locked) {
-                this.lookX += e.movementX;
-                this.lookY += e.movementY;
-            }
+            if (!this.enabled || !this.locked) return;
+            this.lookX += e.movementX;
+            this.lookY += e.movementY;
         };
 
         this._onMouseDown = (e) => {
             if (!this.enabled) return;
             if (e.button === 0) {
-                this.attackPressed = true;
+                // o primeiro clique só trava o mouse (não sai golpe no vazio)
+                if (this.locked || this.lockFailed || !this.canvas.requestPointerLock) this.attackPressed = true;
                 this.emit('pointerdown');
             }
         };
@@ -156,5 +199,7 @@ export class Input {
         this.canvas.addEventListener('wheel', this._onWheel, { passive: false });
         this.canvas.addEventListener('contextmenu', this._onContext);
         document.addEventListener('pointerlockchange', this._onLock);
+        // trava recusada (iframe, política do navegador): clique volta a ser golpe
+        document.addEventListener('pointerlockerror', () => { this.lockFailed = true; });
     }
 }

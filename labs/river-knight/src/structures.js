@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { createHero } from '../../shared/gfx/hero.js';
-import { Entity } from './entity.js?v=50';
+import { Entity } from './entity.js?v=60';
 import {
     buildStoneTower,
     buildWoodTower,
@@ -22,12 +22,12 @@ import {
     CATAPULT_RELEASED,
     fxTime,
     hash
-} from './structure-models.js?v=51';
-import { blockStone, darkWood, barkWood, oakWood } from './materials.js?v=50';
-import { fireLights } from './lights.js?v=50';
-import { waterHeight, waterSlope } from './water.js?v=51';
-import { centerX, terrainHeight } from './river.js?v=51';
-import { randRange } from './utils.js?v=50';
+} from './structure-models.js?v=60';
+import { blockStone, darkWood, barkWood, oakWood } from './materials.js?v=60';
+import { fireLights } from './lights.js?v=60';
+import { waterHeight, waterSlope } from './water.js?v=60';
+import { centerX, terrainHeight } from './river.js?v=60';
+import { randRange } from './utils.js?v=60';
 
 const tmpSlope = { dx: 0, dz: 0 };
 const tmpLook = new THREE.Vector3();

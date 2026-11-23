@@ -30,14 +30,17 @@ export function mulberry32(seed) {
 
 export function formatKm(meters) {
     if (meters < 1000) return `${Math.floor(meters)} m`;
-    return `${(meters / 1000).toFixed(2)} km`;
+    return `${(meters / 1000).toFixed(2).replace('.', ',')} km`;
 }
 
-export function formatTime(seconds) {
-    const s = Math.max(0, Math.floor(seconds));
+/** m:ss — ou m:ss,d com `tenths` (cronômetro de corrida). */
+export function formatTime(seconds, tenths = false) {
+    const total = Math.max(0, seconds);
+    const s = Math.floor(total);
     const m = Math.floor(s / 60);
     const r = s % 60;
-    return `${m}:${r.toString().padStart(2, '0')}`;
+    const base = `${m}:${r.toString().padStart(2, '0')}`;
+    return tenths ? `${base},${Math.floor((total - s) * 10)}` : base;
 }
 
 export function detectMobile() {

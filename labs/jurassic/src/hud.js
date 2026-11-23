@@ -2,8 +2,8 @@
  * HUD, menus e overlays — tudo que é DOM.
  */
 
-import { SPECIES, RADIO } from './config.js';
-import { formatTime } from './utils.js';
+import { SPECIES, RADIO } from './config.js?v=23';
+import { formatTime } from './utils.js?v=23';
 
 const $ = (id) => document.getElementById(id);
 
@@ -50,7 +50,12 @@ export class Hud {
             observeRing: $('observeRing'),
             observeFill: $('observeFill'),
             danger: $('danger'),
-            observeBtn: $('btnObserve')
+            observeBtn: $('btnObserve'),
+            gear: $('gearValue'),
+            hull: $('hull'),
+            coach: $('coach'),
+            hit: $('hitFlash'),
+            loadingStuck: $('loadingStuck')
         };
         this._guide = {};
         this.radioTimer = 0;
@@ -254,9 +259,58 @@ export class Hud {
     }
 
     setDanger(on) {
-        if (this._danger === on) return;
-        this._danger = on;
-        this.el.danger.hidden = !on;
+        this.setThreat(on ? 1 : 0);
+    }
+
+    /** Alerta do rex: 0 nada · 1 perseguindo · 2 vai dar o bote (aviso de ~0,6 s). */
+    setThreat(level) {
+        if (this._threat === level) return;
+        this._threat = level;
+        this.el.danger.hidden = level === 0;
+        this.el.danger.dataset.level = String(level);
+        if (level === 1) this.el.danger.textContent = 'O rex está caçando! Acelere para longe';
+        else if (level === 2) this.el.danger.textContent = '! Bote do rex — vire agora !';
+    }
+
+    /** Marcha: R, N ou 1–4. */
+    setGear(g) {
+        const t = g < 0 ? 'R' : g === 0 ? 'N' : `${g}ª`;
+        if (this._gear === t || !this.el.gear) return;
+        this._gear = t;
+        this.el.gear.textContent = t;
+    }
+
+    /** Integridade do jipe em segmentos (`n` de `max`). */
+    setHull(n, max) {
+        const el = this.el.hull;
+        if (!el || this._hull === n) return;
+        this._hull = n;
+        if (el.children.length !== max) el.innerHTML = '<i></i>'.repeat(max);
+        [...el.children].forEach((c, i) => c.toggleAttribute('data-off', i >= n));
+        el.dataset.low = String(n <= 1);
+        el.setAttribute('aria-label', `Integridade do jipe: ${n} de ${max}`);
+    }
+
+    /** Clarão vermelho curto (mordida, batida forte). */
+    flashHit() {
+        const el = this.el.hit;
+        if (!el) return;
+        el.classList.remove('on');
+        void el.offsetWidth;
+        el.classList.add('on');
+    }
+
+    /** Dica de onboarding (vazio esconde). */
+    setCoach(text) {
+        if (!this.el.coach || this._coach === text) return;
+        this._coach = text;
+        this.el.coach.hidden = !text;
+        if (text) this.el.coach.textContent = text;
+    }
+
+    /** Loading passou do tempo: mostra o botão de recarregar. */
+    showLoadingStuck() {
+        if (this.el.loadingStuck) this.el.loadingStuck.hidden = false;
     }
 
     showTouch(v) {

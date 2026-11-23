@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="/assets/fonts/fraunces/font.css">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
 
     <script type="importmap">
     {
@@ -134,7 +134,9 @@
 
         <div id="loading" class="loading" role="status">
             <div class="loading-orb" aria-hidden="true"></div>
-            <p>Acendendo as lanternas…</p>
+            <p id="loadingText">Acendendo as lanternas…</p>
+            <!-- Fallback: se o WebGL falhar ou o carregamento passar do prazo, sempre há uma saída. -->
+            <button id="reloadBtn" class="btn" type="button" hidden>Tentar de novo</button>
         </div>
 
         <aside class="hud-left" aria-label="Combinação atual">
@@ -148,6 +150,10 @@
                 </button>
                 <button id="shareBtn" class="chip-btn" type="button" title="Compartilhar link (L)" aria-label="Compartilhar o link desta combinação">
                     <span aria-hidden="true">🔗</span><span class="chip-label">Compartilhar</span>
+                </button>
+                <!-- Desfazer: volta à combinação anterior (útil depois de uma Surpresa sem querer). -->
+                <button id="undoBtn" class="chip-btn chip-icon" type="button" title="Desfazer (Ctrl+Z ou U)" aria-label="Desfazer a última troca" disabled>
+                    <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span class="chip-label">Desfazer</span>
                 </button>
             </div>
             <div class="readout">
@@ -201,8 +207,8 @@
             </div>
         </section>
 
-        <p class="hint">Clique uma peça para trocá-la · <kbd>R</kbd> surpresa · <kbd>T</kbd> conjunto ·
-            <kbd>←→</kbd> cabeça · <kbd>↑↓</kbd> corpo · <kbd>Q</kbd><kbd>E</kbd> acessório · <kbd>C</kbd> close · <kbd>H</kbd> esconde UI</p>
+        <p class="hint"><kbd>R</kbd> surpresa · <kbd>T</kbd> conjunto ·
+            <kbd>←→</kbd> cabeça · <kbd>↑↓</kbd> corpo · <kbd>Q</kbd><kbd>E</kbd> acessório · <kbd>C</kbd> close · <kbd>U</kbd> desfaz · <kbd>H</kbd> esconde UI</p>
 
         <p id="toast" class="toast" role="status" aria-live="polite" data-show="false"></p>
 
@@ -210,7 +216,7 @@
     </main>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="./src/main.js?v=82"></script>
+    <script type="module" src="./src/main.js?v=83"></script>
 </body>
 
 </html>

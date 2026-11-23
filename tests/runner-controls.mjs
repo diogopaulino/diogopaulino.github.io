@@ -29,7 +29,7 @@ export function jungleLevel(game) {
 }
 
 export async function riverControls(game) {
-    const { centerX } = await import('/labs/river-knight/src/river.js?v=50');
+    const { centerX } = await import('/labs/river-knight/src/river.js?v=60');
     const press = keyboard();
     return () => {
         for (let i = 0; i < 300; i++) {
@@ -45,8 +45,12 @@ export async function riverControls(game) {
                     aim = nearest.position.x + (x > nearest.position.x ? 13 : -13);
                 }
             }
+            // O drakkar vira pela proa (leme), não de lado: o piloto mira um ponto
+            // ~26 m à frente e corrige o rumo, com amortecimento pela taxa de guinada.
+            const want = Math.atan2(aim - x, 26);
+            const err = want - game.player.heading - game.player.r * 0.6;
             const keys = ['KeyW'];
-            if (Math.abs(aim - x) > 0.9) keys.push(aim > x ? 'KeyD' : 'KeyA');
+            if (Math.abs(err) > 0.04) keys.push(err > 0 ? 'KeyD' : 'KeyA');
             if (i % 4 < 2) keys.push('Space');
             press(keys);
             game.frame(1 / 60);

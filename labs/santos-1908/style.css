@@ -589,3 +589,210 @@ body[data-state='ready'] .hud {
         background: color-mix(in oklab, var(--panel) 70%, var(--ochre) 12%);
     }
 }
+
+/* —— Remaster: legendas do dossiê, instrumentos, linha do tempo, cartão final —— */
+.hud-titles {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1 1 18rem;
+}
+
+.caption {
+    margin: 0;
+    font-size: clamp(0.72rem, 2.4vw, 0.85rem);
+    color: var(--text-soft);
+    line-height: 1.35;
+    max-width: 44rem;
+    text-wrap: pretty;
+}
+
+.meta-row {
+    flex-wrap: wrap;
+    gap: 0.35rem 0.9rem;
+}
+
+.readout {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 4.2rem;
+}
+
+.readout small {
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.timeline-wrap {
+    position: relative;
+    display: block;
+    pointer-events: auto;
+    height: 44px;
+    margin-block: -8px;
+}
+
+.timeline {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 44px;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+}
+
+.timeline::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 99px;
+    background: color-mix(in oklab, var(--foam) 22%, transparent);
+}
+
+.timeline::-moz-range-track {
+    height: 4px;
+    border-radius: 99px;
+    background: color-mix(in oklab, var(--foam) 22%, transparent);
+}
+
+.timeline::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+    border-radius: 50%;
+    border: 2px solid var(--ink, #111);
+    background: var(--ochre);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--ochre) 25%, transparent);
+}
+
+.timeline::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--ink, #111);
+    background: var(--ochre);
+}
+
+.timeline:focus-visible {
+    outline: 2px solid var(--ochre);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+.chapter-ticks {
+    position: absolute;
+    inset: 0 8px;
+    pointer-events: none;
+}
+
+.chapter-ticks i {
+    position: absolute;
+    top: 50%;
+    left: calc(var(--t) / 180 * 100%);
+    width: 2px;
+    height: 10px;
+    transform: translate(-50%, -50%);
+    border-radius: 1px;
+    background: color-mix(in oklab, var(--ochre) 70%, transparent);
+}
+
+.dock-btn.icon {
+    padding-inline: 0.85rem;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.ghost-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    margin-top: 0.5rem;
+    border: 0;
+    background: transparent;
+    color: var(--text-soft);
+    font: inherit;
+    font-size: 0.9rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.ghost-link:hover,
+.ghost-link:focus-visible {
+    color: var(--ochre);
+    outline: none;
+}
+
+.end-overlay {
+    background: oklch(8% 0.02 70 / 0.55);
+}
+
+body[data-state='ended'] .lab-foot,
+body[data-state='error'] .lab-foot {
+    display: none !important;
+}
+
+body[data-state='error'] .hud {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .hud-meta {
+        gap: 0.3rem 0.8rem;
+    }
+
+    .dock {
+        gap: 0.4rem;
+    }
+
+    .dock-btn {
+        padding: 0.5rem 0.8rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .caption {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .dock {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .dock-btn {
+        min-width: 0;
+        padding: 0.5rem 0.2rem;
+        font-size: 0.75rem;
+    }
+
+    .dock-btn.icon {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .caption {
+        display: none;
+    }
+
+    .timeline-wrap {
+        flex: 1 1 100%;
+        order: 3;
+        height: 44px;
+        margin-block: -10px -6px;
+    }
+
+    .readout small {
+        display: none;
+    }
+}

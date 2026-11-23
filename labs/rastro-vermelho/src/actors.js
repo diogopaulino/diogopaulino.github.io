@@ -23,7 +23,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { GLSL_NOISE, place, seeded } from '../../shared/gfx/core.js';
 import { createHuman, poseHuman } from '../../shared/gfx/human.js';
 import { loadGLTF } from './assets.js?v=14';
-import { clamp, damp } from './simulation.js';
+import { clamp, damp } from './simulation.js?v=16';
 
 const HORSE_SCALE = 0.44; // modelo tem ~5,3 u de comprimento → cavalo de ~2,5 m, cernelha ≈ 1,55 m
 const sstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -570,9 +570,10 @@ export function createOutlaw(i = 0) {
     const st = { aim: 0, fall: 0, t: i * 1.7 };
     return {
         root, human: h, kit,
-        update(dt, warning, dead) {
+        /** flinch 0–1: recuo do tronco ao levar um tiro (decai em main.js), baixa a arma na hora. */
+        update(dt, warning, dead, flinch = 0) {
             st.t += dt;
-            st.aim = damp(st.aim, warning ? 1 : 0.25, 9, dt);
+            st.aim = damp(st.aim, warning ? 1 : 0.25, 9, dt) * (1 - flinch * 0.6);
             if (dead) st.fall = Math.min(1, st.fall + dt * 2.6); else st.fall = 0;
             poseHuman(h, 'idle', st.t);
             const b = h.bones;
@@ -581,7 +582,7 @@ export function createOutlaw(i = 0) {
             R(b.thighL, -0.12, 0, 0.1); R(b.thighR, 0.14, 0, -0.1); R(b.shinR, 0.12);
             // queda: tomba para trás com um quique amortecido
             const f = st.fall, e = f * f * (3 - 2 * f);
-            h.object.rotation.x = -e * 1.5 + Math.sin(f * Math.PI) * 0.12 * (1 - f);
+            h.object.rotation.x = -e * 1.5 + Math.sin(f * Math.PI) * 0.12 * (1 - f) - flinch * flinch * 0.28 * (1 - f);
             h.object.position.y = e * 0.13;
             if (f > 0) { R(b.armL, -0.4 * e, 0, 1.2 * e); R(b.armR, -0.3, 0, -1.1 * e); R(b.thighL, -0.3 * e, 0, 0.2); R(b.shinL, 0.6 * e); }
         },

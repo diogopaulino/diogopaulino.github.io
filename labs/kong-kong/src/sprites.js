@@ -3,7 +3,7 @@
  * Origem do Kong: pés no chão, centro horizontal do hitbox.
  */
 
-import { PAL, THEMES, TILE, VIEW_W, VIEW_H, hash2 } from './config.js?v=4';
+import { PAL, THEMES, TILE, VIEW_W, VIEW_H, hash2 } from './config.js?v=5';
 
 export function roundRect(ctx, x, y, w, h, r) {
   const rr = Math.min(r, w / 2, h / 2);

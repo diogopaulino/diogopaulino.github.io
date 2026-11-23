@@ -54,9 +54,22 @@ export function chapterAt(t) {
     return cur;
 }
 
+/** Legendas por capítulo, cada uma ancorada num ID do dossiê (research.md). */
+export const CAPTIONS = {
+    sea: 'Kasato Maru · 123 m, ~6.000 t de arqueação · 50 dias desde Kōbe (K02, D03)',
+    estuary: 'Canal do estuário em marcha de manobra, ~7 nós, desacelerando (N01, N02)',
+    port: 'Café: ~96% do que o porto exportava · sacas de 60 kg no ombro (P02, P03)',
+    dock: 'Rebocador encosta o navio no armazém 14 · cabos passados às 9h30 (D05, D06, K07)',
+    deck: '781 pessoas, 165 famílias — a noite ainda seria a bordo (D02, D07)',
+    rail: 'Valongo: no dia 19, o trem da SPR levaria todos à Hospedaria do Brás (V01, V02)',
+    rise: 'Companhia Docas de Santos, concessionária do porto desde 1890 (P01)'
+};
+
 /**
- * Trajetória do Kasato Maru: tabela (t, x, z) interpolada por Catmull-Rom escalar.
- * O navio desacelera de ~7 m/s (barra) até parar em t = 112 s; depois fica atracado.
+ * Composição dos planos: onde o Kasato Maru está em cada corte do filme.
+ * Tabela (t, x, z) interpolada por Catmull-Rom escalar — define a GEOMETRIA da rota
+ * (canal → cais) e a posição do navio no começo de cada plano. NÃO define a
+ * velocidade: esta vem da dinâmica abaixo.
  */
 const TRACK = [
     // t,    x,     z
@@ -89,16 +102,141 @@ function trackAt(time, out) {
     return out;
 }
 
-const _n = {};
-export function kasatoPose(t, out = {}) {
-    const time = Math.max(0, Math.min(FILM_DURATION, t));
-    trackAt(time, out);
-    // rumo: derivada numérica; ao parar alinha com o cais (0 = +Z)
-    const e = 0.3;
-    trackAt(Math.min(FILM_DURATION, time + e), _n);
-    const dx = _n.x - out.x;
-    const dz = _n.z - out.z;
-    out.speed = Math.hypot(dx, dz) / e;
-    out.heading = Math.atan2(dx, Math.max(dz, 1e-4)) * Math.min(1, out.speed / 1.5);
+/**
+ * Dinâmica do navio (N01–N02 no dossiê) — tempo REAL de história, em segundos.
+ *
+ * Um vapor de 123 m e ~9.000 t de deslocamento não freia nem vira na hora:
+ *   cruzeiro no canal  v_max = 3,6 m/s (7 nós, "devagar avante")
+ *   desaceleração      a = 0,012 m/s² (máquina parada/a ré + resistência do casco:
+ *                      F ≈ m·a ≈ 9·10⁶ kg × 0,012 ≈ 110 kN)
+ *   perfil             v(d) = min(v_max, √(2·a·d)), d = distância que falta até o berço
+ *     → para exatamente no armazém 14; leva v_max/a = 300 s só freando (~540 m).
+ *   rumo               tangente da rota; nos últimos 45 m o rebocador empurra a popa e
+ *                      o navio gira até ficar paralelo ao cais (~0,3 °/s).
+ *
+ * Montagem com elipses: dentro de cada plano o tempo do filme corre 1:1 com o da
+ * história (velocidades reais na tela); nos cortes o filme salta à frente, como num
+ * documentário. Cada plano começa com o navio no ponto de composição da TRACK, então
+ * a decupagem da câmera continua valendo. O relógio diegético mostra a hora da
+ * história: as amarras ficam passadas às 9h30 (D05).
+ */
+export const SHIP_DYN = { vmax: 3.6, decel: 0.012, turnIn: 45 };
+export const KNOT = 0.514444; // m/s
+const BERTH_SECONDS = 9 * 3600 + 30 * 60;
+/** Cortes do filme (início de cada plano da câmera, camera.js). */
+export const CUTS = [0, 13, 28, 42, 55, 69, 82, 95, 110, 125, 138, 148, 162];
+
+// Rota amostrada (polilinha) e comprimento de arco acumulado — calculado uma vez.
+const SAMPLE_DT = 0.25;
+const N = Math.round(112 / SAMPLE_DT) + 1;
+const PX = new Float64Array(N);
+const PZ = new Float64Array(N);
+const PS = new Float64Array(N);
+{
+    const p = {};
+    for (let i = 0; i < N; i++) {
+        trackAt(i * SAMPLE_DT, p);
+        PX[i] = p.x;
+        PZ[i] = p.z;
+        PS[i] = i ? PS[i - 1] + Math.hypot(PX[i] - PX[i - 1], PZ[i] - PZ[i - 1]) : 0;
+    }
+}
+const ROUTE = PS[N - 1];
+
+// Perfil de velocidade fechado: cruzeiro até faltar v²/2a, depois freada constante.
+const V_PEAK = Math.min(SHIP_DYN.vmax, Math.sqrt(2 * SHIP_DYN.decel * ROUTE));
+const T_CRUISE = Math.max(0, (ROUTE - (V_PEAK * V_PEAK) / (2 * SHIP_DYN.decel)) / V_PEAK);
+const T_STOP = T_CRUISE + V_PEAK / SHIP_DYN.decel;
+
+function sAtTau(tau) {
+    if (tau <= 0) return 0;
+    if (tau <= T_CRUISE) return V_PEAK * tau;
+    if (tau >= T_STOP) return ROUTE;
+    const r = T_STOP - tau;
+    return ROUTE - 0.5 * SHIP_DYN.decel * r * r;
+}
+
+function vAtTau(tau) {
+    if (tau <= T_CRUISE) return V_PEAK;
+    if (tau >= T_STOP) return 0;
+    return SHIP_DYN.decel * (T_STOP - tau);
+}
+
+function tauAtS(s) {
+    if (s <= V_PEAK * T_CRUISE) return s / V_PEAK;
+    const d = Math.max(0, ROUTE - s);
+    return T_STOP - Math.sqrt((2 * d) / SHIP_DYN.decel);
+}
+
+function sAtFilm(t) {
+    const f = Math.max(0, Math.min(N - 1, t / SAMPLE_DT));
+    const i = Math.min(N - 2, Math.floor(f));
+    return PS[i] + (PS[i + 1] - PS[i]) * (f - i);
+}
+
+// Hora da história no começo de cada plano (monótona: nenhum plano volta no tempo).
+const TAU0 = new Float64Array(CUTS.length);
+for (let i = 0; i < CUTS.length; i++) {
+    const min = i ? TAU0[i - 1] + (CUTS[i] - CUTS[i - 1]) : 0;
+    TAU0[i] = CUTS[i] < 112 ? Math.max(min, tauAtS(sAtFilm(CUTS[i]))) : min;
+}
+
+/** Tempo de história (s desde o início da cena) para o instante t do filme. */
+export function storyTime(t) {
+    let i = 0;
+    while (i < CUTS.length - 1 && t >= CUTS[i + 1]) i++;
+    return TAU0[i] + Math.max(0, t - CUTS[i]);
+}
+
+/** Hora do dia na história, em segundos desde 0h (9h30 = navio parado no berço). */
+export function storyClock(t) {
+    return BERTH_SECONDS + (storyTime(t) - T_STOP);
+}
+
+function pointAtS(s, out) {
+    // busca binária no comprimento de arco
+    let lo = 0;
+    let hi = N - 1;
+    if (s <= 0) { out.x = PX[0]; out.z = PZ[0]; return out; }
+    if (s >= ROUTE) { out.x = PX[N - 1]; out.z = PZ[N - 1]; return out; }
+    while (hi - lo > 1) {
+        const mid = (lo + hi) >> 1;
+        if (PS[mid] <= s) lo = mid; else hi = mid;
+    }
+    const seg = PS[hi] - PS[lo] || 1;
+    const u = (s - PS[lo]) / seg;
+    out.x = PX[lo] + (PX[hi] - PX[lo]) * u;
+    out.z = PZ[lo] + (PZ[hi] - PZ[lo]) * u;
     return out;
 }
+
+const _a = {};
+const _b = {};
+/**
+ * Pose do Kasato Maru no instante t do filme:
+ * { x, z, heading (rad, 0 = +Z), speed (m/s), knots, tau (s de história), docked }.
+ */
+export function kasatoPose(t, out = {}) {
+    const tau = storyTime(Math.max(0, Math.min(FILM_DURATION, t)));
+    const s = sAtTau(tau);
+    pointAtS(s, out);
+    // rumo pela tangente da rota (diferença central de ±3 m de arco)
+    pointAtS(Math.max(0, s - 3), _a);
+    pointAtS(Math.min(ROUTE, s + 3), _b);
+    const d = ROUTE - s;
+    const k = smooth01(d / SHIP_DYN.turnIn);
+    out.heading = Math.atan2(_b.x - _a.x, Math.max(_b.z - _a.z, 1e-4)) * k;
+    out.speed = vAtTau(tau);
+    out.knots = out.speed / KNOT;
+    out.tau = tau;
+    out.docked = tau >= T_STOP;
+    return out;
+}
+
+function smooth01(x) {
+    const u = x < 0 ? 0 : x > 1 ? 1 : x;
+    return u * u * (3 - 2 * u);
+}
+
+/** Números da dinâmica, para teste e para o HUD. */
+export const SHIP_FACTS = { route: ROUTE, tStop: T_STOP, tCruise: T_CRUISE, vPeak: V_PEAK, tau0: TAU0 };

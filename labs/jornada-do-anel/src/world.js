@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { clamp, smoothstep } from '../../shared/gfx/core.js';
 import { loadModel } from '../../shared/gfx/assets.js';
 import { createParticles } from '../../shared/gfx/particles.js';
-import { QUALITY } from './config.js?v=31';
+import { QUALITY } from './config.js?v=32';
 
 const _v = new THREE.Vector3();
 
@@ -46,6 +46,11 @@ export class ChapterWorld {
         this.overview = new THREE.Vector3(18, 14, 22);
         this.overviewLook = new THREE.Vector3(0, 2.5, 0);
         this.fallY = -Infinity;
+        /**
+         * Caixa da câmera em ambiente fechado (minas): fora dela é parede/teto.
+         * { minX, maxX, minZ, maxZ, maxY } ou null ao ar livre.
+         */
+        this.camBounds = null;
         this.page = null;
         this.shadowAwake = false;
         this.disposed = false;
@@ -92,6 +97,8 @@ export class ChapterWorld {
 
     /** Ponto (x, y, z) está dentro de algo sólido? (colisão da câmera) */
     solidAt(x, y, z, skin = 0.3) {
+        const cb = this.camBounds;
+        if (cb && (x < cb.minX || x > cb.maxX || z < cb.minZ || z > cb.maxZ || y > cb.maxY)) return true;
         if (y < this.heightAt(x, z) + skin) return true;
         const cs = this.colliders;
         for (let i = 0; i < cs.length; i++) {

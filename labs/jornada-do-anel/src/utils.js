@@ -10,3 +10,14 @@ export function formatTime(seconds) {
 }
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Promessa com prazo: resolve com `fallback` se `p` não terminar em `ms`
+ * (ou falhar). Usado no carregamento dos capítulos — a tela de viagem nunca
+ * fica presa esperando uma textura/modelo que não chega.
+ */
+export function withTimeout(p, ms, fallback = null) {
+    let id;
+    const timer = new Promise((r) => { id = setTimeout(() => r(fallback), ms); });
+    return Promise.race([Promise.resolve(p).catch(() => fallback), timer]).finally(() => clearTimeout(id));
+}

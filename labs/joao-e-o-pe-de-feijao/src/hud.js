@@ -2,8 +2,8 @@
  * HUD, menus e overlays — tudo que é DOM.
  */
 
-import { CHAPTERS, TREASURES } from './config.js';
-import { formatTime } from './utils.js';
+import { CHAPTERS, TREASURES } from './config.js?v=12';
+import { formatTime } from './utils.js?v=12';
 
 const $ = (id) => document.getElementById(id);
 
@@ -106,15 +106,17 @@ export class Hud {
         this.touch = Boolean(v);
     }
 
-    setPrompt(text) {
-        if (this.promptText === text) return;
-        this.promptText = text;
+    /** Aviso tocável. `key` = tecla mostrada no teclado ('E' ou 'Espaço'); no toque, "Toque". */
+    setPrompt(text, key = 'E') {
+        const id = text ? `${key}|${text}` : '';
+        if (this.promptText === id) return;
+        this.promptText = id;
         if (!text) {
             this.el.prompt.hidden = true;
             return;
         }
         this.el.prompt.hidden = false;
-        this.el.prompt.innerHTML = `<kbd>${this.touch ? 'Toque' : 'E'}</kbd> ${text}`;
+        this.el.prompt.innerHTML = `<kbd>${this.touch ? 'Toque' : key}</kbd> ${text}`;
     }
 
     say(text, seconds = 4) {
@@ -123,7 +125,8 @@ export class Hud {
         this.messageTimer = seconds;
     }
 
-    setMeter(label, value, danger = false) {
+    /** Barra sob o objetivo (gigante, corte, altímetro). `vignette` = escurece as bordas junto. */
+    setMeter(label, value, danger = false, vignette = true) {
         // chamado a cada quadro: só toca no DOM quando algo muda (valor em centésimos)
         const q = Math.round(Math.min(1, value) * 100);
         if (q === this.meterQ && label === this.meterLabel && danger === this.meterDanger) return;
@@ -135,7 +138,7 @@ export class Hud {
         if (label) this.el.stealthLabel.textContent = label;
         this.el.stealthFill.style.transform = `scaleX(${Math.min(1, value)})`;
         this.el.stealth.dataset.danger = danger ? 'true' : 'false';
-        this.el.vignette.style.opacity = String(danger ? Math.min(0.6, value * 0.7) : Math.min(0.28, value * 0.35));
+        this.el.vignette.style.opacity = !vignette ? '0' : String(danger ? Math.min(0.6, value * 0.7) : Math.min(0.28, value * 0.35));
     }
 
     setRelics(kind, count, total) {

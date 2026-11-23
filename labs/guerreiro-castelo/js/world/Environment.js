@@ -6,7 +6,7 @@
  */
 import * as THREE from 'three';
 import { createParticles } from '../../../shared/gfx/particles.js';
-import { Kit, mat, block } from './Build.js';
+import { Kit, mat, block } from './Build.js?v=50';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 

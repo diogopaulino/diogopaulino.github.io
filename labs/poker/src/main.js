@@ -1,6 +1,6 @@
 /**
- * Poker Lab — Texas Hold'em heads-up vs IA + academia.
- * UI hiper-realista: mesa 3D, fichas, flip de cartas.
+ * Poker Lab — Texas Hold'em contra 1 a 3 rivais de IA + academia.
+ * UI hiper-realista: mesa 3D, fichas, flip de cartas, potes paralelos.
  */
 
 import {
@@ -19,10 +19,10 @@ import {
     RANK_LABEL,
     startHand,
     STREET
-} from './engine.js?v=4';
-import { aiThinkDelay, chooseAction } from './ai.js?v=4';
-import { HAND_PLAIN, HAND_RANK_CHART, LESSONS, liveTip } from './coach.js?v=4';
-import { renderCards, revealCards } from './cards.js?v=4';
+} from './engine.js?v=5';
+import { aiThinkDelay, chooseAction } from './ai.js?v=5';
+import { HAND_PLAIN, HAND_RANK_CHART, LESSONS, liveTip } from './coach.js?v=5';
+import { renderCards, revealCards } from './cards.js?v=5';
 import { flyChips, renderChipStack } from './chips.js?v=4';
 import { isMuted, setMuted, sfxChip, sfxClick, sfxDeal, sfxFold, sfxWin } from './audio.js';
 
@@ -30,6 +30,10 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const DIFFICULTY_KEY = 'poker:difficulty';
+const SEATS_KEY = 'poker:seats';
+const AVATAR = ['♥', '♠', '♦', '♣', '♠', '♦'];
+// Trava de segurança do laço da IA: uma rua nunca passa disso.
+const MAX_AI_STEPS = 80;
 const DIFF_LABEL = { easy: 'IA · fácil', normal: 'IA · intermediária', hard: 'IA · agressiva' };
 
 const state = {
@@ -42,10 +46,33 @@ const state = {
     busy: false,
     lessonIndex: 0,
     betAmount: 0,
-    prevBets: [0, 0],
-    prevPot: 0,
-    aiRevealed: false
+    seats: readSeats(),
+    revealed: new Set()
 };
+
+function readSeats() {
+    try {
+        const v = Number(localStorage.getItem(SEATS_KEY));
+        return [2, 3, 4].includes(v) ? v : 4;
+    } catch {
+        return 4;
+    }
+}
+
+function setSeats(v) {
+    state.seats = [2, 3, 4].includes(Number(v)) ? Number(v) : 4;
+    try { localStorage.setItem(SEATS_KEY, String(state.seats)); } catch { /* modo privado */ }
+    $$('#seats, #introSeats').forEach((el) => { el.value = String(state.seats); });
+    const h = state.match?.hand;
+    const midHand = h && h.street !== STREET.DONE;
+    // Mesa nova só entre mãos: no meio da mão, vale a partir da próxima.
+    if (!midHand && state.match?.seats !== state.seats && !state.busy) {
+        newMatch();
+        renderAll();
+    }
+    const note = $('#seatsNote');
+    if (note) note.hidden = !(midHand && state.match.seats !== state.seats);
+}
 
 function readDifficulty() {
     try {
@@ -65,13 +92,56 @@ function setDifficulty(v) {
 
 function newMatch() {
     state.session += 1;
-    state.match = createMatch({ startingStack: 1000, smallBlind: 5, bigBlind: 10 });
+    state.busy = false;
+    state.match = createMatch({ startingStack: 1000, smallBlind: 5, bigBlind: 10, seats: state.seats });
+    buildSeats();
 }
+
+/** Monta os assentos dos rivais (1 a 3) a partir do modelo do herói. */
+function buildSeats() {
+    const box = $('#opponents');
+    if (!box) return;
+    const m = state.match;
+    const rivals = m.players.filter((p) => !p.isHero);
+    box.dataset.count = String(rivals.length);
+    box.replaceChildren(...rivals.map((p) => {
+        const el = document.createElement('article');
+        el.className = 'seat seat--ai';
+        el.dataset.seat = String(p.id);
+        el.setAttribute('aria-label', p.name);
+        el.innerHTML = `
+          <div class="avatar avatar--ai" aria-hidden="true"><span class="avatar-ring"></span><span class="avatar-face"></span></div>
+          <div class="seat-info">
+            <span class="dealer-btn" hidden title="Botão">D</span>
+            <span class="blind-tag"></span>
+            <h2 class="seat-name"></h2>
+            <p class="seat-stack"><span class="stack-val">0</span> <small>fichas</small></p>
+            <p class="hand-name hand-name--ai"></p>
+            <p class="seat-act" aria-live="polite"></p>
+          </div>
+          <div class="hole-cards"></div>
+          <div class="bet-zone">
+            <div class="chip-stack" aria-hidden="true"></div>
+            <p class="seat-bet">Aposta <strong>0</strong></p>
+          </div>`;
+        el.querySelector('.avatar-face').textContent = AVATAR[p.id % AVATAR.length];
+        el.querySelector('.seat-name').textContent = p.name;
+        el.querySelector('.hole-cards').setAttribute('aria-label', `Cartas de ${p.name}`);
+        return el;
+    }));
+    state.revealed = new Set();
+}
+
+const seatEl = (seat) => (seat === state.match.heroSeat ? $('.seat--hero') : $(`#opponents [data-seat="${seat}"]`));
+const seatCards = (seat) => (seat === state.match.heroSeat ? $('#heroCards') : seatEl(seat)?.querySelector('.hole-cards'));
+const seatChips = (seat) => (seat === state.match.heroSeat ? $('#heroChipStack') : seatEl(seat)?.querySelector('.chip-stack'));
+const nameOf = (seat) => state.match.players[seat]?.name || 'IA';
 
 function init() {
     newMatch();
     bindUi();
     setDifficulty(state.difficulty);
+    $$('#seats, #introSeats').forEach((el) => { el.value = String(state.seats); });
     const mute = $('#muteBtn');
     if (mute) {
         mute.setAttribute('aria-pressed', String(isMuted()));
@@ -87,6 +157,11 @@ function bindUi() {
         beginMatch();
     });
     $('#introDifficulty')?.addEventListener('change', (e) => setDifficulty(e.target.value));
+    $('#introSeats')?.addEventListener('change', (e) => setSeats(e.target.value));
+    $('#seats')?.addEventListener('change', (e) => setSeats(e.target.value));
+    // Aba oculta: nada a pausar (a IA só age em resposta), mas o som de
+    // fichas não deve tocar em segundo plano.
+    document.addEventListener('visibilitychange', () => { state.hidden = document.hidden; });
     $('#sessionAgain')?.addEventListener('click', () => {
         $('#sessionOverlay').close();
         newMatch();
@@ -205,15 +280,14 @@ function beginMatch() {
 
 function dealNewHand() {
     if (state.busy || (state.match.hand && state.match.hand.street !== STREET.DONE)) return;
-    if (!canContinue(state.match)) newMatch();
-    for (const id of ['#heroCards', '#aiCards', '#board']) $(id).replaceChildren();
-    startHand(state.match);
-    state.aiRevealed = false;
+    if (!canContinue(state.match) || state.match.seats !== state.seats) newMatch();
+    $('#seatsNote') && ($('#seatsNote').hidden = true);
+    for (const box of [$('#heroCards'), $('#board'), ...$$('#opponents .hole-cards')]) box?.replaceChildren();
+    if (!startHand(state.match)) { newMatch(); startHand(state.match); }
+    state.revealed = new Set();
     state.suggestion = null;
     state.betAmount = 0;
     state.busy = false;
-    state.prevBets = [0, 0];
-    state.prevPot = state.match.hand?.pot || 0;
     sfxDeal();
     if (state.match.hand.street === STREET.DONE) {
         onHandOver();
@@ -244,17 +318,18 @@ async function onActionClick(e) {
     if (type === 'fold') sfxFold();
     else sfxChip();
 
-    const beforeBet = state.match.hand?.streetContrib[0] || 0;
+    const hero = state.match.heroSeat;
+    const potBefore = state.match.hand?.pot || 0;
     const result = applyAction(state.match, { type, amount });
     if (!result.ok) return;
     state.suggestion = null;
 
     state.busy = true;
     renderActions();
-    const afterBet = state.match.hand?.streetContrib[0] || 0;
-    const delta = Math.max(0, afterBet - beforeBet);
-    if (delta > 0 && type !== 'fold') {
-        await animateBetFlight(0, delta);
+    // Fichas que o herói pôs agora = quanto o pote cresceu nesta ação.
+    const delta = Math.max(0, (state.match.hand?.pot || 0) - potBefore);
+    if (delta > 0 && type !== 'fold' && !result.handOver) {
+        await animateBetFlight(hero, delta);
     }
 
     state.busy = false;
@@ -266,70 +341,72 @@ async function onActionClick(e) {
     await maybeAiTurn();
 }
 
+/**
+ * Vez dos rivais: cada IA pensa (aiThinkDelay) e age, uma por vez, até a
+ * vez voltar ao herói ou a mão acabar. Sem travas: sessão velha para o
+ * laço, ação recusada vira a mais passiva legal e há um teto de passos.
+ * Herói fora da mão (desistiu/all-in): as IAs jogam mais rápido.
+ */
 async function maybeAiTurn() {
     const match = state.match;
-    const h = match.hand;
-    if (!h || h.street === STREET.DONE) return;
-    if (h.toAct === match.heroSeat) return;
-
     const session = state.session;
+    if (!match.hand || match.hand.street === STREET.DONE) return;
+    if (match.hand.toAct === match.heroSeat) return;
+
     state.busy = true;
     renderActions();
-    setStatus('Dealer IA pensa…');
-    await sleep(aiThinkDelay(state.difficulty));
-
+    let steps = 0;
     while (
         session === state.session &&
         match.hand &&
         match.hand.street !== STREET.DONE &&
+        match.hand.toAct >= 0 &&
         match.hand.toAct !== match.heroSeat &&
-        !match.hand.folded[match.hand.toAct]
+        steps++ < MAX_AI_STEPS
     ) {
-        const action = chooseAction(match, state.difficulty);
-        if (!action) break;
-        if (action.type === 'fold') sfxFold();
-        else sfxChip();
-
         const seat = match.hand.toAct;
-        const beforeBet = match.hand.streetContrib[seat] || 0;
-        let result = applyAction(match, action);
+        const heroOut = match.hand.folded[match.heroSeat] || match.hand.allIn[match.heroSeat];
+        setStatus(`${nameOf(seat)} pensa…`);
+        seatEl(seat)?.classList.add('is-thinking');
+        await sleep(heroOut ? 380 : aiThinkDelay(state.difficulty));
+        seatEl(seat)?.classList.remove('is-thinking');
+        if (session !== state.session || !match.hand || match.hand.toAct !== seat) break;
+
+        let action = null;
+        try { action = chooseAction(match, state.difficulty); } catch { action = null; }
+        const potBefore = match.hand.pot;
+        let result = action ? applyAction(match, action) : { ok: false };
         if (!result.ok) {
             // Nunca travar a mesa: ação recusada vira a mais passiva possível.
             const legal = legalActions(match);
-            const safe = legal.find((a) => a.type === 'check') || legal.find((a) => a.type === 'call') || legal[0];
-            result = safe ? applyAction(match, safe) : { ok: false };
+            action = legal.find((a) => a.type === 'check') || legal.find((a) => a.type === 'call') || legal.find((a) => a.type === 'fold') || legal[0];
+            result = action ? applyAction(match, action) : { ok: false };
             if (!result.ok) break;
         }
-        const afterBet = match.hand?.streetContrib[seat] || 0;
-        const delta = Math.max(0, afterBet - beforeBet);
-        if (delta > 0 && action.type !== 'fold') {
+        if (action.type === 'fold') sfxFold();
+        else sfxChip();
+        const delta = Math.max(0, (match.hand?.pot || 0) - potBefore);
+        if (delta > 0 && action.type !== 'fold' && !result.handOver) {
             await animateBetFlight(seat, delta);
         }
-
+        if (session !== state.session) return;
         renderAll();
         if (result.handOver) {
             state.busy = false;
             onHandOver();
             return;
         }
-        if (match.hand.toAct === match.heroSeat) break;
-        if (match.hand.allIn[0] || match.hand.allIn[1]) {
-            if (match.hand.street === STREET.DONE) {
-                state.busy = false;
-                onHandOver();
-                return;
-            }
-        }
-        await sleep(280);
     }
 
+    if (session !== state.session) return;
     state.busy = false;
     renderAll();
 }
 
 async function animateBetFlight(seat, amount) {
-    const from = seat === 0 ? $('#heroChipStack') : $('#aiChipStack');
+    const from = seatChips(seat);
     const to = $('#potChips');
+    if (!from || !to || state.hidden) return;
     // Garante stack visual na origem antes do voo
     renderChipStack(from, Math.max(amount, 1));
     await flyChips(from, to, amount, { count: Math.min(5, Math.max(2, Math.ceil(amount / 40))) });
@@ -337,12 +414,13 @@ async function animateBetFlight(seat, amount) {
 
 function onHandOver() {
     const r = state.match.lastResult;
-    if (r?.winners?.includes(0)) sfxWin();
+    const hero = state.match.heroSeat;
+    if ((r?.allWinners || r?.winners)?.includes(hero)) sfxWin();
     renderAll({ revealAi: true });
     highlightBest();
 
     if (!canContinue(state.match)) {
-        const heroWins = state.match.stacks[0] > 0;
+        const heroWins = state.match.stacks[hero] > 0;
         setStatus(heroWins ? 'Você ganhou todas as fichas!' : 'Suas fichas acabaram');
         const session = state.session;
         // Deixa ver as cartas do showdown antes do card de fim de sessão.
@@ -355,14 +433,17 @@ function showSessionOver(heroWins) {
     if (!dlg || dlg.open) return;
     const m = state.match;
     dlg.dataset.outcome = heroWins ? 'win' : 'loss';
-    $('#sessionTitle').textContent = heroWins ? 'Você venceu!' : 'A IA venceu';
+    // Colocação: 1 + quantos rivais ainda têm fichas quando o herói zera.
+    const place = heroWins ? 1 : 1 + m.stacks.filter((s, i) => i !== m.heroSeat && s > 0).length;
+    $('#sessionTitle').textContent = heroWins ? 'Você venceu!' : m.seats > 2 ? `Você ficou em ${place}º` : 'A IA venceu';
     $('#sessionText').textContent = heroWins
         ? 'Você ganhou todas as fichas da mesa. Parabéns!'
         : `Suas fichas acabaram. ${state.difficulty === 'easy' ? 'Na próxima, use a Dica quando estiver em dúvida.' : 'Tente a mesa fácil ou use a Dica.'}`;
     $('#sessionStats').innerHTML = [
         ['Mãos jogadas', m.handNumber],
-        ['Mãos que você ganhou', m.handsWon[0]],
-        ['Maior pote', formatChips(m.biggestPot)]
+        ['Mãos que você ganhou', m.handsWon[m.heroSeat]],
+        ['Maior pote', formatChips(m.biggestPot)],
+        ...(m.seats > 2 ? [['Colocação', `${place}º de ${m.seats}`]] : [])
     ].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
     dlg.showModal();
     $('#sessionAgain').focus();
@@ -373,10 +454,12 @@ function highlightBest() {
     const h = state.match.hand;
     const r = state.match.lastResult;
     if (!h || r?.reason !== 'showdown') return;
-    const seat = r.winners.length === 1 ? r.winners[0] : 0;
+    const seat = r.winners[0];
+    if (seat === undefined || !r.hands?.[seat]) return;
     const best = new Set(r.hands[seat].cards);
-    const boxes = [$('#board'), seat === 0 ? $('#heroCards') : $('#aiCards')];
+    const boxes = [$('#board'), ...r.winners.map(seatCards)];
     for (const box of boxes) {
+        if (!box) continue;
         for (const el of box.querySelectorAll('.card[data-card]')) {
             if (!el.dataset.card || el.dataset.card === '?') continue;
             el.classList.toggle('is-best', best.has(el.dataset.card));
@@ -454,7 +537,7 @@ function suggestionWhy(type) {
 function plainHandLine() {
     const h = state.match.hand;
     if (!h) return '';
-    const hole = h.holes[0];
+    const hole = h.holes[state.match.heroSeat];
     if (h.board.length >= 3) {
         const made = evaluateHand([...hole, ...h.board]);
         return `Você tem ${describeHand(made)} (${HAND_PLAIN[made.category]}).`;
@@ -484,13 +567,19 @@ let meterValue = 0;
 function heroMeter() {
     const h = state.match.hand;
     if (!h) return null;
-    const key = h.holes[0].join('') + h.board.join('');
+    const hero = state.match.heroSeat;
+    // Rivais ainda na mão: com mais gente, a mesma mão vale menos.
+    const rivals = Math.max(1, h.folded.filter((f, s) => !f && s !== hero).length);
+    const key = h.holes[hero].join('') + h.board.join('') + rivals;
     if (key !== meterKey) {
         meterKey = key;
-        meterValue = equityVsRandom(h.holes[0], h.board, 220);
+        meterValue = equityVsRandom(h.holes[hero], h.board, 220, Math.random, Math.min(3, rivals));
     }
     const v = meterValue;
-    const word = v < 0.4 ? 'fraca' : v < 0.55 ? 'média' : v < 0.72 ? 'boa' : 'forte';
+    // Faixas relativas à parte justa do pote (1 / jogadores na mão).
+    const fair = 1 / (rivals + 1);
+    const r = v / fair;
+    const word = r < 0.8 ? 'fraca' : r < 1.1 ? 'média' : r < 1.45 ? 'boa' : 'forte';
     return { v, word };
 }
 
@@ -507,41 +596,50 @@ function renderAll(opts = {}) {
     renderHandResult();
 }
 
+const ACT_WORD = { blind: 'Blind', fold: 'Desistiu', check: 'Passou', call: 'Pagou', bet: 'Apostou', raise: 'Aumentou', allin: 'All-in' };
+
 function renderStacks() {
     const m = state.match;
-    $('#heroStack').textContent = formatChips(m.stacks[0]);
-    $('#aiStack').textContent = formatChips(m.stacks[1]);
     const h = m.hand;
-    $('#heroBet').textContent = h ? formatChips(h.streetContrib[0] || 0) : '0';
-    $('#aiBet').textContent = h ? formatChips(h.streetContrib[1] || 0) : '0';
-
-    const heroSeat = $('.seat--hero');
-    const aiSeat = $('.seat--ai');
-    heroSeat?.classList.toggle('is-turn', !!(h && h.street !== STREET.DONE && h.toAct === 0));
-    aiSeat?.classList.toggle('is-turn', !!(h && h.street !== STREET.DONE && h.toAct === 1));
-    heroSeat?.classList.toggle('is-winner', !!(h && h.street === STREET.DONE && h.winners?.includes(0)));
-    aiSeat?.classList.toggle('is-winner', !!(h && h.street === STREET.DONE && h.winners?.includes(1)));
-    heroSeat?.classList.toggle('is-folded', !!(h && h.folded[0]));
-    aiSeat?.classList.toggle('is-folded', !!(h && h.folded[1]));
-
+    const done = !!(h && h.street === STREET.DONE);
     const btn = h?.button ?? m.button;
-    $('#heroDealer').hidden = btn !== 0;
-    $('#aiDealer').hidden = btn !== 1;
-
-    const heroBlind = h ? (h.sbSeat === 0 ? 'SB' : 'BB') : '';
-    const aiBlind = h ? (h.sbSeat === 1 ? 'SB' : 'BB') : '';
-    $('#heroBlind').textContent = heroBlind;
-    $('#aiBlind').textContent = aiBlind;
+    for (let seat = 0; seat < m.seats; seat++) {
+        const el = seatEl(seat);
+        if (!el) continue;
+        const isHero = seat === m.heroSeat;
+        const stack = formatChips(m.stacks[seat]);
+        const bet = formatChips(h ? h.streetContrib[seat] || 0 : 0);
+        if (isHero) {
+            $('#heroStack').textContent = stack;
+            $('#heroBet').textContent = bet;
+            $('#heroDealer').hidden = btn !== seat;
+            $('#heroBlind').textContent = h ? (h.sbSeat === seat ? 'SB' : h.bbSeat === seat ? 'BB' : '') : '';
+        } else {
+            el.querySelector('.stack-val').textContent = stack;
+            el.querySelector('.seat-bet strong').textContent = bet;
+            el.querySelector('.dealer-btn').hidden = btn !== seat;
+            el.querySelector('.blind-tag').textContent = h ? (h.sbSeat === seat ? 'SB' : h.bbSeat === seat ? 'BB' : '') : '';
+            const act = h?.lastAction?.[seat];
+            const actEl = el.querySelector('.seat-act');
+            actEl.textContent = !h || done || !act || act.type === 'blind' ? '' : `${ACT_WORD[act.type]}${act.amount && act.type !== 'fold' && act.type !== 'check' ? ` ${formatChips(act.amount)}` : ''}`;
+            actEl.dataset.type = act?.type || '';
+        }
+        el.classList.toggle('is-turn', !!(h && !done && h.toAct === seat));
+        el.classList.toggle('is-winner', !!(done && (m.lastResult?.allWinners || h.winners)?.includes(seat)));
+        el.classList.toggle('is-folded', !!(h && h.folded[seat] && !h.out?.[seat]));
+        el.classList.toggle('is-out', m.stacks[seat] <= 0 && !(h && !done && h.contrib[seat] > 0) && !(done && m.lastResult?.payouts?.[seat] > 0));
+        el.classList.toggle('is-allin', !!(h && !done && h.allIn[seat]));
+    }
 }
 
 function renderChipPiles() {
-    const h = state.match.hand;
-    const heroBet = h?.streetContrib[0] || 0;
-    const aiBet = h?.streetContrib[1] || 0;
-    const pot = h?.pot || 0;
-    renderChipStack($('#heroChipStack'), heroBet);
-    renderChipStack($('#aiChipStack'), aiBet);
-    renderChipStack($('#potChips'), pot);
+    const m = state.match;
+    const h = m.hand;
+    for (let seat = 0; seat < m.seats; seat++) {
+        const box = seatChips(seat);
+        if (box) renderChipStack(box, h?.streetContrib[seat] || 0);
+    }
+    renderChipStack($('#potChips'), h?.pot || 0);
 }
 
 function renderBoard() {
@@ -570,24 +668,35 @@ function streetName(s) {
 }
 
 function renderHoles(opts = {}) {
-    const h = state.match.hand;
-    const hero = h?.holes[0] || [];
-    const ai = h?.holes[1] || [];
+    const m = state.match;
+    const h = m.hand;
+    const heroSeat = m.heroSeat;
+    const hero = h?.holes[heroSeat] || [];
     renderCards($('#heroCards'), hero, { baseDelay: 0 });
 
-    const reveal = h?.showdown;
-    if (reveal && ai.length) {
-        if (opts.revealAi && !state.aiRevealed) {
-            state.aiRevealed = true;
-            revealCards($('#aiCards'), ai);
+    const r = m.lastResult;
+    for (let seat = 0; seat < m.seats; seat++) {
+        if (seat === heroSeat) continue;
+        const box = seatCards(seat);
+        const el = seatEl(seat);
+        if (!box || !el) continue;
+        const cards = h?.holes[seat] || [];
+        // Desistente não mostra (muck); no showdown abre quem disputou.
+        const show = h?.showdown && cards.length && !h.folded[seat];
+        if (show) {
+            if (opts.revealAi && !state.revealed.has(seat)) {
+                state.revealed.add(seat);
+                revealCards(box, cards);
+            } else if (!state.revealed.has(seat)) {
+                renderCards(box, cards, { baseDelay: 80 });
+            }
+        } else if (cards.length && !h.folded[seat]) {
+            renderCards(box, ['?', '?'], { faceDown: true });
         } else {
-            renderCards($('#aiCards'), ai, { baseDelay: 80 });
+            box.replaceChildren();
         }
-    } else if (ai.length) {
-        const box = $('#aiCards');
-        renderCards(box, ['?', '?'], { faceDown: true });
-    } else {
-        $('#aiCards').innerHTML = '';
+        const name = el.querySelector('.hand-name');
+        name.textContent = h?.street === STREET.DONE && r?.reason === 'showdown' && r.hands?.[seat] ? describeHand(r.hands[seat]) : '';
     }
 
     const meterEl = $('#heroMeter');
@@ -605,11 +714,6 @@ function renderHoles(opts = {}) {
     } else {
         $('#heroHandName').textContent = '—';
         if (meterEl) meterEl.hidden = true;
-    }
-    const aiName = $('#aiHandName');
-    if (aiName) {
-        const r = state.match.lastResult;
-        aiName.textContent = h?.street === STREET.DONE && r?.reason === 'showdown' ? describeHand(r.hands[1]) : '';
     }
 }
 
@@ -643,7 +747,7 @@ function syncBetLabels() {
     const btn = $('#actions [data-action="bet"], #actions [data-action="raise"]');
     const h = state.match.hand;
     if (!btn || !h) return;
-    const total = (h.streetContrib[0] || 0) + state.betAmount;
+    const total = (h.streetContrib[state.match.heroSeat] || 0) + state.betAmount;
     btn.querySelector('.act-main').textContent = btn.dataset.action === 'bet'
         ? `Apostar ${formatChips(state.betAmount)}`
         : `Aumentar para ${formatChips(total)}`;
@@ -673,7 +777,8 @@ function renderActions() {
 
     if (state.busy || !heroToAct(state.match)) {
         sizing.hidden = true;
-        setStatus(state.busy ? 'Dealer IA pensa…' : 'Aguardando…');
+        const t = h.toAct;
+        if (!state.busy || t < 0 || t === state.match.heroSeat) setStatus(h.folded[state.match.heroSeat] ? 'Você está fora desta mão · os rivais terminam' : 'Aguardando…');
         return;
     }
 
@@ -719,22 +824,33 @@ function renderActions() {
     if (allin) box.appendChild(actionButton('allin', ACTION_TEXT.allin.main(allin), ACTION_TEXT.allin.sub));
     syncBetLabels();
 
-    const toCall = Math.max(0, h.currentBet - h.streetContrib[0]);
+    const toCall = Math.max(0, h.currentBet - h.streetContrib[state.match.heroSeat]);
+    const who = h.lastAggressor >= 0 && h.lastAggressor !== state.match.heroSeat ? nameOf(h.lastAggressor) : 'a mesa';
     setStatus(toCall > 0
-        ? `Sua vez · a IA apostou. Pague ${formatChips(Math.min(toCall, stack))} para continuar, aumente ou desista.`
+        ? `Sua vez · ${h.street === STREET.PREFLOP && h.currentBet === state.match.bigBlind ? 'o big blind está na mesa' : `${who} apostou`}. Pague ${formatChips(Math.min(toCall, stack))} para continuar, aumente ou desista.`
         : 'Sua vez · passe de graça ou aposte.');
 }
 
 function statusAfterHand() {
-    const r = state.match.lastResult;
+    const m = state.match;
+    const r = m.lastResult;
+    const hero = m.heroSeat;
     if (!r) return 'Mão encerrada';
     if (r.reason === 'fold') {
-        return r.winners[0] === 0 ? `A IA desistiu — você leva ${formatChips(r.pot)}` : 'Você desistiu da mão';
+        const w = r.winners[0];
+        return w === hero ? `Todos desistiram — você leva ${formatChips(r.pot)}` : `${nameOf(w)} leva ${formatChips(r.pot)} · os outros desistiram`;
     }
-    if (r.winners.length === 2) return `Empate · pote dividido (${describeHand(r.hands[0])})`;
+    const contested = (r.pots || []).filter((p) => !p.refund);
+    if (contested.length > 1) {
+        // Potes paralelos: resume quem levou cada um.
+        return contested.map((p, i) => `${i === 0 ? 'Principal' : `Paralelo ${i}`} ${formatChips(p.amount)}: ${p.winners.map((w) => (w === hero ? 'você' : nameOf(w))).join(' e ')}`).join(' · ');
+    }
+    if (r.winners.length > 1) {
+        const names = r.winners.map((w) => (w === hero ? 'você' : nameOf(w))).join(' e ');
+        return `Empate · pote dividido entre ${names} (${describeHand(r.hands[r.winners[0]])})`;
+    }
     const w = r.winners[0];
-    const hand = r.hands[w];
-    return `${w === 0 ? 'Você vence' : 'A IA vence'} com ${describeHand(hand)} · ${formatChips(r.pot)}`;
+    return `${w === hero ? 'Você vence' : `${nameOf(w)} vence`} com ${describeHand(r.hands[w])} · ${formatChips(r.pot)}`;
 }
 
 function setStatus(msg) {
@@ -786,7 +902,9 @@ function renderHandResult() {
     banner.hidden = false;
     banner.textContent = statusAfterHand();
     const r = state.match.lastResult;
-    banner.dataset.outcome = !r ? '' : r.winners.length === 2 ? 'split' : r.winners[0] === 0 ? 'win' : 'loss';
+    const hero = state.match.heroSeat;
+    const won = (r?.allWinners || r?.winners || []).includes(hero);
+    banner.dataset.outcome = !r ? '' : r.winners.length > 1 && r.winners.includes(hero) ? 'split' : won ? 'win' : 'loss';
 }
 
 function renderAcademy() {

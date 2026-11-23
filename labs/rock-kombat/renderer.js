@@ -7,7 +7,7 @@
 // - Chromatic afterimages, directional hit-slashes, dizzy stars & KO bursts
 // ==========================================================================
 
-import { W, H, WORLD_W, GROUND, SPRITE_SIZE, STEP } from './constants.js';
+import { W, H, WORLD_W, GROUND, SPRITE_SIZE, STEP } from './constants.js?v=23';
 import { clamp, lerp } from './utils.js';
 
 export function initRenderer(canvas, onResize) {

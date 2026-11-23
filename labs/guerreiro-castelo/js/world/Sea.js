@@ -12,7 +12,7 @@
  *   roll  = atan2(h(boreste) − h(bombordo), 2·b)·0,7   b = 3,2 m
  */
 import { createOcean, DEFAULT_WAVES } from '../../../shared/gfx/ocean.js';
-import { ISLAND_DEPTH_GLSL } from './Island.js?v=40';
+import { ISLAND_DEPTH_GLSL } from './Island.js?v=50';
 
 const HALF_LEN = 10;
 const HALF_BEAM = 3.2;

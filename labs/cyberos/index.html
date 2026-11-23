@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="/assets/fonts/ibm-plex-mono/font.css">
   <link rel="stylesheet" href="/assets/fonts/vt323/font.css">
   <link rel="stylesheet" href="/labs/shared.css?v=15">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -80,6 +80,7 @@
 <body data-phosphor="green">
   <div class="boot-screen" id="bootScreen" aria-live="polite">
     <pre class="boot-log" id="bootLog"></pre>
+    <button type="button" class="boot-skip" id="bootSkip">pular boot [esc]</button>
   </div>
 
   <div class="crt-frame" id="crtFrame" hidden>
@@ -93,46 +94,60 @@
           <template data-slot="logo">
             <div class="app-logo os-brand">
               <span class="brand-glyph" aria-hidden="true">◈</span>
-              <span>CyberOS</span>
-              <span class="brand-ver">v2.7</span>
+              <span class="brand-name">CyberOS</span>
+              <span class="brand-ver">v3.0</span>
             </div>
           </template>
           <template data-slot="actions">
-            <div class="phosphor-switch" role="group" aria-label="Cor do fósforo">
-              <button type="button" class="phos-btn is-active" data-phosphor="green" title="Fósforo verde"
-                aria-label="Fósforo verde" aria-pressed="true"><span aria-hidden="true">●</span></button>
-              <button type="button" class="phos-btn" data-phosphor="amber" title="Fósforo âmbar"
-                aria-label="Fósforo âmbar" aria-pressed="false"><span aria-hidden="true">●</span></button>
+            <div class="os-actions">
+              <button type="button" class="os-icon-btn" id="arrangeBtn" title="Organizar janelas (Alt+A)"
+                aria-label="Organizar janelas"><span aria-hidden="true">⧉</span></button>
+              <button type="button" class="os-icon-btn" id="soundBtn" title="Som do sistema"
+                aria-label="Som do sistema" aria-pressed="true"><span aria-hidden="true">♪</span></button>
+              <div class="phosphor-switch" role="group" aria-label="Cor do fósforo">
+                <button type="button" class="phos-btn is-active" data-phosphor="green" title="Fósforo verde"
+                  aria-label="Fósforo verde" aria-pressed="true"><span aria-hidden="true">●</span></button>
+                <button type="button" class="phos-btn" data-phosphor="amber" title="Fósforo âmbar"
+                  aria-label="Fósforo âmbar" aria-pressed="false"><span aria-hidden="true">●</span></button>
+              </div>
             </div>
           </template>
         </header>
 
         <main class="desktop" id="desktop">
-          <nav class="dock" aria-label="Programas do CyberOS">
+          <div class="desktop-empty" id="desktopEmpty" aria-hidden="true">
+            <p class="desktop-empty-mark">◈</p>
+            <p>Nenhum programa aberto.</p>
+            <p class="desktop-empty-hint">Toque num ícone do dock para começar.</p>
+          </div>
+
+          <nav class="dock" id="dock" aria-label="Programas do CyberOS">
             <button type="button" class="dock-icon" data-open="terminal" title="Terminal">
               <span class="dock-glyph" aria-hidden="true">&gt;_</span>
-              <span>TERM</span>
+              <span class="dock-label">TERM</span>
             </button>
             <button type="button" class="dock-icon" data-open="firewall" title="Firewall Breach">
               <span class="dock-glyph" aria-hidden="true">⬡</span>
-              <span>HACK</span>
+              <span class="dock-label">HACK</span>
             </button>
             <button type="button" class="dock-icon" data-open="oracle" title="Oracle">
               <span class="dock-glyph" aria-hidden="true">◉</span>
-              <span>ORACLE</span>
+              <span class="dock-label">ORACLE</span>
             </button>
             <button type="button" class="dock-icon" data-open="cipher" title="Cipher Lab">
               <span class="dock-glyph" aria-hidden="true">☰</span>
-              <span>CIPHER</span>
+              <span class="dock-label">CIPHER</span>
             </button>
           </nav>
 
+          <div class="snap-preview" id="snapPreview" aria-hidden="true"></div>
+
           <!-- Terminal -->
-          <section class="window is-open" id="win-terminal" data-window="terminal" style="--wx:8%;--wy:8%;--ww:54%;--wh:62%;">
+          <section class="window" id="win-terminal" data-window="terminal" data-rect="0.03,0.05,0.58,0.78"
+            aria-labelledby="title-terminal" hidden>
             <div class="win-titlebar" data-drag>
-              <span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-              <span class="win-title">guest@cyberos — /home/guest</span>
-              <button type="button" class="win-close" data-close="terminal" aria-label="Fechar">×</button>
+              <span class="win-app-glyph" aria-hidden="true">&gt;_</span>
+              <span class="win-title" id="title-terminal">guest@cyberos — /home/guest</span>
             </div>
             <div class="win-body terminal-body">
               <div class="term-output" id="termOutput" role="log" aria-live="polite"></div>
@@ -140,62 +155,67 @@
                 <label class="sr-only" for="termInput">Comando</label>
                 <span class="term-prompt" id="termPrompt" aria-hidden="true">guest@cyberos:~$</span>
                 <input id="termInput" type="text" spellcheck="false" autocapitalize="off" autocomplete="off"
-                  enterkeyhint="enter" />
+                  autocorrect="off" enterkeyhint="send" />
+                <button type="button" class="term-tab" id="termTab" aria-label="Autocompletar (Tab)">TAB</button>
               </form>
             </div>
           </section>
 
           <!-- Firewall -->
-          <section class="window" id="win-firewall" data-window="firewall" style="--wx:38%;--wy:12%;--ww:48%;--wh:68%;" hidden>
+          <section class="window" id="win-firewall" data-window="firewall" data-rect="0.42,0.06,0.46,0.84"
+            aria-labelledby="title-firewall" hidden>
             <div class="win-titlebar" data-drag>
-              <span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-              <span class="win-title">FIREWALL BREACH // NODE DECRYPT</span>
-              <button type="button" class="win-close" data-close="firewall" aria-label="Fechar">×</button>
+              <span class="win-app-glyph" aria-hidden="true">⬡</span>
+              <span class="win-title" id="title-firewall">FIREWALL BREACH // NODE DECRYPT</span>
             </div>
             <div class="win-body firewall-body">
-              <p class="app-lead" id="fwStatus">Memorize a sequência de nós e reproduza para desativar a camada.</p>
+              <p class="app-lead" id="fwStatus" aria-live="polite">Memorize a sequência de nós e reproduza para
+                derrubar a camada. 8 camadas até o root.</p>
               <div class="fw-meta">
-                <span>Camada <strong id="fwLayer">1</strong>/5</span>
+                <span>Camada <strong id="fwLayer">1</strong>/8</span>
                 <span>Score <strong id="fwScore">0</strong></span>
+                <span>Recorde <strong id="fwBest">0</strong></span>
               </div>
-              <div class="fw-grid" id="fwGrid" role="group" aria-label="Nós do firewall"></div>
+              <div class="fw-progress" aria-hidden="true"><i id="fwProgress"></i></div>
+              <div class="fw-grid" id="fwGrid" role="group" aria-label="Nós do firewall (teclas 1 a 9)"></div>
               <div class="fw-actions">
                 <button type="button" class="os-btn" id="fwStart">INICIAR BREACH</button>
                 <button type="button" class="os-btn ghost" id="fwReset">RESET</button>
               </div>
+              <p class="app-foot">Teclado: <kbd>1</kbd>–<kbd>9</kbd> com a janela em foco.</p>
             </div>
           </section>
 
           <!-- Oracle -->
-          <section class="window" id="win-oracle" data-window="oracle" style="--wx:18%;--wy:18%;--ww:52%;--wh:58%;" hidden>
+          <section class="window" id="win-oracle" data-window="oracle" data-rect="0.18,0.1,0.52,0.76"
+            aria-labelledby="title-oracle" hidden>
             <div class="win-titlebar" data-drag>
-              <span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-              <span class="win-title">ORACLE // PORTFOLIO INTEL</span>
-              <button type="button" class="win-close" data-close="oracle" aria-label="Fechar">×</button>
+              <span class="win-app-glyph" aria-hidden="true">◉</span>
+              <span class="win-title" id="title-oracle">ORACLE // PORTFOLIO INTEL</span>
             </div>
             <div class="win-body oracle-body">
               <div class="oracle-log" id="oracleLog" role="log" aria-live="polite"></div>
-              <form class="oracle-form" id="oracleForm" autocomplete="off">
-                <label class="sr-only" for="oracleInput">Pergunta ao Oracle</label>
-                <input id="oracleInput" type="text" placeholder="pergunte sobre os labs, stack, easter eggs…"
-                  spellcheck="false" />
-                <button type="submit" class="os-btn">ASK</button>
-              </form>
               <div class="oracle-hints">
                 <button type="button" class="chip" data-ask="como o matrix foi feito?">matrix</button>
                 <button type="button" class="chip" data-ask="o que é rock kombat?">rock kombat</button>
                 <button type="button" class="chip" data-ask="curiosidade">curiosidade</button>
                 <button type="button" class="chip" data-ask="quem é você?">quem és?</button>
               </div>
+              <form class="oracle-form" id="oracleForm" autocomplete="off">
+                <label class="sr-only" for="oracleInput">Pergunta ao Oracle</label>
+                <input id="oracleInput" type="text" placeholder="pergunte sobre os labs, stack, easter eggs…"
+                  spellcheck="false" enterkeyhint="send" />
+                <button type="submit" class="os-btn">ASK</button>
+              </form>
             </div>
           </section>
 
           <!-- Cipher -->
-          <section class="window" id="win-cipher" data-window="cipher" style="--wx:28%;--wy:22%;--ww:50%;--wh:60%;" hidden>
+          <section class="window" id="win-cipher" data-window="cipher" data-rect="0.3,0.14,0.5,0.8"
+            aria-labelledby="title-cipher" hidden>
             <div class="win-titlebar" data-drag>
-              <span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-              <span class="win-title">CIPHER LAB // MSG ENCRYPT</span>
-              <button type="button" class="win-close" data-close="cipher" aria-label="Fechar">×</button>
+              <span class="win-app-glyph" aria-hidden="true">☰</span>
+              <span class="win-title" id="title-cipher">CIPHER LAB // MSG ENCRYPT</span>
             </div>
             <div class="win-body cipher-body">
               <div class="cipher-controls">
@@ -210,8 +230,8 @@
                   </select>
                 </label>
                 <div class="cipher-mode" role="group" aria-label="Modo">
-                  <button type="button" class="os-btn is-active" data-mode="encode">CIFRAR</button>
-                  <button type="button" class="os-btn ghost" data-mode="decode">DECIFRAR</button>
+                  <button type="button" class="os-btn is-active" data-mode="encode" aria-pressed="true">CIFRAR</button>
+                  <button type="button" class="os-btn ghost" data-mode="decode" aria-pressed="false">DECIFRAR</button>
                 </div>
               </div>
               <label class="cipher-field">
@@ -219,12 +239,13 @@
                 <textarea id="cipherIn" rows="4" placeholder="Digite a mensagem secreta…" spellcheck="false"></textarea>
               </label>
               <label class="cipher-field">
-                Saída
+                <span>Saída <span class="cipher-live">· ao vivo</span></span>
                 <textarea id="cipherOut" rows="4" readonly placeholder="resultado aparecerá aqui"></textarea>
               </label>
               <div class="fw-actions">
-                <button type="button" class="os-btn" id="cipherRun">PROCESSAR</button>
+                <button type="button" class="os-btn" id="cipherSwap" title="Usa a saída como entrada e inverte o modo">⇅ INVERTER</button>
                 <button type="button" class="os-btn ghost" id="cipherCopy">COPIAR</button>
+                <button type="button" class="os-btn ghost" id="cipherClear">LIMPAR</button>
               </div>
             </div>
           </section>
@@ -232,10 +253,10 @@
 
         <footer class="os-statusbar">
           <span id="statusClock">00:00:00</span>
-          <span class="status-sep">│</span>
-          <span id="statusMsg">sistema online · digite <kbd>help</kbd> no terminal</span>
-          <span class="status-sep">│</span>
-          <span>UPLINK ████░</span>
+          <span class="status-sep" aria-hidden="true">│</span>
+          <span id="statusMsg" class="status-msg" role="status">sistema online · digite <kbd>help</kbd> no terminal</span>
+          <span class="status-sep status-uplink" aria-hidden="true">│</span>
+          <span class="status-uplink" aria-hidden="true">UPLINK ████░</span>
         </footer>
       </div>
       <div class="crt-power" aria-hidden="true"></div>
@@ -245,7 +266,7 @@
   <footer data-lab-footer data-home-href="/" class="cyber-lab-footer"></footer>
 
   <script src="/labs/shared.js?v=16" defer></script>
-  <script src="script.js?v=4" defer></script>
+  <script src="script.js?v=5" defer></script>
 </body>
 
 </html>

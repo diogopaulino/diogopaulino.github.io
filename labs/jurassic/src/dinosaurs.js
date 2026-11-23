@@ -18,8 +18,29 @@
  *                  Jipe a menos de 15 m → dispara para o lado oposto.
  *   Tiranossauro   patrulha o paddock, ruge, acompanha o jipe por dentro da
  *                  cerca. Se o jipe para perto do vão rompido (ou entra), ele
- *                  sai pelo vão e persegue: a menos de 5,4 m, fim de turno.
+ *                  ruge (1,1 s de aviso), sai pelo vão e persegue por até 12 s.
+ *                  Ataque justo (config REX): a 7 m e de frente ele TRAVA
+ *                  0,6 s (aviso no HUD), dá o bote (0,35 s, 1,5× a corrida) e só
+ *                  morde se o jipe ainda estiver a ≤ 4,6 m. Mordida = −1 de
+ *                  integridade + empurrão; depois ele recua e ruge 1,4 s.
  *   Pteranodonte   planam em órbita em torno do farol, batendo asas em rajadas.
+ *
+ * MOVIMENTO SEM TRAVAS (moveTo)
+ *   • colisão: o corpo (círculo de raio `radius`) desliza nos colisores do mundo —
+ *     árvores, rochas, cercas, prédios, o jipe e os outros animais; nunca entra na água;
+ *   • desvio: a cada 0,25 s sonda 2 m à frente; se bloqueado, testa ±0,7 rad e
+ *     guina para o lado livre;
+ *   • anti-trava: a cada 1,5 s mede quanto o corpo andou de fato; se foi < 30 % do
+ *     que a andadura pedia (e o alvo está a > 3 m), escolhe um ponto de desvio
+ *     lateral (6–9 m, lados alternados) por 2,5 s. Medir o próprio deslocamento (e
+ *     não a distância ao alvo) funciona também com alvo em movimento (o jipe).
+ *     Três travadas seguidas = alvo inalcançável: o comportamento escolhe outro.
+ *   • a cerca do paddock é contornada por fora (rota pela elipse 1,3×) até o vão.
+ *
+ * DESEMPENHO
+ *   • além de `cullDist` (por qualidade, com histerese) o animal some da cena e o
+ *     esqueleto não é atualizado — o comportamento continua rodando;
+ *   • fora do campo de visão (frustum) e a mais de 35 m, o esqueleto também congela.
  *
  * Passo pesado: quando um pé de animal grande toca o chão (altura do osso do pé
  * cruza um limiar com histerese) dispara `onStep(pos, peso)` — poeira, baque e
@@ -27,13 +48,14 @@
  */
 
 import * as THREE from 'three';
-import { WORLD, SPECIES } from './config.js';
+import { WORLD, SPECIES, REX } from './config.js?v=23';
 import { clamp, damp, seeded } from '../../shared/gfx/core.js';
 import { createCreature } from '../../shared/gfx/creature.js';
-import { wrapPi } from './utils.js';
+import { wrapPi } from './utils.js?v=23';
 
 const TAU = Math.PI * 2;
 const _v = new THREE.Vector3();
+const _sphere = new THREE.Sphere();
 const nextTask = () => new Promise((r) => setTimeout(r, 0));
 
 /** Estado reutilizado passado a creature.update (sem alocação por quadro). */
@@ -72,7 +94,19 @@ class Dino {
         this.timer = this.rnd() * 6;
         this.state = 'idle';
         this.target = { x: o.x, z: o.z };
-        this.collider = this.flyer ? null : world.addCollider(o.x, o.z, o.radius ?? this.length * 0.14, false);
+        this.radius = o.radius ?? this.length * 0.14;
+        /** Raio do corpo para andar (o colisor que o jipe vê pode ser maior: cabeça e cauda). */
+        this.moveRadius = o.moveRadius ?? this.radius;
+        this.collider = this.flyer ? null : world.addCollider(o.x, o.z, this.radius, false);
+        // anti-trava e desvio (ver MOVIMENTO SEM TRAVAS)
+        this.detour = { x: 0, z: 0, t: 0, side: this.rnd() < 0.5 ? -1 : 1 };
+        this.progress = { t: 0, x: o.x, z: o.z, want: 0 };
+        this.probeT = this.rnd() * 0.25;
+        /** Travadas seguidas; os comportamentos desistem do alvo a partir de 3 (alvo ocupado/inalcançável). */
+        this.stuckCount = 0;
+        this.avoid = 0;
+        this.cullDist = (quality.cullDist ?? 200) * (o.lodScale ?? 1);
+        this.culled = false;
         // pés acompanhados para o passo pesado
         this.feet = [];
         if (this.weight > 0) {
@@ -100,7 +134,7 @@ class Dino {
         const o = this.active.object;
         o.position.copy(this.position);
         o.rotation.set(this.pitch, this.yaw, this.roll, 'YXZ');
-        o.updateMatrixWorld(true);
+        if (!this.culled) o.updateMatrixWorld(true);
         this.focus.set(this.position.x, this.position.y + (this.flyer ? 0 : this.height * 0.62), this.position.z);
         if (this.collider) {
             this.collider.x = this.position.x;
@@ -130,33 +164,97 @@ class Dino {
     }
 
     /**
-     * Anda em direção a (tx, tz) na andadura `mode`. Devolve a distância restante.
+     * Anda em direção a (tx, tz) na andadura `mode`. Devolve a distância restante (ao alvo pedido).
      *   guinada: Δψ limitado a `turnRate` rad/s; a velocidade cai quando o alvo está de lado
      *   v = v_marcha · k · clamp(1 − |Δψ|/1,6; 0,25; 1)
+     * Colisão, desvio e anti-trava: ver MOVIMENTO SEM TRAVAS no cabeçalho.
      */
     moveTo(dt, tx, tz, mode = 'walk', k = 1, turnRate = 0.9) {
-        const dx = tx - this.position.x;
-        const dz = tz - this.position.z;
-        const dist = Math.hypot(dx, dz);
-        const want = Math.atan2(dx, dz);
+        const px = this.position.x;
+        const pz = this.position.z;
+        const dist = Math.hypot(tx - px, tz - pz);
+        // anti-trava: deslocamento real × deslocamento pedido numa janela de 1,5 s
+        const pr = this.progress;
+        pr.t += dt;
+        if (pr.t > 1.5) {
+            const moved = Math.hypot(px - pr.x, pz - pr.z);
+            const stuck = moved < Math.max(0.6, pr.want * 0.3) && dist > 3 && this.detour.t <= 0;
+            pr.t = 0;
+            pr.want = 0;
+            pr.x = px;
+            pr.z = pz;
+            if (stuck) {
+                this.stuckCount++;
+                this._unstick(px, pz, tx, tz);
+            } else if (moved > 2) this.stuckCount = 0;
+        }
+        let gx = tx;
+        let gz = tz;
+        if (this.detour.t > 0) {
+            this.detour.t -= dt;
+            gx = this.detour.x;
+            gz = this.detour.z;
+            if (Math.hypot(gx - px, gz - pz) < 1.5) this.detour.t = 0;
+        }
+        let want = Math.atan2(gx - px, gz - pz);
+        // sonda à frente (a cada 0,25 s): bloqueado → guina para o lado livre
+        this.probeT -= dt;
+        if (this.probeT <= 0 && this.collider) {
+            this.probeT = 0.25;
+            this.avoid = 0;
+            const look = this.moveRadius + 2;
+            const r = this.moveRadius * 0.8;
+            const w = this.world;
+            if (w.blocked(px + Math.sin(want) * look, pz + Math.cos(want) * look, r, this.collider)) {
+                const left = !w.blocked(px + Math.sin(want + 0.7) * look, pz + Math.cos(want + 0.7) * look, r, this.collider);
+                const right = !w.blocked(px + Math.sin(want - 0.7) * look, pz + Math.cos(want - 0.7) * look, r, this.collider);
+                this.avoid = left && !right ? 0.7 : right && !left ? -0.7 : left ? 0.7 * this.detour.side : 0;
+            }
+        }
+        if (Math.hypot(gx - px, gz - pz) > 2) want += this.avoid;
         const dy = wrapPi(want - this.yaw);
         const step = clamp(dy, -turnRate * dt, turnRate * dt);
         this.yaw = wrapPi(this.yaw + step);
         const gait = this.active.gaits[mode] || this.active.gaits.walk;
         const v = gait.speed * k * clamp(1 - Math.abs(dy) / 1.6, 0.25, 1);
         this.speed = damp(this.speed, v, 3, dt);
-        this.position.x += Math.sin(this.yaw) * this.speed * dt;
-        this.position.z += Math.cos(this.yaw) * this.speed * dt;
-        this.position.y = this.world.heightAt(this.position.x, this.position.z);
+        pr.want += this.speed * dt;
+        let nx = px + Math.sin(this.yaw) * this.speed * dt;
+        let nz = pz + Math.cos(this.yaw) * this.speed * dt;
+        if (this.collider) {
+            const hit = this.world.collide(nx, nz, this.moveRadius, this.collider);
+            nx = hit.x;
+            nz = hit.z;
+            // nunca entra na água funda (lago/mar): fica onde está
+            if (this.world.flooded(nx, nz)) {
+                nx = px;
+                nz = pz;
+            }
+        }
+        this.position.x = nx;
+        this.position.z = nz;
+        this.position.y = this.world.heightAt(nx, nz);
         this.anim.mode = mode;
         this.anim.speed = this.speed;
         this.anim.turn = clamp(dy * 1.2, -1, 1);
         return dist;
     }
 
+    /** Preso: ponto de desvio de lado (alternando) e um pouco para trás. */
+    _unstick(px, pz, tx, tz) {
+        const ang = Math.atan2(tx - px, tz - pz) + this.detour.side * (1.3 + this.rnd() * 0.5);
+        const r = 6 + this.rnd() * 3;
+        this.detour.x = px + Math.sin(ang) * r;
+        this.detour.z = pz + Math.cos(ang) * r;
+        this.detour.t = 2.5;
+        this.detour.side *= -1;
+    }
+
     /** Fica parado no modo dado (idle, eat, drink, alert, roar…), virando devagar para `faceYaw`. */
     stay(dt, mode = 'idle', faceYaw = null, turnRate = 0.5) {
         this.speed = damp(this.speed, 0, 5, dt);
+        // parado: desvio pendente não vale mais (o próximo alvo será outro)
+        this.detour.t = 0;
         if (faceYaw !== null) {
             const dy = wrapPi(faceYaw - this.yaw);
             this.yaw = wrapPi(this.yaw + clamp(dy, -turnRate * dt, turnRate * dt));
@@ -180,12 +278,24 @@ class Dino {
 
     update(dt, t, ctx) {
         const camDist = this.position.distanceTo(ctx.camera.position);
-        this._lod(camDist);
+        // culling por distância com histerese de 10 %: some da cena, mas continua pensando
+        const culled = camDist > this.cullDist * (this.culled ? 0.9 : 1);
+        if (culled !== this.culled) {
+            this.culled = culled;
+            if (culled) this.near.object.visible = this.far.object.visible = false;
+            else this.active.object.visible = true;
+        }
+        if (!culled) this._lod(camDist);
         this.anim.jaw = undefined;
         this.think(dt, t, ctx);
         this._apply();
-        // muito longe e fora do quadro: só reposiciona (o esqueleto fica congelado)
-        if (camDist > 190) return;
+        if (culled || camDist > 190) return;
+        // fora do quadro e longe: esqueleto congelado (economiza o grosso da CPU)
+        if (ctx.frustum && camDist > 35) {
+            _sphere.center.copy(this.focus);
+            _sphere.radius = Math.max(this.length, this.height) * 0.75 + 2;
+            if (!ctx.frustum.intersectsSphere(_sphere)) return;
+        }
         this.active.update(dt, this.anim);
         if (this.weight > 0 && camDist < 110) this._steps(ctx);
     }
@@ -222,8 +332,12 @@ function shorePoint(world, ang) {
     return { x: L.x + Math.cos(ang) * L.radius, z: L.z + Math.sin(ang) * L.radius, r: L.radius };
 }
 
+/** Estações ocupadas pelos braquiossauros adultos (um não disputa a vaga do outro). */
+const brachioClaims = new Map();
+
 function brachioBrain(d, world, stations, start) {
     let si = start;
+    brachioClaims.set(d, si);
     d.state = 'walk';
     d.think = (dt, t, ctx) => {
         const s = stations[si];
@@ -231,9 +345,11 @@ function brachioBrain(d, world, stations, start) {
         if (d.state === 'walk') {
             const left = d.moveTo(dt, s.x, s.z, 'walk', 1, 0.32);
             d.lookTo(ctx.jeepHead, nearJeep);
-            if (left < 2.2) {
+            // chegou — ou a vaga ficou inalcançável: fica por aqui mesmo
+            if (left < 2.2 || d.stuckCount >= 3) {
                 d.state = 'act';
                 d.timer = 16 + d.rnd() * 14;
+                d.stuckCount = 0;
             }
         } else {
             d.stay(dt, s.kind === 'drink' ? 'drink' : 'idle', s.face, 0.3);
@@ -245,7 +361,18 @@ function brachioBrain(d, world, stations, start) {
             } else d.lookTo(null, false);
             d.timer -= dt;
             if (d.timer <= 0) {
-                si = (si + 1 + Math.floor(d.rnd() * (stations.length - 1))) % stations.length;
+                // próxima estação livre: nem a do outro adulto, nem a menos de 12 m dele
+                for (let tries = 0; tries < 8; tries++) {
+                    si = (si + 1 + Math.floor(d.rnd() * (stations.length - 1))) % stations.length;
+                    let free = true;
+                    for (const [o, oi] of brachioClaims) {
+                        if (o === d) continue;
+                        const st = stations[si];
+                        if (oi === si || Math.hypot(st.x - o.position.x, st.z - o.position.z) < 12) free = false;
+                    }
+                    if (free) break;
+                }
+                brachioClaims.set(d, si);
                 d.state = 'walk';
             }
         }
@@ -295,7 +422,8 @@ function grazeBrain(d, home, radius) {
         }
         d.lookTo(ctx.jeepHead, jd < 26 && d.state !== 'graze');
         if (d.state === 'walk') {
-            if (d.moveTo(dt, d.target.x, d.target.z, 'walk', 1, 0.6) < 1.8 || d.timer < -20) {
+            if (d.moveTo(dt, d.target.x, d.target.z, 'walk', 1, 0.6) < 1.8 || d.timer < -20 || d.stuckCount >= 3) {
+                d.stuckCount = 0;
                 d.state = 'graze';
                 d.timer = 9 + d.rnd() * 12;
             }
@@ -361,11 +489,96 @@ function raptorBrain(d, pack, index) {
 /** Elipse do paddock: < 1 dentro. */
 const inPaddock = (x, z) => Math.hypot((x - WORLD.paddock.x) / WORLD.paddock.rx, (z - WORLD.paddock.z) / WORLD.paddock.rz);
 
+/**
+ * A cerca está entre A e B? Amostra o segmento; se a elipse é cruzada (e − 1 troca
+ * de sinal) longe do vão (> 3,5 m), há cerca no caminho.
+ */
+function fenceBetween(ax, az, bx, bz, gap) {
+    let prev = inPaddock(ax, az) - 1;
+    for (let i = 1; i <= 8; i++) {
+        const u = i / 8;
+        const x = ax + (bx - ax) * u;
+        const z = az + (bz - az) * u;
+        const e = inPaddock(x, z) - 1;
+        if ((e < 0) !== (prev < 0) && Math.hypot(x - gap.x, z - gap.z) > 3.5) return true;
+        prev = e;
+    }
+    return false;
+}
+
+/**
+ * Ponto-guia de A até B sem atravessar a cerca, com os dois do lado de fora:
+ * se o segmento passa por dentro da elipse (e < 1,08), anda pela elipse 1,3×
+ * no sentido do menor arco, no máximo 0,6 rad por vez.
+ */
+function aroundPaddock(ax, az, bx, bz, out) {
+    const P = WORLD.paddock;
+    let cross = false;
+    for (let i = 1; i < 8 && !cross; i++) {
+        const u = i / 8;
+        cross = inPaddock(ax + (bx - ax) * u, az + (bz - az) * u) < 1.08;
+    }
+    if (!cross) {
+        out.x = bx;
+        out.z = bz;
+        return out;
+    }
+    const aa = Math.atan2((az - P.z) / P.rz, (ax - P.x) / P.rx);
+    const ab = Math.atan2((bz - P.z) / P.rz, (bx - P.x) / P.rx);
+    const d = wrapPi(ab - aa);
+    const a = aa + Math.sign(d) * Math.min(Math.abs(d), 0.6);
+    out.x = P.x + Math.cos(a) * P.rx * 1.3;
+    out.z = P.z + Math.sin(a) * P.rz * 1.3;
+    return out;
+}
+
+/**
+ * Rota do rex até (tx, tz) respeitando a cerca: entra e sai só pelo vão.
+ *   dentro → dentro: reto · dentro → fora: vão e depois ponto de fora do vão
+ *   fora → dentro: contorna até o ponto de fora do vão, atravessa até o de dentro
+ *   fora → fora: contorna a elipse quando o caminho reto cortaria o paddock
+ */
+function routeRex(d, gap, tx, tz, out) {
+    const P = WORLD.paddock;
+    const x = d.position.x;
+    const z = d.position.z;
+    const meIn = inPaddock(x, z) < 1;
+    const toIn = inPaddock(tx, tz) < 1;
+    const gOutX = P.x + (gap.x - P.x) * 1.3;
+    const gOutZ = P.z + (gap.z - P.z) * 1.3;
+    const gInX = P.x + (gap.x - P.x) * 0.6;
+    const gInZ = P.z + (gap.z - P.z) * 0.6;
+    const toGap = Math.hypot(x - gap.x, z - gap.z);
+    if (meIn && toIn) {
+        out.x = tx;
+        out.z = tz;
+    } else if (meIn) {
+        // sai pelo vão: mira o centro do vão e, já nele, o ponto de fora
+        if (toGap > 2.5 && inPaddock(x, z) < 0.93) {
+            out.x = gap.x;
+            out.z = gap.z;
+        } else {
+            out.x = gOutX;
+            out.z = gOutZ;
+        }
+    } else if (toIn) {
+        if (toGap > 4.5) aroundPaddock(x, z, gOutX, gOutZ, out);
+        else {
+            out.x = gInX;
+            out.z = gInZ;
+        }
+    } else aroundPaddock(x, z, tx, tz, out);
+    return out;
+}
+
 function rexBrain(d, world) {
     const P = WORLD.paddock;
+    const way = { x: 0, z: 0 };
     d.state = 'patrol';
     d.caught = false;
     d.roarCool = 8;
+    d.threat = 0;
+    d.returnT = 0;
     const pick = () => {
         const a = d.rnd() * TAU;
         const r = 0.2 + d.rnd() * 0.5;
@@ -373,6 +586,13 @@ function rexBrain(d, world) {
         d.target.z = P.z + Math.sin(a) * P.rz * r;
     };
     pick();
+    const endChase = () => {
+        d.state = 'return';
+        d.timer = 0;
+        d.calm = 6;
+        d.returnT = 0;
+        d.threat = 0;
+    };
     d.think = (dt, t, ctx) => {
         const gap = world.paddockGap;
         const jx = ctx.jeep.x;
@@ -381,6 +601,7 @@ function rexBrain(d, world) {
         const jeepIn = inPaddock(jx, jz) < 0.96;
         const rexIn = inPaddock(d.position.x, d.position.z) < 1;
         const gapDist = Math.hypot(jx - gap.x, jz - gap.z);
+        const face = Math.atan2(jx - d.position.x, jz - d.position.z);
         d.roarCool -= dt;
         d.timer -= dt;
         d.lookTo(ctx.jeepHead, jd < 60 && d.state !== 'roar');
@@ -389,46 +610,100 @@ function rexBrain(d, world) {
         const lure = ctx.playing && (jeepIn || (gapDist < 11 && jd < 45));
         // depois de desistir, o rex só volta a caçar após 6 s (dá tempo de fugir sem ficar preso num laço)
         d.calm = Math.max(0, (d.calm || 0) - dt);
-        if (d.state !== 'chase' && lure && d.calm <= 0) {
-            d.state = 'chase';
+        const hunting = d.state === 'alarm' || d.state === 'chase' || d.state === 'windup' || d.state === 'lunge' || d.state === 'recover';
+        if (!hunting && lure && d.calm <= 0) {
+            // aviso: ruge parado antes de sair
+            d.state = 'alarm';
             ctx.onRoar?.(d, 1.3);
             d.timer = 1.1;
             d.chaseT = 0;
             d.roarCool = 9;
+            d.threat = 1;
+        }
+        if (hunting && (!ctx.playing || jd > 62 || d.chaseT > REX.chaseMax)) {
+            endChase();
         }
 
+        if (d.state === 'alarm') {
+            d.stay(dt, 'roar', face, 1.6);
+            if (d.timer <= 0) d.state = 'chase';
+            return;
+        }
         if (d.state === 'chase') {
-            if (d.timer > 0) {
-                d.stay(dt, 'roar', Math.atan2(jx - d.position.x, jz - d.position.z), 1.6);
-                return;
-            }
-            // dentro e o jipe fora: primeiro o vão, depois o jipe
-            const viaGap = rexIn && !jeepIn && Math.hypot(d.position.x - gap.x, d.position.z - gap.z) > 3.5;
-            const tx = viaGap ? gap.x : jx;
-            const tz = viaGap ? gap.z : jz;
-            d.moveTo(dt, tx, tz, 'run', 1, 1.5);
-            d.chaseT = (d.chaseT || 0) + dt;
-            if (jd < 4.8 && ctx.playing) d.caught = true;
-            // perseguição curta (≤ 10 s): assusta, mas quem acelera para longe escapa
-            if (jd > 62 || !ctx.playing || d.chaseT > 10) {
-                d.state = 'return';
-                d.timer = 0;
-                d.calm = 6;
+            d.chaseT += dt;
+            d.threat = 1;
+            routeRex(d, gap, jx, jz, way);
+            d.moveTo(dt, way.x, way.z, 'run', 1, 1.5);
+            // de frente, perto e sem cerca no meio: trava e avisa antes do bote
+            if (jd < REX.windupDist && Math.abs(wrapPi(face - d.yaw)) < 0.6
+                && !fenceBetween(d.position.x, d.position.z, jx, jz, gap)) {
+                d.state = 'windup';
+                d.timer = REX.windup;
+                d.threat = 2;
+                ctx.onWindup?.(d);
             }
             return;
         }
+        if (d.state === 'windup') {
+            // agacha e mira: quase parado, girando rápido para o jipe
+            d.chaseT += dt;
+            d.moveTo(dt, jx, jz, 'walk', 0.35, 2.2);
+            d.anim.mode = 'alert';
+            if (d.timer <= 0) {
+                d.state = 'lunge';
+                d.timer = REX.lunge;
+                d.bit = false;
+            }
+            return;
+        }
+        if (d.state === 'lunge') {
+            d.chaseT += dt;
+            // bote: arranque impulsivo (não espera a marcha acelerar)
+            d.speed = Math.max(d.speed, d.active.gaits.run.speed * REX.lungeBoost);
+            d.moveTo(dt, jx, jz, 'run', REX.lungeBoost, 1.2);
+            d.anim.jaw = 1;
+            if (!d.bit && jd < REX.biteDist) {
+                d.bit = true;
+                ctx.onBite?.(d);
+            }
+            if (d.timer <= 0) {
+                d.state = 'recover';
+                d.timer = REX.recover;
+                d.threat = 1;
+            }
+            return;
+        }
+        if (d.state === 'recover') {
+            d.chaseT += dt;
+            d.stay(dt, d.bit ? 'roar' : 'alert', face, 1.2);
+            if (d.timer <= 0) d.state = 'chase';
+            return;
+        }
+        d.threat = 0;
         if (d.state === 'return') {
-            const out = !rexIn;
-            const left = d.moveTo(dt, out ? gap.x + (P.x - gap.x) * 0.2 : P.x, out ? gap.z + (P.z - gap.z) * 0.2 : P.z, 'walk', 1.1, 0.9);
-            if (!out && left < P.rx * 0.6) {
+            d.returnT += dt;
+            routeRex(d, gap, P.x, P.z, way);
+            const left = d.moveTo(dt, way.x, way.z, 'walk', 1.1, 0.9);
+            if (rexIn && left < P.rx * 0.6) {
+                d.state = 'patrol';
+                pick();
+            } else if (d.returnT > 45 && ctx.camera.position.distanceTo(d.position) > 70) {
+                // rede de segurança: preso há muito tempo e fora de vista → volta ao paddock
+                d.position.set(P.x, world.heightAt(P.x, P.z), P.z);
                 d.state = 'patrol';
                 pick();
             }
             return;
         }
         if (d.state === 'roar') {
-            d.stay(dt, 'roar', Math.atan2(jx - d.position.x, jz - d.position.z), 1.2);
+            d.stay(dt, 'roar', face, 1.2);
             if (d.timer <= 0) d.state = 'patrol';
+            return;
+        }
+        if (!rexIn) {
+            // fora do paddock sem estar caçando (ex.: depois de um reinício): volta
+            endChase();
+            d.calm = 0;
             return;
         }
         if (jd < 40 && d.roarCool <= 0) {
@@ -445,7 +720,7 @@ function rexBrain(d, world) {
             d.target.x = P.x + Math.cos(a) * P.rx * 0.78;
             d.target.z = P.z + Math.sin(a) * P.rz * 0.78;
             if (d.moveTo(dt, d.target.x, d.target.z, 'walk', 1.15, 0.9) < 2.5) {
-                d.stay(dt, 'alert', Math.atan2(jx - d.position.x, jz - d.position.z), 1.0);
+                d.stay(dt, 'alert', face, 1.0);
             }
             return;
         }
@@ -550,7 +825,7 @@ export async function spawnDinosaurs(scene, world, quality, progress = () => {})
     followBrain(b3, b1, 9, 5);
 
     // tiranossauro
-    const trex = await make({ id: 'trex', preset: 'trex', x: P.paddock.x - 6, z: P.paddock.z + 3, yaw: -1.6, scale: 1.05, weight: 1, radius: 1.9, lodScale: 1.3 });
+    const trex = await make({ id: 'trex', preset: 'trex', x: P.paddock.x - 6, z: P.paddock.z + 3, yaw: -1.6, scale: 1.05, weight: 1, radius: 1.9, moveRadius: 1.3, lodScale: 1.3 });
     rexBrain(trex, world);
 
     // tricerátops: dois adultos e um filhote

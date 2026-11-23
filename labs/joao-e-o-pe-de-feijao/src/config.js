@@ -8,8 +8,13 @@
  * - IV: no castelo, colete ouro, galinha e harpa sem acordar o gigante.
  * - V: desça, pegue o machado e corte o pé (E várias vezes) antes que ele alcance.
  *
- * Física: gravidade 22, pulo 7.4, coyote 0.12 s. Subida: João abraça o feixe do
- * caule (W/S sobe/desce, A/D gira em volta). Folhas são plataformas circulares.
+ * Física (unidades SI — m, s, m/s, m/s²; João é uma criança de 1,32 m):
+ *   andar 2,1 m/s · correr 4,9 m/s · aceleração exponencial v ← v + (alvo − v)(1 − e^(−k·dt))
+ *   gravidade 24 m/s² na subida, ×1,55 na queda e ×2,4 se soltar o pulo cedo (pulo variável)
+ *   pulo de 1,05 m (v0 = √(2·g·h) ≈ 7,1 m/s), coyote 0,12 s, buffer 0,12 s, terminal 24 m/s
+ * Subida: João abraça o feixe do caule (W/S sobe/desce a 2,2 m/s, A/D gira em volta).
+ * Folhas são plataformas com a mesma superfície curva da malha (world.js → leafSurface);
+ * do caule, Espaço/E salta para a folha mirada (arco balístico calculado: pouso garantido).
  *
  * Atmosfera: cada capítulo escolhe um preset de `gfx/stage.js` (`sky.preset`), a
  * hora solar e a cobertura de nuvens; o palco deriva sol, névoa, exposição e grade.
@@ -18,30 +23,56 @@
 export const STORAGE_KEY = 'joao-pe-de-feijao-v1';
 
 export const PLAYER = {
-    walk: 5.15,
-    sprint: 8.35,
-    radius: 0.38,
+    walk: 2.1,          // m/s — passo apressado de criança (adulto anda ~1,4 m/s)
+    sprint: 4.9,        // m/s — corrida (Shift, botão "correr" ou analógico no fim do curso)
+    accel: 11,          // 1/s — ganho de velocidade no chão (~0,2 s até 90% do alvo)
+    decel: 14,          // 1/s — frenagem ao soltar o direcional
+    airControl: 0.35,   // fração da aceleração disponível no ar
+    airDrag: 0.4,       // 1/s — no ar sem direcional o embalo quase se mantém
+    radius: 0.32,       // m — raio do corpo para colisão
     height: 1.28,
     eye: 1.12,
-    jump: 7.45,
-    gravity: 22,
-    turnSpeed: 12,
-    invuln: 1.35,
-    climbSpeed: 5.6,
-    climbRadius: 1.55,
-    coyote: 0.14,
-    jumpBuffer: 0.12
+    gravity: 24,        // m/s² (subida)
+    fallGravity: 1.55,  // × gravidade na descida: queda mais pesada que a subida
+    cutGravity: 2.4,    // × gravidade subindo sem segurar o pulo (pulo curto ≈ 0,45 m)
+    jumpHeight: 1.05,   // m — pulo completo
+    terminal: 24,       // m/s — velocidade terminal (queda limitada)
+    turnSpeed: 12,      // 1/s — giro do corpo rumo à direção do movimento
+    invuln: 1.35,       // s de piscar depois de um susto
+    climbSpeed: 2.2,    // m/s subindo o caule
+    climbSprint: 3.3,   // m/s subindo com Shift
+    climbDown: 2.9,     // m/s descendo (S)
+    slideSpeed: 5.2,    // m/s escorregando (S + Shift)
+    climbTurn: 1.5,     // rad/s dando a volta no caule (A/D)
+    coyote: 0.12,       // s — ainda pode pular logo depois de sair da beirada
+    jumpBuffer: 0.12,   // s — Espaço apertado um pouco antes de pousar vale
+    stepUp: 0.45,       // m — degrau/borda de folha que o pé sobe sem pular
+    longFall: 7,        // m de queda livre → resgate no último ponto seguro (sem frustração)
+    leapReach: 3.2,     // m — folha até 3,2 m abaixo…
+    leapRise: 0.6,      // m — …ou 0,6 m acima do João no caule pode ser alvo do salto
+    leapCone: 0.62      // rad — e precisa estar a ±35° do lado do caule onde ele está
 };
 
+/**
+ * Câmera em órbita (camera.js). Distâncias em m a partir do pivô (João + lookY).
+ * Suavização exponencial: pivô λ = 14 no plano e 5…12 na vertical (pulo não sacode a tela);
+ * distância encolhe na hora ao bater em algo (λ = 40) e volta devagar (λ = 3).
+ */
 export const CAMERA = {
-    distance: 6.8,
-    minDistance: 3.4,
-    maxDistance: 14,
-    height: 1.65,
-    pitchMin: -0.55,
-    pitchMax: 0.82,
-    defaultPitch: 0.22,
-    lookY: 1.12
+    distance: 5.6,
+    minDistance: 2.6,
+    maxDistance: 11,
+    near: 0.9,          // m — distância mínima quando algo fica no meio
+    pitchMin: -0.5,
+    pitchMax: 0.95,
+    defaultPitch: 0.26,
+    climbPitch: 0.5,    // no caule a câmera sobe e olha o chão encolher
+    climbDist: 1.3,     // × distância no caule (enquadra João e a folha-alvo)
+    climbSide: 0.55,    // rad — fica de lado do João no caule para a folha atrás dele aparecer
+    lookY: 1.05,        // m acima dos pés
+    sens: 0.0022,       // rad por pixel de mouse/arrasto
+    recenter: 0.9,      // 1/s — volta para trás do João quando ele anda e ninguém mexe na câmera
+    idleLook: 1.1       // s sem mexer na câmera antes de recentralizar
 };
 
 /**
@@ -97,7 +128,7 @@ export const CHAPTERS = [
         subtitle: 'O pé que cresce',
         blurb: 'A mãe joga os feijões. Ao relento, algo verde sobe até as nuvens.',
         objective: 'Fale com a mãe, veja o pé crescer e suba até as nuvens.',
-        hint: 'Aperte-se ao caule para trepar. Pule nas folhas se preferir.',
+        hint: 'Pule junto ao caule para agarrar. W sobe; folhas com vagem dourada valem glória.',
         music: 'night',
         sky: { preset: 'noite-lua', hour: 22.4, clouds: 0.22 }
     },
@@ -119,7 +150,7 @@ export const CHAPTERS = [
         subtitle: 'O machado',
         blurb: 'O gigante desce. Embaixo, um machado espera na lenha.',
         objective: 'Desça, pegue o machado e corte o pé de feijão.',
-        hint: 'Desça pelo caule. Embaixo, E no machado e depois no tronco.',
+        hint: 'Segure S para descer (Shift escorrega). Embaixo, E no machado e depois no tronco.',
         music: 'escape',
         sky: { preset: 'entardecer', hour: 17.55, clouds: 0.42 }
     }

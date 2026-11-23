@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { GLSL_NOISE, seeded } from '../../shared/gfx/core.js';
 import { textureSet } from '../../shared/gfx/textures.js';
 import { wind } from '../../shared/gfx/flora.js';
-import { terrainHeight, roadX, LANDMARKS, clamp } from './simulation.js';
+import { terrainHeight, roadX, LANDMARKS, clamp } from './simulation.js?v=16';
 
 export const CHUNK = 96;
 /** Altura do terreno em coordenadas do three (Z₃ = −z). */

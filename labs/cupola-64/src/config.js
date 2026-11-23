@@ -11,6 +11,16 @@
  *   long jump (agachar + velocidade) → vy = JUMP_LONG, |xz| *= 1.45
  *   ground pound (agachar no ar) → vy = -POUND, xz trava
  *   dive (pulo no ar sem combo) → empurrão para frente
+ *
+ * Sensação de controle (remaster):
+ *   coyote time  COYOTE s   — sair da borda e pular logo em seguida ainda é pulo de chão
+ *   jump buffer  JUMP_BUFFER s — apertar pulo pouco antes de pousar pula no pouso
+ *                (antes, apertar cedo demais disparava um dive no ar)
+ *   velocidade terminal  vy ≥ −MAX_FALL (pound: −MAX_FALL·1,35) — quedas longas não
+ *                atravessam plataformas finas; o pouso também é varrido (sweep) entre
+ *                a altura do frame anterior e a atual
+ *   corrida      RUN = 11,5 m/s (~41 km/h) para um boneco de 1,18 m — antes 13,4 m/s,
+ *                rápido demais para a escala da ilha; o pulo simples cobre ~7,5 m
  */
 
 export const STORAGE_KEY = 'cupola-64:v1';
@@ -25,7 +35,7 @@ export const PLAYER = {
     radius: 0.42,
     height: 1.18,
     walk: 7.2,
-    run: 13.4,
+    run: 11.5,
     accel: 32,
     airAccel: 14,
     friction: 7.4,
@@ -41,6 +51,9 @@ export const PLAYER = {
     diveBoost: 11,
     diveY: 5.2,
     poundVy: -34,
+    maxFall: 30,
+    coyote: 0.1,
+    jumpBuffer: 0.12,
     swim: 5.2,
     invuln: 1.55,
     comboWindow: 0.3,

@@ -3,7 +3,7 @@
  */
 
 import { formatTime } from './utils.js?v=13';
-import { QUEST } from './config.js?v=13';
+import { QUEST } from './config.js?v=14';
 
 export class Hud {
     constructor() {

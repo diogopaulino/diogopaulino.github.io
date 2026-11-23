@@ -32,10 +32,10 @@ import { createParticles } from '../../shared/gfx/particles.js';
 import {
     Batch, materials, trs, addHouse, glassMaterial, addWell, addLanternPost, bridgeBatch, bridgeDeckY, BRIDGE,
     wheelGeometry, setLowDetail, brambleGeometry, rootCradle, buttressRoots, hollowArch, hollowCore
-} from './build.js?v=21';
-import { createGlows, createFlameKit, createMotes, createShadowBody, createBeacon, revealMaterial, FX_TIME } from './fx.js?v=21';
-import { ShadowWisp, NightWraith, FoxCompanion } from './npcs.js?v=21';
-import { ROOT_COLORS, STORY } from './config.js?v=21';
+} from './build.js?v=22';
+import { createGlows, createFlameKit, createMotes, createShadowBody, createBeacon, revealMaterial, FX_TIME } from './fx.js?v=22';
+import { ShadowWisp, NightWraith, FoxCompanion } from './npcs.js?v=22';
+import { ROOT_COLORS, STORY } from './config.js?v=22';
 
 const VILLAGE = { x: 0, z: 120 };
 const TREE = { x: 40, z: -62 };

@@ -5,13 +5,13 @@
 import {
   VIEW_W, VIEW_H, TILE, PHYS, START_LIVES, BANANAS_PER_LIFE, SAVE_KEY, EASY_KEY, EASY,
   ROLL_BARREL_VX, ROLL_BARREL_LIFE, THEMES, clamp, lerp, aabb, hash2
-} from './config.js?v=4';
-import { LEVELS } from './levels.js?v=4';
+} from './config.js?v=5';
+import { LEVELS } from './levels.js?v=5';
 import {
   drawKong, drawScarfPickup, drawBanana, drawLetter, drawBalloon, drawBarrel,
   drawEnemy, drawBoss, drawExit, drawTile, drawBackground, drawForeground,
   drawWorldMap, drawTitle, drawHud, drawRollBarrel, roundRect
-} from './sprites.js?v=4';
+} from './sprites.js?v=5';
 
 const SOLID = new Set(['#', '=', '@', '*']);
 // Conjuntos fixos: evitam criar um Set novo a cada frame em overlapsTile().
@@ -334,7 +334,8 @@ export class KongGame {
       dead: false,
       winT: 0,
       squash: 0,
-      rollDustT: 0
+      rollDustT: 0,
+      noCut: false
     };
   }
 
@@ -417,11 +418,41 @@ export class KongGame {
           actor.vy = 0;
           actor.onGround = true;
         } else if (actor.vy < 0 && isSolid(ch)) {
+          // Correção de quina: só uma lasca da cabeça pegou no bloco → desliza e segue subindo.
+          if (actor === this.player && this.nudgeCorner(actor, tx)) return;
           actor.y = (ty + 1) * TILE;
           actor.vy = 0;
         }
       }
     }
+  }
+
+  /** Desloca o ator até PHYS.CORNER px para fora da quina do bloco `tx`, se o espaço estiver livre. */
+  nudgeCorner(actor, tx) {
+    const fromLeft = actor.x + actor.w - tx * TILE;   // penetração entrando pela esquerda do bloco
+    const fromRight = (tx + 1) * TILE - actor.x;     // penetração entrando pela direita
+    const shift = fromLeft <= PHYS.CORNER ? -fromLeft - 0.01 : fromRight <= PHYS.CORNER ? fromRight + 0.01 : 0;
+    if (!shift) return false;
+    const ox = actor.x;
+    actor.x += shift;
+    if (this.boxHitsSolid(actor)) {
+      actor.x = ox;
+      return false;
+    }
+    return true;
+  }
+
+  boxHitsSolid(actor) {
+    const x0 = Math.floor(actor.x / TILE);
+    const x1 = Math.floor((actor.x + actor.w - 0.001) / TILE);
+    const y0 = Math.floor(actor.y / TILE);
+    const y1 = Math.floor((actor.y + actor.h - 0.001) / TILE);
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        if (isSolid(tileChar(this.level, tx, ty))) return true;
+      }
+    }
+    return false;
   }
 
   overlapsTile(actor, set) {
@@ -531,7 +562,18 @@ export class KongGame {
     } else {
       const wish = (inpt.left() ? -1 : 0) + (inpt.right() ? 1 : 0);
       if (wish) p.facing = wish;
-      const acc = p.onGround ? PHYS.ACCEL : PHYS.AIR_ACCEL;
+      // Virar contra o embalo freia com TURN_ACCEL/AIR_TURN (derrapagem com poeira no chão).
+      const turning = wish !== 0 && p.vx !== 0 && Math.sign(p.vx) !== wish;
+      const acc = p.onGround
+        ? (turning ? PHYS.TURN_ACCEL : PHYS.ACCEL)
+        : (turning ? PHYS.AIR_TURN : PHYS.AIR_ACCEL);
+      if (turning && p.onGround && Math.abs(p.vx) > PHYS.MAX_VX * 0.5) {
+        p.rollDustT -= dt;
+        if (p.rollDustT <= 0) {
+          p.rollDustT = 0.06;
+          this.burst(p.x + p.w / 2, p.y + p.h - 1, 2, 'rgba(150,110,60,0.7)', 26);
+        }
+      }
       if (wish) p.vx += wish * acc * dt;
       else {
         const fr = p.onGround ? PHYS.FRICTION : PHYS.FRICTION * 0.25;
@@ -553,16 +595,21 @@ export class KongGame {
       }
       p.state = 'swim';
     } else {
-      p.vy += PHYS.GRAVITY * dt;
+      // Ápice leve: com o pulo preso, perto do topo a gravidade afrouxa.
+      const apex = !p.onGround && inpt.jumpHeld() && Math.abs(p.vy) < PHYS.APEX_VY;
+      p.vy += PHYS.GRAVITY * (apex ? PHYS.APEX_GRAV : 1) * dt;
       if (p.vy > PHYS.MAX_FALL) p.vy = PHYS.MAX_FALL;
       if (p.jumpBuf > 0 && p.coyote > 0) {
         p.vy = PHYS.JUMP_VEL;
+        p.noCut = false;
         p.onGround = false;
         p.coyote = 0;
         p.jumpBuf = 0;
         this.audio.play('jump');
       }
-      if (!inpt.jumpHeld() && p.vy < 0) p.vy *= Math.pow(PHYS.JUMP_CUT, dt * 8);
+      // Impulsos externos (barril-mola, empurrão do dano) não são cortados pelo botão.
+      if (p.vy >= 0) p.noCut = false;
+      if (!inpt.jumpHeld() && p.vy < 0 && !p.noCut) p.vy *= Math.pow(PHYS.JUMP_CUT, dt * PHYS.CUT_RATE);
       if (!rolling) {
         if (!p.onGround) p.state = p.vy < 0 ? 'jump' : 'fall';
         else if (Math.abs(p.vx) > 20) p.state = 'run';
@@ -670,6 +717,7 @@ export class KongGame {
       if (!hitCentered(p, b.x, b.y, b.w, b.h)) continue;
       if (b.kind === 'bounce') {
         p.vy = PHYS.BOUNCE_VEL;
+        p.noCut = true;
         p.blastT = 0;
         p.onGround = false;
         this.audio.play('jump');
@@ -709,7 +757,13 @@ export class KongGame {
     if (b.kind === 'wood') {
       const wish = (this.input.left() ? -1 : 0) + (this.input.right() ? 1 : 0);
       if (wish) p.facing = wish;
-      b.x += wish * 90 * dt;
+      // O barril carregado não entra em paredes nem sai da fase (senão Kong era ejetado
+      // dentro de um bloco e podia ficar preso).
+      if (wish) {
+        const nx = clamp(b.x + wish * 90 * dt, p.w, this.level.w * TILE - p.w);
+        p.x = nx - p.w / 2;
+        if (!this.boxHitsSolid(p)) b.x = nx;
+      }
       p.x = b.x - p.w / 2;
       if (this.input.consume('jump') || p.jumpBuf > 0) {
         this.ejectBarrel(0, PHYS.JUMP_VEL * 0.85);
@@ -905,6 +959,7 @@ export class KongGame {
       p.scarf = false;
       p.invuln = 1.35;
       p.vy = PHYS.KNOCKBACK_Y;
+      p.noCut = true;
       p.vx = -p.facing * PHYS.KNOCKBACK_X;
       p.inBarrel = null;
       p.blastT = 0;

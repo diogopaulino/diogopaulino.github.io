@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { getEasing } from '../utils/easing.js';
+import { getEasing } from '../utils/easing.js?v=50';
 
 export class CutsceneManager {
     constructor(cameraRig) {

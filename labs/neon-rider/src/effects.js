@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { sparkTexture } from './textures.js';
+import { sparkTexture } from './textures.js?v=17';
 
 export class Effects {
     constructor(scene, quality) {

@@ -29,8 +29,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createHero } from '../../shared/gfx/hero.js';
 import { loadModel } from '../../shared/gfx/assets.js';
-import { plankWood, darkWood, oakWood, barkWood, bronze, iron, plain, glow } from './materials.js?v=50';
-import { sailTexture } from './textures.js?v=50';
+import { plankWood, darkWood, oakWood, barkWood, bronze, iron, plain, glow } from './materials.js?v=60';
+import { sailTexture } from './textures.js?v=60';
 
 const PI = Math.PI;
 const TAU = PI * 2;

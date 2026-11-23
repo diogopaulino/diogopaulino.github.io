@@ -14,7 +14,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { textureSet } from '../../shared/gfx/textures.js';
 import { wind } from '../../shared/gfx/flora.js';
 import { applyWorldUV, paint, place, normalizeForMerge, seeded, fbm2 } from '../../shared/gfx/core.js';
-import { rockGeometry, rockMaterial, smoothNormals } from './terrain.js?v=14';
+import { rockGeometry, rockMaterial, smoothNormals } from './terrain.js?v=15';
 
 const V2 = (x, y) => new THREE.Vector2(x, y);
 const cache = new Map();

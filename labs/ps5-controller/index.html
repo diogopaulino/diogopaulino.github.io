@@ -43,7 +43,8 @@
     <link rel="stylesheet" href="styles/layout.css">
     <link rel="stylesheet" href="styles/components.css">
     <link rel="stylesheet" href="styles/responsive.css">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="styles/gamepad.css?v=1">
 
     <script type="importmap">
     {
@@ -109,7 +110,16 @@
     <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="src/main.js?v=3"></script>
+    <script type="module" src="src/main.js?v=4"></script>
+    <script>
+        /* Se um módulo não carregar (rede/CDN), a página não fica em branco. */
+        window.setTimeout(function () {
+            var root = document.getElementById('app');
+            if (root && !root.children.length) {
+                root.innerHTML = '<p class="boot-fail">Não foi possível carregar a vitrine 3D. Verifique a conexão e <a href="">recarregue a página</a>.</p>';
+            }
+        }, 15000);
+    </script>
 </body>
 
 </html>

@@ -13,14 +13,14 @@ import * as THREE from 'three';
 import { createPipeline } from '../../shared/gfx/post.js';
 import { configureTextures } from '../../shared/gfx/textures.js';
 import { detectSoftwareGL as softwareGL } from '../../shared/gfx/core.js';
-import { STORAGE_KEY, QUALITY, QUEST, QUOTES, STAR_META } from './config.js?v=13';
+import { STORAGE_KEY, QUALITY, QUEST, QUOTES, STAR_META } from './config.js?v=14';
 import { detectMobile, pick, formatTime } from './utils.js?v=13';
-import { Input } from './input.js';
+import { Input } from './input.js?v=2';
 import { GameAudio } from './audio.js';
-import { Hud } from './hud.js?v=13';
-import { World } from './world.js?v=17';
-import { Player } from './player.js?v=14';
-import { Entities } from './entities.js?v=15';
+import { Hud } from './hud.js?v=14';
+import { World } from './world.js?v=18';
+import { Player } from './player.js?v=15';
+import { Entities } from './entities.js?v=16';
 import { Effects } from './effects.js?v=13';
 
 class Game {

@@ -749,6 +749,11 @@ export function drawPlates(ctx, spots, food, maxAvailable = 9) {
    Hit-test
    -------------------------------------------------------------------------- */
 
+/**
+ * Toque → número. Dedinho de criança erra a borda: vale o botão mais
+ * próximo dentro de `pad` pixels do buffer (distância ponto–retângulo),
+ * não o primeiro da lista — assim a margem extra nunca "rouba" o vizinho.
+ */
 export function hitTest(spots, x, y, pad = 5) {
   if (
     x >= SPEAKER_SPOT.x &&
@@ -759,17 +764,19 @@ export function hitTest(spots, x, y, pad = 5) {
     return -2;
   }
   if (!spots) return null;
+  let best = null;
+  let bestD = Infinity;
   for (const spot of spots) {
-    if (
-      x >= spot.x - pad &&
-      x < spot.x + spot.w + pad &&
-      y >= spot.y - pad &&
-      y < spot.y + spot.h + pad
-    ) {
-      return spot.n;
+    const dx = Math.max(spot.x - x, 0, x - (spot.x + spot.w));
+    const dy = Math.max(spot.y - y, 0, y - (spot.y + spot.h));
+    const d = Math.hypot(dx, dy);
+    if (d <= pad && d < bestD) {
+      bestD = d;
+      best = spot.n;
+      if (d === 0) break;
     }
   }
-  return null;
+  return best;
 }
 
 /* --------------------------------------------------------------------------

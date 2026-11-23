@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { textureSet } from '../../shared/gfx/textures.js';
 import { wind } from '../../shared/gfx/flora.js';
 import { seeded, fbm2, ridged2, smoothstep, clamp, GLSL_NOISE, applyWorldUV } from '../../shared/gfx/core.js';
-import { ISLAND } from './config.js?v=13';
+import { ISLAND } from './config.js?v=14';
 import { surfaceAt, GORGE } from './utils.js?v=13';
 
 const SIZE = 124;

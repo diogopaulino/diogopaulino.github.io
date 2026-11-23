@@ -15,9 +15,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { applyWorldUV } from '../../shared/gfx/core.js';
 import { pbrMaterial } from '../../shared/gfx/assets.js';
-import { blockStone, darkWood, oakWood, barkWood, thatchRoof, iron, mossRock } from './materials.js?v=50';
-import { terrainHeight } from './river.js?v=51';
-import { waterHeight } from './water.js?v=51';
+import { blockStone, darkWood, oakWood, barkWood, thatchRoof, iron, mossRock } from './materials.js?v=60';
+import { terrainHeight } from './river.js?v=60';
+import { waterHeight } from './water.js?v=60';
 
 const TAU = Math.PI * 2;
 

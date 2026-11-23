@@ -3,17 +3,17 @@
  * o jogador renasce dentro dele ("Continuar" e "Reiniciar checkpoint" passam por aqui).
  */
 import * as THREE from 'three';
-import { HomeLevel } from '../levels/HomeLevel.js?v=47';
-import { ShipLevel } from '../levels/ShipLevel.js?v=44';
-import { BeachLevel } from '../levels/BeachLevel.js?v=44';
-import { CastleExteriorLevel } from '../levels/CastleExteriorLevel.js?v=47';
-import { SecretEntranceLevel } from '../levels/SecretEntranceLevel.js?v=43';
-import { CastleInteriorLevel } from '../levels/CastleInteriorLevel.js?v=43';
-import { TigerRoomLevel } from '../levels/TigerRoomLevel.js?v=42';
-import { EscapeLevel } from '../levels/EscapeLevel.js?v=40';
-import { ShipEscapeLevel } from '../levels/ShipEscapeLevel.js?v=43';
-import { EndingLevel } from '../levels/EndingLevel.js?v=40';
-import { ISLAND_MARKS } from '../world/Island.js?v=40';
+import { HomeLevel } from '../levels/HomeLevel.js?v=50';
+import { ShipLevel } from '../levels/ShipLevel.js?v=50';
+import { BeachLevel } from '../levels/BeachLevel.js?v=50';
+import { CastleExteriorLevel } from '../levels/CastleExteriorLevel.js?v=50';
+import { SecretEntranceLevel } from '../levels/SecretEntranceLevel.js?v=50';
+import { CastleInteriorLevel } from '../levels/CastleInteriorLevel.js?v=50';
+import { TigerRoomLevel } from '../levels/TigerRoomLevel.js?v=50';
+import { EscapeLevel } from '../levels/EscapeLevel.js?v=50';
+import { ShipEscapeLevel } from '../levels/ShipEscapeLevel.js?v=50';
+import { EndingLevel } from '../levels/EndingLevel.js?v=50';
+import { ISLAND_MARKS } from '../world/Island.js?v=50';
 
 const FACTORIES = {
     home: HomeLevel,

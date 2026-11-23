@@ -142,20 +142,44 @@ const audio = {
     filters: [],
     panner: null,
     master: null,
+    limiter: null,
     analyser: null,
-    source: null
+    source: null,
+    everRan: false
 };
 
+/* Cadeia: fonte → preamp → 10 peaking (EQ) → balanço → volume → limiter →
+   analyser → saída. O limiter (compressor com ratio 20:1, ataque 1 ms,
+   limiar −1,5 dBFS) segura o +12 dB do EQ sem clipar; o analyser fica depois
+   dele para o espectro mostrar exatamente o que sai na caixa de som.
+   Toda mudança de parâmetro usa setTargetAtTime (τ ≈ 20 ms): sem "zipper
+   noise" ao arrastar sliders. */
 function ensureAudio() {
     if (audio.ctx) {
-        if (audio.ctx.state === "suspended") audio.ctx.resume();
+        if (audio.ctx.state !== "running" && audio.ctx.state !== "closed") {
+            const p = audio.ctx.resume();
+            if (p && p.catch) p.catch(() => {});
+        }
         return audio.ctx;
     }
 
     const Ctor = window.AudioContext || window.webkitAudioContext;
     if (!Ctor) return null;
 
-    const ctx = new Ctor();
+    let ctx;
+    try {
+        // Player de música: buffer maior (latencyHint "playback") = menos
+        // estalos em celular fraco; latência não importa para ouvir faixas.
+        ctx = new Ctor({ latencyHint: "playback" });
+    } catch (error) {
+        try { ctx = new Ctor(); } catch (error2) { return null; }
+    }
+    try {
+        // iOS 17+: toca mesmo com a chave de silencioso ligada.
+        if (navigator.audioSession) navigator.audioSession.type = "playback";
+    } catch (error) {
+        /* opcional */
+    }
     audio.ctx = ctx;
     audio.preamp = ctx.createGain();
     let previous = audio.preamp;
@@ -171,20 +195,53 @@ function ensureAudio() {
     });
     audio.panner = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
     audio.master = ctx.createGain();
+    audio.limiter = ctx.createDynamicsCompressor();
+    audio.limiter.threshold.value = -1.5;
+    audio.limiter.knee.value = 0;
+    audio.limiter.ratio.value = 20;
+    audio.limiter.attack.value = 0.001;
+    audio.limiter.release.value = 0.12;
     audio.analyser = ctx.createAnalyser();
-    audio.analyser.fftSize = 512;
-    audio.analyser.smoothingTimeConstant = 0.72;
+    audio.analyser.fftSize = 2048;
+    audio.analyser.smoothingTimeConstant = 0.6;
+    audio.analyser.minDecibels = -90;
+    audio.analyser.maxDecibels = -12;
 
     audio.input = audio.preamp;
     audio.filters[audio.filters.length - 1].connect(audio.panner);
     audio.panner.connect(audio.master);
-    audio.master.connect(audio.analyser);
+    audio.master.connect(audio.limiter);
+    audio.limiter.connect(audio.analyser);
     audio.analyser.connect(ctx.destination);
 
-    applyVolume();
-    applyBalance();
-    applyEq();
+    ctx.onstatechange = handleContextState;
+
+    applyVolume(true);
+    applyBalance(true);
+    applyEq(true);
     return ctx;
+}
+
+/* O sistema pode suspender o áudio (ligação no iPhone, fone desconectado,
+   Safari em segundo plano). O player não finge que está tocando: pausa no
+   ponto exato e explica como retomar. */
+function handleContextState() {
+    const ctx = audio.ctx;
+    if (!ctx) return;
+    if (ctx.state === "running") {
+        audio.everRan = true;
+        return;
+    }
+    if ((ctx.state === "suspended" || ctx.state === "interrupted") && state.playing) {
+        state.position = currentPosition();
+        stopSource();
+        state.playing = false;
+        state.paused = true;
+        updateTransportUi();
+        stopVisualizer();
+        updateMediaSession();
+        showTip("O sistema pausou o áudio. Toque Play (ou X) para continuar de onde parou.", 7000);
+    }
 }
 
 /* ==========================================================================
@@ -356,7 +413,7 @@ const ui = {
 
 const canvasCtx = ui.canvas.getContext("2d");
 const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
-const isCompact = window.matchMedia("(max-width: 760px)").matches;
+const compactQuery = window.matchMedia("(max-width: 760px)");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 function showTip(message, duration = 4200) {
@@ -470,6 +527,8 @@ function cancelPendingPlayback() {
     state.pendingPlayback = null;
 }
 
+let failedInARow = 0;
+
 async function play(offset = state.position) {
     const track = currentTrack();
     if (!track || state.pendingPlayback?.track === track && state.pendingPlayback.offset === offset) return;
@@ -490,8 +549,17 @@ async function play(offset = state.position) {
     try {
         const buffer = await getBuffer(track, request.controller.signal);
         if (state.pendingPlayback !== request) return;
-        if (ctx.state === "suspended") await ctx.resume();
+        if (ctx.state !== "running") {
+            await Promise.race([ctx.resume(), new Promise((resolve) => window.setTimeout(resolve, 1500))]);
+        }
         if (state.pendingPlayback !== request) return;
+        if (ctx.state !== "running") {
+            state.position = offset;
+            state.paused = true;
+            updateTransportUi();
+            showTip("O navegador ainda não liberou o som. Toque Play de novo (no iPhone, confira o volume e o modo silencioso).", 7000);
+            return;
+        }
 
         const source = ctx.createBufferSource();
         source.buffer = buffer;
@@ -515,13 +583,30 @@ async function play(offset = state.position) {
         renderPlaylist();
         updateTransportUi();
         startVisualizer();
+        failedInARow = 0;
+        updateMediaSession();
     } catch (error) {
         if (state.pendingPlayback !== request) return;
-        console.error("Não foi possível tocar a faixa.", error);
-        setMarquee("Erro ao carregar esta faixa");
-        showTip("Não foi possível tocar esta faixa. Tente outra ou recarregue a página.", 6000);
         state.playing = false;
         updateTransportUi();
+        if (error && error.name === "AbortError") return;
+        failedInARow += 1;
+        track.broken = true;
+        renderPlaylist();
+        // Arquivo corrompido/formato sem suporte: avisa e segue para a próxima,
+        // sem entrar em laço se a playlist inteira falhar.
+        if (failedInARow < state.tracks.length) {
+            showTip(`Não deu para tocar “${track.title}” (formato sem suporte?). Pulando para a próxima.`, 6000);
+            state.pendingPlayback = null;
+            state.index = pickNextIndex(1);
+            state.selected = state.index;
+            state.position = 0;
+            window.setTimeout(() => play(0), 300);
+        } else {
+            setMarquee("Nenhuma faixa pôde ser tocada");
+            showTip("Nenhuma faixa da playlist pôde ser tocada. Restaure as demos (↺ demos) ou tente outro arquivo.", 8000);
+            failedInARow = 0;
+        }
     } finally {
         if (state.pendingPlayback === request) state.pendingPlayback = null;
     }
@@ -547,6 +632,7 @@ function pause() {
     updateTransportUi();
     updateTimeDisplay();
     stopVisualizer();
+    updateMediaSession();
 }
 
 function stop() {
@@ -561,6 +647,7 @@ function stop() {
     drawIdleVisualizer();
     const track = currentTrack();
     if (track) setMarquee(`${trackLabel(track)} (${formatTime(track.duration)})`);
+    updateMediaSession();
 }
 
 function pickNextIndex(step) {
@@ -616,9 +703,17 @@ function playIndex(index) {
    ========================================================================== */
 
 const VIS_MODES = ["bars", "scope", "off"];
+const VIS_BARS = 19; // o Winamp 2 clássico desenha 19 colunas largas
 let visFrame = 0;
 let freqData = null;
 let timeData = null;
+const barLevel = new Float32Array(VIS_BARS);
+const peakLevel = new Float32Array(VIS_BARS);
+const peakVel = new Float32Array(VIS_BARS);
+let barBins = null;
+let visGradient = null;
+let lastVisAt = 0;
+let fallingFrames = 0;
 
 function resizeCanvas() {
     const rect = ui.canvas.getBoundingClientRect();
@@ -626,6 +721,7 @@ function resizeCanvas() {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     ui.canvas.width = Math.round(rect.width * dpr);
     ui.canvas.height = Math.round(rect.height * dpr);
+    visGradient = null;
 }
 
 let palette;
@@ -637,6 +733,35 @@ function visualizerColors() {
         bg: styles.getPropertyValue("--wa-lcd-bg").trim() || "#050a06"
     };
     return palette;
+}
+
+/* Mapeamento logarítmico em Hz: a coluna i cobre de f(i) a f(i+1), com
+   f(x) = 40 Hz · (16 000 / 40)^(x / N). Cada coluna lê os bins da FFT
+   nesse intervalo (bin = f · fftSize / sampleRate) — os graves ganham o
+   mesmo espaço que os agudos, como no ouvido e no Winamp. */
+function computeBarBins() {
+    if (!audio.analyser || !audio.ctx) return;
+    const n = audio.analyser.frequencyBinCount;
+    const hzPerBin = audio.ctx.sampleRate / audio.analyser.fftSize;
+    barBins = new Uint16Array(VIS_BARS + 1);
+    for (let i = 0; i <= VIS_BARS; i++) {
+        const f = 40 * Math.pow(16000 / 40, i / VIS_BARS);
+        barBins[i] = Math.min(n - 1, Math.max(1, Math.round(f / hzPerBin)));
+    }
+    for (let i = 1; i <= VIS_BARS; i++) if (barBins[i] <= barBins[i - 1]) barBins[i] = Math.min(n - 1, barBins[i - 1] + 1);
+}
+
+/* Gradiente clássico (verde → amarelo → vermelho) feito uma vez por resize/skin. */
+function getVisGradient() {
+    if (visGradient) return visGradient;
+    const { fg } = visualizerColors();
+    const h = ui.canvas.height;
+    visGradient = canvasCtx.createLinearGradient(0, h, 0, 0);
+    visGradient.addColorStop(0, fg);
+    visGradient.addColorStop(0.6, fg);
+    visGradient.addColorStop(0.8, "#e8e83a");
+    visGradient.addColorStop(1, "#ff4b2b");
+    return visGradient;
 }
 
 function drawIdleVisualizer() {
@@ -654,60 +779,212 @@ function drawIdleVisualizer() {
     canvasCtx.globalAlpha = 1;
 }
 
-function drawVisualizer() {
+/* Física das barras (por segundo, independente do refresh):
+     subida instantânea, queda da barra 3,2 alturas/s;
+     pico ("cap") segura 0,35 s e cai com gravidade g = 2,2 alturas/s².
+   Zero alocação por frame: tudo em typed arrays reaproveitados. */
+const peakHold = new Float32Array(VIS_BARS);
+
+function drawVisualizer(now) {
     visFrame = requestAnimationFrame(drawVisualizer);
     if (!audio.analyser) return;
+    // Movimento reduzido: 15 fps bastam e cansam menos a vista.
+    if (reduceMotion.matches && now - lastVisAt < 66) return;
+    const dt = Math.min(0.05, Math.max(0.001, (now - (lastVisAt || now - 16)) / 1000));
+    lastVisAt = now;
 
     const { fg, bg } = visualizerColors();
     const { width, height } = ui.canvas;
     canvasCtx.fillStyle = bg;
     canvasCtx.fillRect(0, 0, width, height);
+    const live = state.playing;
 
     if (state.visMode === "bars") {
-        if (!freqData) freqData = new Uint8Array(audio.analyser.frequencyBinCount);
-        audio.analyser.getByteFrequencyData(freqData);
-        const bars = 24;
-        const gap = Math.max(1, width / 160);
-        const barWidth = (width - gap * (bars - 1)) / bars;
-        for (let i = 0; i < bars; i++) {
-            // Distribuição logarítmica: agudos ocupam menos espaço, como no Winamp.
-            const from = Math.floor(Math.pow(i / bars, 1.7) * freqData.length);
-            const to = Math.max(from + 1, Math.floor(Math.pow((i + 1) / bars, 1.7) * freqData.length));
-            let sum = 0;
-            for (let j = from; j < to; j++) sum += freqData[j];
-            const level = sum / (to - from) / 255;
-            const barHeight = Math.max(height * 0.04, level * height);
-            canvasCtx.fillStyle = fg;
-            canvasCtx.globalAlpha = 0.35 + level * 0.65;
-            canvasCtx.fillRect(i * (barWidth + gap), height - barHeight, barWidth, barHeight);
+        if (!freqData || freqData.length !== audio.analyser.frequencyBinCount) freqData = new Uint8Array(audio.analyser.frequencyBinCount);
+        if (!barBins) computeBarBins();
+        if (live) audio.analyser.getByteFrequencyData(freqData);
+        const gap = Math.max(1, Math.round(width / 120));
+        const barWidth = (width - gap * (VIS_BARS - 1)) / VIS_BARS;
+        const capH = Math.max(2, Math.round(height / 28));
+        let anyMoving = false;
+        canvasCtx.fillStyle = getVisGradient();
+        for (let i = 0; i < VIS_BARS; i++) {
+            let target = 0;
+            if (live) {
+                let max = 0;
+                for (let j = barBins[i]; j < barBins[i + 1]; j++) if (freqData[j] > max) max = freqData[j];
+                target = max / 255;
+            }
+            const fall = barLevel[i] - 3.2 * dt;
+            barLevel[i] = target > fall ? target : Math.max(0, fall);
+            if (barLevel[i] >= peakLevel[i]) {
+                peakLevel[i] = barLevel[i];
+                peakVel[i] = 0;
+                peakHold[i] = 0.35;
+            } else if (peakHold[i] > 0) {
+                peakHold[i] -= dt;
+            } else {
+                peakVel[i] += 2.2 * dt;
+                peakLevel[i] = Math.max(barLevel[i], peakLevel[i] - peakVel[i] * dt);
+            }
+            if (barLevel[i] > 0.002 || peakLevel[i] > 0.002) anyMoving = true;
+            const x = i * (barWidth + gap);
+            const h = barLevel[i] * height;
+            if (h > 0.5) canvasCtx.fillRect(x, height - h, barWidth, h);
         }
-        canvasCtx.globalAlpha = 1;
+        canvasCtx.fillStyle = "#d8d8d8";
+        for (let i = 0; i < VIS_BARS; i++) {
+            if (peakLevel[i] <= 0.01) continue;
+            const x = i * (barWidth + gap);
+            canvasCtx.fillRect(x, height - peakLevel[i] * height - capH, barWidth, capH);
+        }
+        // Parado: deixa as barras caírem e então desliga o laço.
+        if (!live) {
+            fallingFrames += 1;
+            if (!anyMoving || fallingFrames > 240) stopVisualizer(true);
+        }
     } else if (state.visMode === "scope") {
-        if (!timeData) timeData = new Uint8Array(audio.analyser.fftSize);
+        if (!live) { stopVisualizer(true); return; }
+        if (!timeData || timeData.length !== audio.analyser.fftSize) timeData = new Uint8Array(audio.analyser.fftSize);
         audio.analyser.getByteTimeDomainData(timeData);
         canvasCtx.strokeStyle = fg;
         canvasCtx.lineWidth = Math.max(1.5, height / 30);
         canvasCtx.beginPath();
-        for (let i = 0; i < timeData.length; i++) {
-            const x = (i / (timeData.length - 1)) * width;
+        // 1 ponto por pixel basta (2048 amostras em 300 px seria desperdício).
+        const step = Math.max(1, Math.floor(timeData.length / width));
+        for (let i = 0, x = 0; i < timeData.length; i += step, x++) {
+            const px = (i / (timeData.length - 1)) * width;
             const y = (1 - timeData[i] / 255) * height;
-            if (i === 0) canvasCtx.moveTo(x, y);
-            else canvasCtx.lineTo(x, y);
+            if (x === 0) canvasCtx.moveTo(px, y);
+            else canvasCtx.lineTo(px, y);
         }
         canvasCtx.stroke();
     }
 }
 
 function startVisualizer() {
-    if (visFrame || state.visMode === "off" || document.hidden || !state.playing) return;
+    fallingFrames = 0;
+    if (visFrame || state.visMode === "off" || document.hidden) return;
+    if (!state.playing && state.visMode !== "bars") return;
+    lastVisAt = 0;
     visFrame = requestAnimationFrame(drawVisualizer);
 }
 
-function stopVisualizer() {
+/* force=true para já (aba oculta / modo off); senão as barras descem suaves. */
+function stopVisualizer(force) {
     if (!visFrame) return;
+    if (!force && state.visMode === "bars" && !document.hidden && !reduceMotion.matches) {
+        fallingFrames = 0;
+        return; // o próprio laço percebe que parou de tocar e encerra
+    }
     cancelAnimationFrame(visFrame);
     visFrame = 0;
-    drawIdleVisualizer();
+    if (state.visMode === "off" || !state.playing) {
+        barLevel.fill(0);
+        peakLevel.fill(0);
+        drawIdleVisualizer();
+    }
+}
+
+/* ==========================================================================
+   9b. MEDIA SESSION — controles na tela de bloqueio, fones e teclas de mídia
+   ========================================================================== */
+
+let artworkUrl = "";
+function makeArtwork() {
+    if (artworkUrl) return artworkUrl;
+    try {
+        const c = document.createElement("canvas");
+        c.width = c.height = 256;
+        const g = c.getContext("2d");
+        const grad = g.createLinearGradient(0, 0, 256, 256);
+        grad.addColorStop(0, "#0b1f0f");
+        grad.addColorStop(1, "#000");
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 256, 256);
+        g.fillStyle = "#21e654";
+        for (let i = 0; i < 9; i++) {
+            const h = 30 + Math.abs(Math.sin(i * 1.7)) * 120;
+            g.fillRect(28 + i * 23, 210 - h, 16, h);
+        }
+        g.font = "bold 40px Tahoma, sans-serif";
+        g.fillStyle = "#f5d142";
+        g.fillText("⚡", 24, 64);
+        artworkUrl = c.toDataURL("image/png");
+    } catch (error) {
+        artworkUrl = "";
+    }
+    return artworkUrl;
+}
+
+let mediaSessionBound = false;
+function bindMediaSession() {
+    if (mediaSessionBound || !("mediaSession" in navigator)) return;
+    mediaSessionBound = true;
+    const ms = navigator.mediaSession;
+    const handlers = {
+        play: () => play(state.paused ? state.position : state.position),
+        pause: () => pause(),
+        stop: () => stop(),
+        previoustrack: () => skip(-1),
+        nexttrack: () => skip(1),
+        seekbackward: (d) => seekBy(-(d && d.seekOffset ? d.seekOffset : 10)),
+        seekforward: (d) => seekBy(d && d.seekOffset ? d.seekOffset : 10),
+        seekto: (d) => {
+            if (!d || !Number.isFinite(d.seekTime)) return;
+            seekTo(d.seekTime);
+        }
+    };
+    Object.entries(handlers).forEach(([action, fn]) => {
+        try {
+            ms.setActionHandler(action, fn);
+        } catch (error) {
+            /* ação sem suporte neste navegador */
+        }
+    });
+}
+
+function updateMediaSession() {
+    if (!("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    const track = currentTrack();
+    try {
+        if (track && (state.playing || state.paused) && "MediaMetadata" in window) {
+            const art = makeArtwork();
+            ms.metadata = new MediaMetadata({
+                title: track.title,
+                artist: track.artist,
+                album: "Winamp JS · Diogo Paulino",
+                artwork: art ? [{ src: art, sizes: "256x256", type: "image/png" }] : []
+            });
+        }
+        ms.playbackState = state.playing ? "playing" : state.paused ? "paused" : "none";
+        if (track && track.duration > 0 && ms.setPositionState) {
+            ms.setPositionState({
+                duration: track.duration,
+                playbackRate: 1,
+                position: Math.min(track.duration, Math.max(0, currentPosition()))
+            });
+        }
+    } catch (error) {
+        /* Media Session é opcional */
+    }
+}
+
+function seekTo(seconds) {
+    const track = currentTrack();
+    if (!track || !track.duration) return;
+    const target = Math.max(0, Math.min(track.duration - 0.05, seconds));
+    state.position = target;
+    if (state.playing) play(target);
+    else updateTimeDisplay();
+    updateMediaSession();
+}
+
+function seekBy(delta) {
+    const track = currentTrack();
+    if (!track || !track.duration) return;
+    seekTo((state.playing ? currentPosition() : state.position) + delta);
 }
 
 /* ==========================================================================
@@ -728,6 +1005,7 @@ function renderPlaylist() {
         item.setAttribute("aria-selected", String(index === state.selected));
         item.classList.toggle("is-current", index === state.index);
         item.classList.toggle("is-selected", index === state.selected);
+        item.classList.toggle("is-broken", !!track.broken);
 
         const number = document.createElement("span");
         number.className = "wa-pl-index";
@@ -815,25 +1093,31 @@ function removeSelected() {
    11. MIXER — volume, balanço e equalizador
    ========================================================================== */
 
-function applyVolume() {
+function smoothParam(param, value, immediate) {
+    if (!audio.ctx) return;
+    if (immediate) param.value = value;
+    else param.setTargetAtTime(value, audio.ctx.currentTime, 0.02);
+}
+
+function applyVolume(immediate) {
     if (!audio.master) return;
     const value = Number(ui.volume.value) / 100;
-    audio.master.gain.value = value * value * 0.9; // curva perceptual
+    smoothParam(audio.master.gain, value * value * 0.9, immediate); // curva perceptual
 }
 
-function applyBalance() {
+function applyBalance(immediate) {
     if (!audio.panner || !("pan" in audio.panner)) return;
-    audio.panner.pan.value = Number(ui.balance.value) / 100;
+    smoothParam(audio.panner.pan, Number(ui.balance.value) / 100, immediate);
 }
 
-function applyEq() {
+function applyEq(immediate) {
     if (!audio.filters.length) return;
     const sliders = $$("input[data-band]", ui.eqBands);
     sliders.forEach((slider, index) => {
-        audio.filters[index].gain.value = state.eqOn ? Number(slider.value) : 0;
+        smoothParam(audio.filters[index].gain, state.eqOn ? Number(slider.value) : 0, immediate);
     });
     const preamp = state.eqOn ? Number(ui.preamp.value) : 0;
-    audio.preamp.gain.value = Math.pow(10, preamp / 40);
+    smoothParam(audio.preamp.gain, Math.pow(10, preamp / 20), immediate); // dB → ganho linear
 }
 
 function buildEqBands() {
@@ -886,6 +1170,7 @@ function toggleWindow(key, force) {
 function applySkin(key) {
     ui.desktop.dataset.skin = key;
     palette = null;
+    visGradient = null;
     $$(".skin-choice").forEach((choice) => {
         const selected = choice.dataset.skin === key;
         choice.classList.toggle("is-selected", selected);
@@ -900,6 +1185,13 @@ function applySkin(key) {
 }
 
 function fitPlayer() {
+    /* No celular (≤760px) o player não encolhe: as janelas viram uma coluna
+       em fluxo, com botões de 44px+ (ver style.css). Escala só no desktop. */
+    const isCompact = compactQuery.matches;
+    if (isCompact) {
+        document.documentElement.style.setProperty("--player-scale", "1");
+        return;
+    }
     const stageWidth = isCompact ? 550 : 1100;
     const stageHeight = isCompact ? 783 : 464;
     /* Precisa bater com os insets de `.player-workspace` no CSS: a conta antiga
@@ -921,6 +1213,66 @@ function updateClock() {
 /* ==========================================================================
    13. LIGAÇÃO DE EVENTOS
    ========================================================================== */
+
+/* Preferências do player (volume, balanço, EQ, modos, visualizador). */
+const PREFS_KEY = "winamp-prefs-v1";
+let prefsTimer = 0;
+function savePrefs() {
+    window.clearTimeout(prefsTimer);
+    prefsTimer = window.setTimeout(() => {
+        try {
+            localStorage.setItem(PREFS_KEY, JSON.stringify({
+                volume: Number(ui.volume.value),
+                balance: Number(ui.balance.value),
+                eqOn: state.eqOn,
+                preamp: Number(ui.preamp.value),
+                bands: $$("input[data-band]", ui.eqBands).map((input) => Number(input.value)),
+                preset: ui.eqPreset.value,
+                shuffle: state.shuffle,
+                repeat: state.repeat,
+                visMode: state.visMode,
+                timeMode: state.timeMode
+            }));
+        } catch (error) {
+            /* armazenamento indisponível */
+        }
+    }, 250);
+}
+
+function loadPrefs() {
+    let data = null;
+    try {
+        data = JSON.parse(localStorage.getItem(PREFS_KEY) || "null");
+    } catch (error) {
+        data = null;
+    }
+    if (!data || typeof data !== "object") return;
+    const clampNum = (v, a, b, d) => (Number.isFinite(v) ? Math.max(a, Math.min(b, v)) : d);
+    ui.volume.value = String(clampNum(data.volume, 0, 100, 78));
+    ui.volumeOut.textContent = `${ui.volume.value}%`;
+    ui.balance.value = String(clampNum(data.balance, -100, 100, 0));
+    const bal = Number(ui.balance.value);
+    ui.balanceOut.textContent = bal === 0 ? "centro" : `${Math.abs(bal)}% ${bal < 0 ? "esq" : "dir"}`;
+    ui.preamp.value = String(clampNum(data.preamp, -12, 12, 0));
+    if (Array.isArray(data.bands)) {
+        $$("input[data-band]", ui.eqBands).forEach((input, i) => {
+            input.value = String(clampNum(data.bands[i], -12, 12, 0));
+        });
+    }
+    if (typeof data.preset === "string" && ui.eqPreset.querySelector(`option[value="${data.preset}"]`)) ui.eqPreset.value = data.preset;
+    state.eqOn = data.eqOn !== false;
+    ui.eqOn.classList.toggle("is-on", state.eqOn);
+    ui.eqOn.setAttribute("aria-pressed", String(state.eqOn));
+    ui.eqOn.textContent = state.eqOn ? "on" : "off";
+    state.shuffle = !!data.shuffle;
+    ui.shuffle.classList.toggle("is-on", state.shuffle);
+    ui.shuffle.setAttribute("aria-pressed", String(state.shuffle));
+    state.repeat = data.repeat !== false;
+    ui.repeat.classList.toggle("is-on", state.repeat);
+    ui.repeat.setAttribute("aria-pressed", String(state.repeat));
+    if (VIS_MODES.includes(data.visMode)) state.visMode = data.visMode;
+    if (data.timeMode === "remaining" || data.timeMode === "elapsed") state.timeMode = data.timeMode;
+}
 
 function bindTransport() {
     $$(".wa-btn[data-cmd]").forEach((button) => {
@@ -953,6 +1305,7 @@ function bindTransport() {
     ui.timeButton.addEventListener("click", () => {
         state.timeMode = state.timeMode === "elapsed" ? "remaining" : "elapsed";
         updateTimeDisplay();
+        savePrefs();
     });
 
     ui.visButton.addEventListener("click", () => {
@@ -961,9 +1314,10 @@ function bindTransport() {
             "aria-label",
             `Visualizador de áudio: ${state.visMode === "bars" ? "espectro" : state.visMode === "scope" ? "osciloscópio" : "desligado"}`
         );
-        if (state.visMode === "off") stopVisualizer();
-        else startVisualizer();
+        if (state.visMode === "off") stopVisualizer(true);
+        else if (state.playing) startVisualizer();
         if (!state.playing || state.visMode === "off") drawIdleVisualizer();
+        savePrefs();
         showTip(`Visualizador: ${state.visMode === "bars" ? "espectro" : state.visMode === "scope" ? "osciloscópio" : "desligado"}.`, 2200);
     });
 
@@ -971,18 +1325,21 @@ function bindTransport() {
         state.shuffle = !state.shuffle;
         ui.shuffle.classList.toggle("is-on", state.shuffle);
         ui.shuffle.setAttribute("aria-pressed", String(state.shuffle));
+        savePrefs();
     });
 
     ui.repeat.addEventListener("click", () => {
         state.repeat = !state.repeat;
         ui.repeat.classList.toggle("is-on", state.repeat);
         ui.repeat.setAttribute("aria-pressed", String(state.repeat));
+        savePrefs();
     });
 
     ui.volume.addEventListener("input", () => {
         ensureAudio();
         applyVolume();
         ui.volumeOut.textContent = `${ui.volume.value}%`;
+        savePrefs();
     });
 
     ui.balance.addEventListener("input", () => {
@@ -990,6 +1347,7 @@ function bindTransport() {
         applyBalance();
         const value = Number(ui.balance.value);
         ui.balanceOut.textContent = value === 0 ? "centro" : `${Math.abs(value)}% ${value < 0 ? "esq" : "dir"}`;
+        savePrefs();
     });
 
     const beginSeek = () => {
@@ -1000,9 +1358,7 @@ function bindTransport() {
         if (!track) return;
         const target = (Number(ui.seek.value) / 1000) * track.duration;
         state.seeking = false;
-        state.position = target;
-        if (state.playing) play(target);
-        else updateTimeDisplay();
+        seekTo(target);
     };
 
     ui.seek.addEventListener("pointerdown", beginSeek);
@@ -1022,14 +1378,17 @@ function bindEqualizer() {
     ui.eqBands.addEventListener("input", () => {
         ensureAudio();
         applyEq();
+        savePrefs();
     });
     ui.preamp.addEventListener("input", () => {
         ensureAudio();
         applyEq();
+        savePrefs();
     });
     ui.eqPreset.addEventListener("change", () => {
         ensureAudio();
         applyPreset(ui.eqPreset.value);
+        savePrefs();
     });
     ui.eqOn.addEventListener("click", () => {
         state.eqOn = !state.eqOn;
@@ -1038,6 +1397,7 @@ function bindEqualizer() {
         ui.eqOn.textContent = state.eqOn ? "on" : "off";
         ensureAudio();
         applyEq();
+        savePrefs();
     });
 }
 
@@ -1203,6 +1563,26 @@ function bindHotkeys() {
                 event.preventDefault();
                 ui.fileInput.click();
                 break;
+            case " ":
+                if (target instanceof HTMLElement && target.matches("button, [role=option], .wa-pl-list")) return;
+                event.preventDefault();
+                if (state.playing) pause();
+                else play(state.paused ? state.position : 0);
+                break;
+            case "arrowleft":
+            case "arrowright":
+                if (target instanceof HTMLElement && target.closest(".wa-pl-list")) return;
+                event.preventDefault();
+                seekBy(event.key === "ArrowLeft" ? -5 : 5);
+                break;
+            case "arrowup":
+            case "arrowdown":
+                if (target instanceof HTMLElement && target.closest(".wa-pl-list")) return;
+                event.preventDefault();
+                ui.volume.value = String(Math.max(0, Math.min(100, Number(ui.volume.value) + (event.key === "ArrowUp" ? 5 : -5))));
+                ui.volume.dispatchEvent(new Event("input"));
+                showTip(`Volume ${ui.volume.value}%`, 1200);
+                break;
             default:
                 return;
         }
@@ -1234,6 +1614,8 @@ function init() {
     }
     applySkin(savedSkin);
 
+    loadPrefs();
+    bindMediaSession();
     restoreDemoPlaylist(false);
     updateTrackMeta();
     drawIdleVisualizer();
@@ -1247,10 +1629,21 @@ function init() {
     if (window.LabRuntime) LabRuntime.debounceResize(handleResize);
     else window.addEventListener("resize", handleResize, { passive: true });
 
+    // A música segue tocando com a aba oculta (é um player); só o desenho para.
     document.addEventListener("visibilitychange", () => {
-        if (document.hidden) stopVisualizer();
-        else startVisualizer();
+        if (document.hidden) stopVisualizer(true);
+        else if (state.playing) startVisualizer();
+        else drawIdleVisualizer();
     });
+    if (compactQuery.addEventListener) compactQuery.addEventListener("change", handleResize);
+    // Gesto do usuário destrava o áudio que o sistema suspendeu.
+    const wake = () => {
+        if (audio.ctx && audio.ctx.state !== "running" && audio.ctx.state !== "closed") {
+            const p = audio.ctx.resume();
+            if (p && p.catch) p.catch(() => {});
+        }
+    };
+    window.addEventListener("pointerdown", wake, true);
 
     if (window.LabRuntime) {
         LabRuntime.createInterval(updateClock, 30000).start();
@@ -1264,7 +1657,12 @@ function init() {
         }, 250);
     }
 
-    showTip("Pronto! Pressione X (ou o botão Play) para ouvir a trilha chiptune.", 6500);
+    showTip(
+        coarsePointer
+            ? "Pronto! Toque ▶ para ouvir a trilha chiptune. No iPhone, suba o volume e confira o modo silencioso."
+            : "Pronto! Pressione X, Espaço ou ▶ para ouvir a trilha chiptune.",
+        6500
+    );
 }
 
 init();

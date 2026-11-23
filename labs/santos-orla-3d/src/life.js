@@ -8,6 +8,12 @@
  * Regras:
  *   - quem anda segue um "trilho" z = f(x) e inverte nas pontas do seu trecho; a fase da
  *     marcha avança com a distância (cadência 1,45 passo/m) → o pé não desliza;
+ *   - velocidades: caminhada 1,0–1,45 m/s, trote 2,6–3,9 m/s, bike 4,6–7,2 m/s (16–26 km/h);
+ *   - desvio: quem vem de frente se mantém à direita (mão brasileira: +z indo para leste)
+ *     e ninguém atravessa o visitante — abre ~1,2 m de lado e reduz o passo
+ *       v = v_cruzeiro · clamp((distância − 0,6) / 2,5, 0,25, 1);
+ *   - ciclistas freiam para o visitante na ciclovia e seguem quem vai à frente
+ *       v_alvo = min(v_cruzeiro, v_líder se vão < 5 m, (vão − 1,5)·1,2 s⁻¹), a ≤ 1 m/s², freio 3,5 m/s²;
  *   - nível de detalhe: além de 140 m a pose não é recalculada; além de 320 m some;
  *   - aves: um único InstancedMesh; a batida de asa é feita no vertex shader
  *       y += |aWing| · sin(t·f + fase) · amplitude   (urubus planam: amplitude ≈ 0).
@@ -65,7 +71,7 @@ function outfit(rnd, kind) {
     };
 }
 
-function bikeGeometry() {
+export function bikeGeometry() {
     const D = 0x1d1f23;
     const parts = [];
     for (const z of [-0.53, 0.53]) {
@@ -173,8 +179,11 @@ export function createLife(quality, terrain, props) {
             x: Math.min(b - 1, Math.max(a + 1, x)), lane, off: (rnd() - 0.5) * 2 * lane.w, dir: rnd.sign(),
             speed: (jog ? 3.1 : 1.15) * (0.85 + rnd() * 0.4), a, b, stride: h.height / 1.75
         });
+        h.cur = h.speed;
+        h.dodge = 0;
         walkers.push(h);
     }
+    const laneGroups = lanes.map((l) => walkers.filter((w) => w.lane === l));
 
     // ---------- sentados (bancos e cadeiras de praia) ----------
     const benches = props?.benches || [];
@@ -258,6 +267,7 @@ export function createLife(quality, terrain, props) {
         Object.assign(h, {
             x: -335 + rnd() * 670, dir, z: (ZONES.bike[0] + ZONES.bike[1]) / 2 + dir * 0.7, speed: 4.6 + rnd() * 2.6, index: i
         });
+        h.cur = h.speed;
         bikes.setColorAt(i, bc.set(rnd.pick([0xd8283a, 0x1f6fb8, 0xf2c230, 0x15171a, 0x22aa88, 0xf4f1ea])));
         cyclists.push(h);
     }
@@ -315,31 +325,72 @@ export function createLife(quality, terrain, props) {
         if (ctx?.camera) cam.copy(ctx.camera.position);
         const ocean = ctx?.ocean;
 
-        for (const h of walkers) {
-            h.x += h.dir * h.speed * dt;
-            if (h.x > h.b) { h.x = h.b; h.dir = -1; }
-            if (h.x < h.a) { h.x = h.a; h.dir = 1; }
-            const z = h.lane.z(h.x) + h.off;
-            const dz = h.lane.z(h.x + h.dir * 0.5) - h.lane.z(h.x);
-            h.object.position.set(h.x, groundY(h.x, z), z);
-            h.object.rotation.y = Math.atan2(h.dir * 0.5, dz);
-            h.phase += h.speed * dt * Math.PI * WALK.stepsPerMeter / h.stride;
+        const player = ctx?.player;
+        const px = player ? player.x : 1e9;
+        const pz = player ? player.z : 1e9;
+        for (let li = 0; li < laneGroups.length; li++) {
+            const group = laneGroups[li];
+            for (let i = 0; i < group.length; i++) {
+                const h = group[i];
+                const zl = h.lane.z(h.x) + h.off;
+                // visitante à frente no caminho: abre espaço e reduz o passo
+                let slow = 1;
+                let dodge = 0;
+                const ahead = (px - h.x) * h.dir;
+                const lat = pz - zl; // relativo ao trilho (sem o desvio) → sem oscilar
+                if (ahead > -0.6 && ahead < 3.6 && Math.abs(lat) < 1.15) {
+                    dodge = lat > 0 ? -1.2 : 1.2;
+                    slow = Math.min(1, Math.max(0.25, (ahead - 0.6) / 2.5));
+                }
+                // pedestre vindo de frente: cada um à sua direita
+                for (let j = 0; j < group.length && !dodge; j++) {
+                    const o = group[j];
+                    if (o === h || o.dir === h.dir) continue;
+                    const d = (o.x - h.x) * h.dir;
+                    if (d > 0 && d < 4 && Math.abs(o.off - h.off) < 0.7) dodge = 0.55 * h.dir;
+                }
+                h.dodge += (dodge - h.dodge) * (1 - Math.exp(-3 * dt));
+                h.cur += (h.speed * slow - h.cur) * (1 - Math.exp(-4 * dt));
+                h.x += h.dir * h.cur * dt;
+                if (h.x > h.b) { h.x = h.b; h.dir = -1; }
+                if (h.x < h.a) { h.x = h.a; h.dir = 1; }
+                const z = h.lane.z(h.x) + h.off + h.dodge;
+                const dz = h.lane.z(h.x + h.dir * 0.5) - h.lane.z(h.x);
+                h.object.position.set(h.x, groundY(h.x, z), z);
+                h.object.rotation.y = Math.atan2(h.dir * 0.5, dz);
+                h.phase += h.cur * dt * Math.PI * WALK.stepsPerMeter / h.stride;
+            }
         }
-        for (const h of cyclists) {
-            h.x += h.dir * h.speed * dt;
+        for (let i = 0; i < cyclists.length; i++) {
+            const h = cyclists[i];
+            let target = h.speed;
+            // visitante na ciclovia à frente
+            const ahead = (px - h.x) * h.dir;
+            if (ahead > 0 && ahead < 14 && Math.abs(pz - h.z) < 1.0) target = Math.min(target, Math.max(0, (ahead - 1.5) * 1.2));
+            // ciclista mais lento à frente, mesmo sentido
+            for (let j = 0; j < cyclists.length; j++) {
+                const o = cyclists[j];
+                if (o === h || o.dir !== h.dir) continue;
+                const d = (o.x - h.x) * h.dir;
+                if (d > 0 && d < 5) target = Math.min(target, o.cur * (d < 2.5 ? 0.8 : 1));
+            }
+            const a = target > h.cur ? 1.0 : 3.5;
+            h.cur += Math.max(-a * dt, Math.min(a * dt, target - h.cur));
+            h.x += h.dir * h.cur * dt;
             if (h.x > 346) h.x = -340;
             if (h.x < -340) h.x = 346;
             const yaw = h.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
             h.object.position.set(h.x, LAND_Y + 0.42, h.z);
             h.object.rotation.y = yaw;
-            h.phase += h.speed * dt * 2.1;
+            if (h.cur > 0.3) h.phase += h.cur * dt * 2.1;
             q.setFromAxisAngle(v.set(0, 1, 0), yaw);
             m.compose(v.set(h.x, LAND_Y - 0.02, h.z), q, one);
             bikes.setMatrixAt(h.index, m);
         }
         bikes.instanceMatrix.needsUpdate = true;
 
-        surfers.forEach((h, i) => {
+        for (let i = 0; i < surfers.length; i++) {
+            const h = surfers[i];
             const y = ocean ? ocean.heightAt(h.x, h.z, t) : 0;
             h.object.position.set(h.x, y - 0.5, h.z);
             h.object.rotation.set(Math.sin(t * 0.9 + i) * 0.05, h.yaw, Math.sin(t * 0.7 + i * 2) * 0.06);
@@ -347,7 +398,7 @@ export function createLife(quality, terrain, props) {
             q.setFromEuler(e);
             m.compose(v.set(h.x, y + 0.02, h.z), q, one);
             boards.setMatrixAt(i, m);
-        });
+        }
         boards.instanceMatrix.needsUpdate = true;
 
         // poses: perto = todo frame; médio = frames alternados; longe = congelado/oculto
@@ -369,7 +420,8 @@ export function createLife(quality, terrain, props) {
         }
 
         uBird.value = t;
-        birdList.forEach((b, i) => {
+        for (let i = 0; i < birdList.length; i++) {
+            const b = birdList[i];
             const a = t * b.w + b.ph;
             const x = b.cx + Math.cos(a) * b.r;
             const z = b.cz + Math.sin(a) * b.r * 0.7;
@@ -378,7 +430,7 @@ export function createLife(quality, terrain, props) {
             q.setFromEuler(e);
             m.compose(v.set(x, y, z), q, s.setScalar(b.scale));
             birdMesh.setMatrixAt(i, m);
-        });
+        }
         birdMesh.instanceMatrix.needsUpdate = true;
     }
 

@@ -10,10 +10,10 @@
 
 import * as THREE from 'three';
 import { smoothstep } from '../../shared/gfx/core.js';
-import { ChapterWorld, own, makePage, lightShaft, halo, addFire, addAmbient } from './world.js?v=31';
-import { Batch, mat, trs, block, column, arch, stairs, crystal, stoneBridge, addBrazier } from './build.js?v=31';
-import { makeGoblin, GoblinAI, makeWizard, turnTo, createCreature } from './actors.js?v=31';
-import { makeStaff } from './ch-shire.js?v=31';
+import { ChapterWorld, own, makePage, lightShaft, halo, addFire, addAmbient } from './world.js?v=32';
+import { Batch, mat, trs, block, column, arch, stairs, crystal, stoneBridge, addBrazier } from './build.js?v=32';
+import { makeGoblin, GoblinAI, makeWizard, turnTo, createCreature } from './actors.js?v=32';
+import { makeStaff } from './ch-shire.js?v=32';
 
 const HALF = 17; // meia largura do salão
 const LOW = -3;
@@ -30,6 +30,10 @@ export function buildMines(ctx) {
     world.fallY = -8;
     world.shadowZ = 72;
     world.fogBase = -30;
+    /* Câmera presa ao salão: paredes internas em |x| = 15,8 (pilastras), fundo em
+       z = −4, portão em z ≈ 111 e teto em y = 16. Sem isso, com o portador no
+       início (z = 2) e a câmera 5 m atrás, ela nascia dentro da parede do fundo. */
+    world.camBounds = { minX: -15.2, maxX: 15.2, minZ: -3.6, maxZ: 110.6, maxY: 15.2 };
 
     const bridge = stoneBridge({ length: 18, width: 2.6, rise: 0.5, arches: 2, depth: 3.4, rail: false });
     world.ground = (x, z) => {
@@ -154,7 +158,7 @@ export function buildMines(ctx) {
         const hero = makeGoblin(i, big ? Math.max(npc, 1) : npc, !!big);
         hero.equip({ handR: big ? 'hammer' : 'axe' });
         world.group.add(hero.object);
-        world.goblins.push(new GoblinAI(hero, x, z, { hp: big ? 3 : 2, speed: big ? 2.6 : 3.2, big: !!big, heightAt: world.heightAt }));
+        world.goblins.push(new GoblinAI(hero, x, z, { hp: big ? 3 : 2, speed: big ? 2.3 : 2.75, big: !!big, heightAt: world.heightAt }));
     });
 
     // ---------- o mago e a luz do cajado ----------

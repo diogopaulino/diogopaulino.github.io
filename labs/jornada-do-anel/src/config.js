@@ -8,29 +8,88 @@
 
 export const STORAGE_KEY = 'jornada-do-anel-v1';
 
+/** Tempo máximo (ms) esperando texturas/modelos de um capítulo antes de seguir assim mesmo. */
+export const LOAD_TIMEOUT = 14000;
+
+/**
+ * O portador é um halfling de ~1,1 m (preset 'hobbit' do kit). Tudo abaixo
+ * está em metros e segundos, escalado para esse tamanho — não para um humano.
+ *
+ * Velocidades (escala de Froude: v ∝ √(comprimento da perna); a perna do
+ * halfling tem ~0,5 da humana → ~0,7× as velocidades de um adulto):
+ *   caminhada   1,25 m/s  (analógico até a metade)       humano: 1,4–2
+ *   trote       2,9 m/s   (analógico/teclas no máximo)    humano: 3,5–4
+ *   corrida     4,5 m/s   (Shift ou botão "correr")       humano: 5–6
+ *
+ * Aceleração exponencial  v ← v + (alvo − v)·(1 − e^(−k·dt))
+ *   k = 9/s acelerando (≈ 0,25 s até 90 %), 12/s freando, 6/s invertendo
+ *   o sentido (derrapa um pouco), × 0,35 no ar (pouco controle aéreo).
+ *
+ * Pulo (altura de apex h, gravidade de subida g↑):
+ *   v₀ = √(2·g↑·h) = √(2·24·0,72) ≈ 5,9 m/s  → apex em v₀/g↑ ≈ 0,25 s
+ *   queda com g↓ = 1,55·g↑ (mais pesada que a subida), terminal 16 m/s
+ *   soltar o pulo subindo corta vy para 45 % (pulo variável: 0,25–0,72 m)
+ *   coyote 0,1 s depois de sair da beirada · buffer 0,12 s antes de tocar o chão
+ *
+ * Degraus: sobe até 0,5 m de uma vez (suavizado); acima de 1,1 m de diferença
+ * o chão vira parede (só alcança pulando). Desce colado ao chão até 0,4 m.
+ */
 export const PLAYER = {
-    walk: 4.35,
-    sprint: 7.15,
-    radius: 0.42,
-    height: 1.12,
+    walk: 1.25,
+    jog: 2.9,
+    sprint: 4.5,
+    accel: 9,
+    decel: 12,
+    reverse: 6,
+    airControl: 0.35,
+    radius: 0.38,
+    height: 1.1,
     eye: 0.92,
-    jump: 5.4,
-    gravity: 18,
-    turnSpeed: 10,
+    jumpHeight: 0.72,
+    gravity: 24,
+    fallGravity: 1.55,
+    jumpCut: 0.45,
+    terminal: 16,
+    coyote: 0.1,
+    jumpBuffer: 0.12,
+    stepUp: 0.5,
+    stepMax: 1.1,
+    snapDown: 0.4,
+    /** giro do corpo (1/s): rápido parado, mais aberto em corrida */
+    turnSlow: 14,
+    turnFast: 7,
     invuln: 1.4
 };
 
+/**
+ * Câmera de terceira pessoa (ver camera.js). Pivô na altura da cabeça do
+ * halfling; distâncias pensadas para 1,1 m de personagem (≈ 4,5× a altura).
+ */
 export const CAMERA = {
-    distance: 6.4,
-    minDistance: 3.2,
-    maxDistance: 11,
-    height: 1.45,
-    pitchMin: -0.42,
-    pitchMax: 0.72,
-    defaultPitch: 0.18,
-    lookY: 0.98,
+    distance: 5,
+    /** presets da tecla C */
+    presets: [3.4, 5, 7.4],
+    minDistance: 2.2,
+    maxDistance: 9,
+    /** altura do pivô acima dos pés (m) */
+    pivotY: 1.12,
+    pitchMin: -0.35,
+    pitchMax: 0.95,
+    defaultPitch: 0.24,
+    /** rad por pixel de mouse travado / de arrasto no toque */
+    mouseSens: 0.0022,
+    touchSens: 0.0050,
+    /** pivô segue o portador: horizontal rápido, vertical lento (pulo não sacode) */
+    followXZ: 12,
+    followY: 6,
+    /** s sem mexer a câmera até ela voltar sozinha para trás do portador */
+    recenterDelay: 1.1,
+    /** taxa de recentralização (1/s) no trote; escala com a velocidade */
+    recenterRate: 1.6,
     /** folga entre a câmera e o que estiver no caminho (m) */
-    skin: 0.35
+    skin: 0.3,
+    /** a distância encolhe na hora e volta a 3/s quando o caminho libera */
+    regrow: 3
 };
 
 /**
@@ -135,7 +194,7 @@ export const CHAPTERS = [
         subtitle: 'A ponte',
         blurb: 'Pilares sem fim, tambores na escuridão e uma fenda que não perdoa.',
         objective: 'Atravesse o salão e a ponte antes que a Sombra chegue.',
-        hint: 'Espaço para atacar. Corra quando a ponte tremer.',
+        hint: 'Ataque com ⚔ (clique ou J). Corra quando a ponte tremer.',
         music: 'mines',
         atmosphere: 'minas',
         loading: 'Acendendo os braseiros do salão…'

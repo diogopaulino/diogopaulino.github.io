@@ -1,706 +1,957 @@
-class Calculator {
-    constructor(previousOperandTextElement, currentOperandTextElement) {
-        this.previousOperandTextElement = previousOperandTextElement;
-        this.currentOperandTextElement = currentOperandTextElement;
-        this.clear();
-    }
+/* =========================================================
+   Calculator — interface
+   Simples e científica usam o MESMO motor (engine.js): a expressão é
+   uma lista de tokens avaliada com precedência real (2 + 3 × 4 = 14),
+   em decimal exato (0,1 + 0,2 = 0,3). O modo científico só revela mais
+   teclas. Histórico, modo, ângulo e par de moedas ficam no localStorage.
+   ========================================================= */
+import {
+    Dec, CalcError, evaluate, evaluateText, tokenize, tokensToText, formatDec, plainDec,
+    openParens, isUnaryAt, endsOperand
+} from './engine.js?v=3';
 
-    clear() {
-        this.currentOperand = '0';
-        this.previousOperand = '';
-        this.operation = undefined;
-        this._error = false;
-        if (this._paren) this._paren.length = 0;
-    }
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-    delete() {
-        if (this._error) {
-            this.clear();
-            return;
+/* ---------------------------------------------------------
+   Persistência tolerante a falhas (modo privado, cota cheia)
+   --------------------------------------------------------- */
+const store = {
+    get(key, fallback) {
+        try {
+            const raw = localStorage.getItem(key);
+            return raw == null ? fallback : JSON.parse(raw);
+        } catch {
+            return fallback;
         }
-        if (this.currentOperand === '0') return;
-        this.currentOperand = this.currentOperand.toString().slice(0, -1);
-        if (this.currentOperand === '') this.currentOperand = '0';
+    },
+    set(key, value) {
+        try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* segue em memória */ }
     }
+};
+const KEYS = {
+    prefs: 'calculator:prefs:v2',
+    history: 'calculator:history:v2',
+    rates: 'calculator_exchange_rates_v2'
+};
+const prefs = Object.assign({ mode: 'calculator', angle: 'deg', from: 'USD', to: 'BRL', amount: '1' }, store.get(KEYS.prefs, {}));
+const savePrefs = () => store.set(KEYS.prefs, prefs);
 
-    appendNumber(number) {
-        if (this._error) this.clear();
-        if (number === '.' && this.currentOperand.includes('.')) return;
-        if (this.currentOperand === '0' && number !== '.') {
-            this.currentOperand = number.toString();
-        } else {
-            this.currentOperand = this.currentOperand.toString() + number.toString();
-        }
+/* ---------------------------------------------------------
+   Elementos
+   --------------------------------------------------------- */
+const root = $('#calc-root');
+const modeBtns = $$('.mode-btn');
+const calcPanel = $('#calc-panel');
+const currencySection = $('#currency');
+const keypad = $('#keypad');
+const displayMain = $('#display-main');
+const displayPrev = $('#display-prev');
+const displayPreview = $('#display-preview');
+const live = $('#calc-live');
+const btn2nd = $('#btn-2nd');
+const btnAngle = $('#btn-angle');
+const toastEl = $('#calc-toast');
+
+/* ---------------------------------------------------------
+   Estado da expressão
+   --------------------------------------------------------- */
+const MAX_TOKENS = 160;
+const MAX_DIGITS = 24;
+let tokens = [];
+let justEvaluated = false; // o display mostra um resultado recém-calculado
+let lastRepeat = null; // "=" repetido reaplica a última operação (iOS)
+let errorMsg = '';
+let second = false;
+
+const last = () => tokens[tokens.length - 1];
+
+function vibrate(ms = 8) {
+    try { if (navigator.vibrate) navigator.vibrate(ms); } catch { /* opcional */ }
+}
+
+let toastTimer = 0;
+function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.hidden = false;
+    toastEl.classList.remove('is-out');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        toastEl.classList.add('is-out');
+        toastTimer = setTimeout(() => { toastEl.hidden = true; }, 220);
+    }, 1600);
+}
+
+/** Começa uma expressão nova se havia resultado/erro na tela. */
+function freshIfResult(keepAsOperand) {
+    if (errorMsg) {
+        errorMsg = '';
+        tokens = [];
     }
-
-    chooseOperation(operation) {
-        if (this._error) this.clear();
-        if (this.currentOperand === '') return;
-        if (this.previousOperand !== '') {
-            this.compute();
-            if (this._error) return;
-        }
-        this.operation = operation;
-        this.previousOperand = this.currentOperand;
-        this.currentOperand = '';
-    }
-
-    /** % de calculadora: 200 + 10 % = 220; 200 × 10 % = 20; 50 % = 0,5. */
-    percent() {
-        if (this._error) return;
-        const current = parseFloat(this.currentOperand);
-        if (isNaN(current)) return;
-        const prev = parseFloat(this.previousOperand);
-        const value = !isNaN(prev) && (this.operation === '+' || this.operation === '-')
-            ? prev * (current / 100)
-            : current / 100;
-        this._setResult(value);
-    }
-
-    _setResult(n) {
-        if (!Number.isFinite(n)) {
-            this.currentOperand = 'Erro';
-            this._error = true;
-            this.operation = undefined;
-            this.previousOperand = '';
-            return false;
-        }
-        const rounded = Math.round((n + Number.EPSILON) * 1e12) / 1e12;
-        this.currentOperand = String(rounded);
-        return true;
-    }
-
-    compute() {
-        let computation;
-        const prev = parseFloat(this.previousOperand);
-        const current = parseFloat(this.currentOperand);
-        if (isNaN(prev) || isNaN(current)) return;
-        switch (this.operation) {
-            case '+':
-                computation = prev + current;
-                break;
-            case '-':
-                computation = prev - current;
-                break;
-            case '×':
-                computation = prev * current;
-                break;
-            case '÷':
-                if (current === 0) {
-                    this._setResult(Infinity);
-                    return;
-                }
-                computation = prev / current;
-                break;
-            default:
-                return;
-        }
-        this._setResult(computation);
-        if (!this._error) {
-            this.operation = undefined;
-            this.previousOperand = '';
-        }
-    }
-
-    getDisplayNumber(number) {
-        const stringNumber = number.toString();
-        const integerDigits = parseFloat(stringNumber.split('.')[0]);
-        const decimalDigits = stringNumber.split('.')[1];
-        let integerDisplay;
-        if (isNaN(integerDigits)) {
-            integerDisplay = '';
-        } else {
-            integerDisplay = integerDigits.toLocaleString('en', { maximumFractionDigits: 0 });
-        }
-        if (decimalDigits != null) {
-            return `${integerDisplay}.${decimalDigits}`;
-        } else {
-            return integerDisplay;
-        }
-    }
-
-    updateDisplay() {
-        if (this._error) {
-            this.currentOperandTextElement.innerText = 'Erro';
-            this.previousOperandTextElement.innerText = '';
-            return;
-        }
-        this.currentOperandTextElement.innerText = this.getDisplayNumber(this.currentOperand);
-        if (this.operation != null) {
-            this.previousOperandTextElement.innerText =
-                `${this.getDisplayNumber(this.previousOperand)} ${this.operation}`;
-        } else {
-            this.previousOperandTextElement.innerText = '';
-        }
-        if (this._paren?.length) {
-            const marks = '('.repeat(this._paren.length);
-            const prev = this.previousOperandTextElement.innerText;
-            this.previousOperandTextElement.innerText = prev ? `${marks} ${prev}` : marks;
-        }
+    if (justEvaluated) {
+        justEvaluated = false;
+        if (!keepAsOperand) tokens = [];
     }
 }
 
-class ScientificCalculator extends Calculator {
-    constructor(previousOperandTextElement, currentOperandTextElement) {
-        super(previousOperandTextElement, currentOperandTextElement);
-        this._paren = [];
+function inputDigit(d) {
+    freshIfResult(false);
+    const tok = last();
+    if (tok && tok.t === 'num') {
+        if (tok.v.replace(/\D/g, '').length >= MAX_DIGITS) return;
+        if (tok.v === '0') tok.v = d;
+        else if (tok.v === '-0') tok.v = `-${d}`;
+        else tok.v += d;
+        return;
     }
+    if (tokens.length >= MAX_TOKENS) return;
+    tokens.push({ t: 'num', v: d });
+}
 
-    openParen() {
-        if (this._error) this.clear();
-        if (this.currentOperand !== '' && this.currentOperand !== '0' && this.previousOperand === '') {
-            this._paren.push({ previousOperand: this.currentOperand, operation: '×' });
-        } else {
-            this._paren.push({
-                previousOperand: this.previousOperand,
-                operation: this.operation
-            });
-        }
-        this.previousOperand = '';
-        this.operation = undefined;
-        this.currentOperand = '0';
+function inputDot() {
+    freshIfResult(false);
+    const tok = last();
+    if (tok && tok.t === 'num') {
+        if (!tok.v.includes('.')) tok.v += '.';
+        return;
     }
+    tokens.push({ t: 'num', v: '0.' });
+}
 
-    closeParen() {
-        if (this._error || !this._paren.length) return;
-        if (this.operation && this.previousOperand !== '' && this.currentOperand !== '') {
-            this.compute();
-            if (this._error) return;
-        }
-        const frame = this._paren.pop();
-        const inner = this.currentOperand;
-        this.previousOperand = frame.previousOperand || '';
-        this.operation = frame.operation;
-        this.currentOperand = inner;
+function inputOp(op) {
+    freshIfResult(true);
+    const tok = last();
+    if (!tok) {
+        // Começar com operador: "−" vira sinal; os outros operam sobre 0.
+        if (op === '-') tokens.push({ t: 'op', v: '-' });
+        else tokens.push({ t: 'num', v: '0' }, { t: 'op', v: op });
+        return;
     }
-
-    computeScientific(action) {
-        let current = parseFloat(this.currentOperand);
-        if (isNaN(current) && action !== 'pi' && action !== 'e' && action !== 'rand') return;
-
-        let result;
-        switch (action) {
-            case 'sin': result = Math.sin(current); break;
-            case 'cos': result = Math.cos(current); break;
-            case 'tan': result = Math.tan(current); break;
-            case 'log': result = Math.log10(current); break;
-            case 'ln': result = Math.log(current); break;
-            case 'sqrt': result = Math.sqrt(current); break;
-            case 'square': result = Math.pow(current, 2); break;
-            case 'inv': result = current === 0 ? NaN : 1 / current; break;
-            case 'abs': result = Math.abs(current); break;
-            case 'fact': result = this.factorial(current); break;
-            case 'pi':
-                this.currentOperand = Math.PI;
-                this.operation = undefined;
-                this.previousOperand = '';
-                return;
-            case 'e':
-                this.currentOperand = Math.E;
-                this.operation = undefined;
-                this.previousOperand = '';
-                return;
-            case 'rand':
-                this.currentOperand = Math.random();
-                this.operation = undefined;
-                this.previousOperand = '';
-                return;
+    if (tok.t === 'op') {
+        // "× −" é permitido (multiplicar por negativo); senão troca o operador.
+        if (op === '-' && (tok.v === '*' || tok.v === '/' || tok.v === '^')) {
+            tokens.push({ t: 'op', v: '-' });
+            return;
         }
+        while (last() && last().t === 'op') tokens.pop();
+        if (!last()) {
+            if (op === '-') tokens.push({ t: 'op', v: '-' });
+            else tokens.push({ t: 'num', v: '0' }, { t: 'op', v: op });
+            return;
+        }
+        if (last().t === 'lp' || last().t === 'fn') {
+            if (op === '-') tokens.push({ t: 'op', v: '-' });
+            return;
+        }
+        tokens.push({ t: 'op', v: op });
+        return;
+    }
+    if (tok.t === 'lp' || tok.t === 'fn') {
+        if (op === '-') tokens.push({ t: 'op', v: '-' });
+        return;
+    }
+    if (tok.t === 'num' && tok.v.endsWith('.')) tok.v = tok.v.slice(0, -1);
+    if (tokens.length < MAX_TOKENS) tokens.push({ t: 'op', v: op });
+}
 
-        if (result !== undefined) {
-            this._setResult(result);
-            if (!this._error) {
-                this.operation = undefined;
-                this.previousOperand = '';
+function inputFn(fn) {
+    freshIfResult(false);
+    if (tokens.length < MAX_TOKENS) tokens.push({ t: 'fn', v: fn });
+}
+
+function inputConst(c) {
+    freshIfResult(false);
+    if (tokens.length < MAX_TOKENS) tokens.push({ t: 'const', v: c });
+}
+
+function inputPost(p) {
+    freshIfResult(true);
+    if (!endsOperand(last())) {
+        if (!tokens.length) toast('Digite um número antes');
+        return;
+    }
+    if (last().t === 'num' && last().v.endsWith('.')) last().v = last().v.slice(0, -1);
+    tokens.push({ t: 'post', v: p });
+}
+
+function inputParen(kind) {
+    if (kind === 'lp') {
+        freshIfResult(false);
+        if (tokens.length < MAX_TOKENS) tokens.push({ t: 'lp' });
+        return;
+    }
+    freshIfResult(true);
+    if (openParens(tokens) > 0 && endsOperand(last())) tokens.push({ t: 'rp' });
+}
+
+/** ± : alterna o sinal do último operando (número, constante ou grupo entre parênteses). */
+function toggleSign() {
+    freshIfResult(true);
+    if (!tokens.length) {
+        tokens.push({ t: 'op', v: '-' });
+        return;
+    }
+    // Acha o início do último operando.
+    let i = tokens.length - 1;
+    if (!endsOperand(tokens[i])) {
+        // Ainda não há operando depois do operador: alterna um "−" pendente.
+        if (last().t === 'op' && last().v === '-' && isUnaryAt(tokens, tokens.length - 1)) tokens.pop();
+        else tokens.push({ t: 'op', v: '-' });
+        return;
+    }
+    while (i > 0 && tokens[i].t === 'post') i -= 1;
+    if (tokens[i].t === 'rp') {
+        let depth = 0;
+        for (; i >= 0; i -= 1) {
+            if (tokens[i].t === 'rp') depth += 1;
+            else if (tokens[i].t === 'lp' || tokens[i].t === 'fn') {
+                depth -= 1;
+                if (depth === 0) break;
             }
         }
+        i = Math.max(0, i);
     }
+    if (isUnaryAt(tokens, i - 1) && tokens[i - 1].v === '-') tokens.splice(i - 1, 1);
+    else tokens.splice(i, 0, { t: 'op', v: '-' });
+}
 
-    factorial(n) {
-        if (n < 0 || !Number.isInteger(n) || n > 170) return NaN;
-        if (n === 0 || n === 1) return 1;
-        let result = 1;
-        for (let i = 2; i <= n; i++) result *= i;
-        return result;
+function backspace() {
+    if (errorMsg || justEvaluated) {
+        clearAll();
+        return;
     }
-
-    compute() {
-        let computation;
-        const prev = parseFloat(this.previousOperand);
-        const current = parseFloat(this.currentOperand);
-        if (isNaN(prev) || isNaN(current)) return;
-        switch (this.operation) {
-            case '^':
-                computation = Math.pow(prev, current);
-                break;
-            default:
-                super.compute();
-                return;
-        }
-        this._setResult(computation);
-        if (!this._error) {
-            this.operation = undefined;
-            this.previousOperand = '';
-        }
+    const tok = last();
+    if (!tok) return;
+    if (tok.t === 'num' && tok.v.length > 1) {
+        tok.v = tok.v.slice(0, -1);
+        if (tok.v === '-' || tok.v === '') tokens.pop();
+    } else {
+        tokens.pop();
     }
 }
 
-// Simple Calculator Setup
-const numberBtns = document.querySelectorAll('#calculator .btn.number');
-const operatorBtns = document.querySelectorAll('#calculator .btn.operator');
-const equalsBtn = document.querySelector('#calculator .btn.equals');
-const deleteBtn = document.querySelector('#calculator [data-action="delete"]');
-const clearBtn = document.querySelector('#calculator [data-action="clear"]');
-const previousOperandTextElement = document.querySelector('.previous-operand');
-const currentOperandTextElement = document.querySelector('.current-operand');
+function clearAll() {
+    tokens = [];
+    justEvaluated = false;
+    errorMsg = '';
+    lastRepeat = null;
+    displayPrev.textContent = '';
+}
 
-const calculator = new Calculator(previousOperandTextElement, currentOperandTextElement);
-
-numberBtns.forEach(button => {
-    button.addEventListener('click', () => {
-        calculator.appendNumber(button.innerText);
-        calculator.updateDisplay();
-    });
-});
-
-operatorBtns.forEach(button => {
-    button.addEventListener('click', () => {
-        if (button.dataset.action === 'percent') calculator.percent();
-        else calculator.chooseOperation(button.innerText);
-        calculator.updateDisplay();
-    });
-});
-
-equalsBtn.addEventListener('click', button => {
-    calculator.compute();
-    calculator.updateDisplay();
-});
-
-clearBtn.addEventListener('click', button => {
-    calculator.clear();
-    calculator.updateDisplay();
-});
-
-deleteBtn.addEventListener('click', button => {
-    calculator.delete();
-    calculator.updateDisplay();
-});
-
-// Scientific Calculator Setup
-const sciNumberBtns = document.querySelectorAll('#scientific-calculator .btn.number');
-const sciOperatorBtns = document.querySelectorAll('#scientific-calculator .btn.operator');
-const sciFuncBtns = document.querySelectorAll('.btn.sci-func');
-const sciEqualsBtn = document.querySelector('[data-action="sci-calculate"]');
-const sciClearBtn = document.querySelector('[data-action="sci-clear"]');
-const sciDeleteBtn = document.querySelector('[data-action="sci-delete"]');
-const prevOperandSci = document.querySelector('.previous-operand-sci');
-const currOperandSci = document.querySelector('.current-operand-sci');
-
-const sciCalculator = new ScientificCalculator(prevOperandSci, currOperandSci);
-
-sciNumberBtns.forEach(button => {
-    button.addEventListener('click', () => {
-        sciCalculator.appendNumber(button.innerText);
-        sciCalculator.updateDisplay();
-    });
-});
-
-sciOperatorBtns.forEach(button => {
-    button.addEventListener('click', () => {
-        if (button.dataset.action === 'percent') sciCalculator.percent();
-        else sciCalculator.chooseOperation(button.innerText);
-        sciCalculator.updateDisplay();
-    });
-});
-
-sciFuncBtns.forEach(button => {
-    button.addEventListener('click', () => {
-        const action = button.dataset.action;
-        if (action === 'pow') {
-            sciCalculator.chooseOperation('^');
-        } else if (action === 'open-paren') {
-            sciCalculator.openParen();
-        } else if (action === 'close-paren') {
-            sciCalculator.closeParen();
-        } else {
-            sciCalculator.computeScientific(action);
+/** Última operação binária de nível 0 (para repetir com "=" de novo). */
+function extractRepeat(list) {
+    let depth = 0;
+    for (let i = list.length - 1; i > 0; i -= 1) {
+        const tok = list[i];
+        if (tok.t === 'rp') depth += 1;
+        else if (tok.t === 'lp' || tok.t === 'fn') depth -= 1;
+        else if (depth === 0 && tok.t === 'op' && !isUnaryAt(list, i) && tok.v !== '^') {
+            const tail = list.slice(i + 1);
+            if (tail.some((t) => t.t === 'post' && t.v === '%')) return null;
+            return { op: tok.v, tail: tail.map((t) => ({ ...t })) };
         }
-        sciCalculator.updateDisplay();
-    });
-});
-
-sciEqualsBtn.addEventListener('click', () => {
-    sciCalculator.compute();
-    sciCalculator.updateDisplay();
-});
-
-sciClearBtn.addEventListener('click', () => {
-    sciCalculator.clear();
-    sciCalculator.updateDisplay();
-});
-
-sciDeleteBtn.addEventListener('click', () => {
-    sciCalculator.delete();
-    sciCalculator.updateDisplay();
-});
-
-
-// Mode Switching
-const modeBtns = document.querySelectorAll('.mode-btn');
-const calculatorSection = document.getElementById('calculator');
-const scientificSection = document.getElementById('scientific-calculator');
-const currencySection = document.getElementById('currency');
-const wrapper = document.querySelector('.calculator-wrapper');
-
-modeBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        // Remove active class from all buttons
-        modeBtns.forEach(b => b.classList.remove('active'));
-        // Add active class to clicked button
-        btn.classList.add('active');
-
-        const mode = btn.dataset.mode;
-
-        // Hide all sections
-        calculatorSection.classList.remove('active');
-        scientificSection.classList.remove('active');
-        currencySection.classList.remove('active');
-        wrapper.classList.remove('scientific-mode');
-
-        if (mode === 'calculator') {
-            calculatorSection.classList.add('active');
-        } else if (mode === 'scientific') {
-            scientificSection.classList.add('active');
-            wrapper.classList.add('scientific-mode');
-        } else {
-            currencySection.classList.add('active');
-            if (!allCurrencies.length) initCurrencyConverter();
-        }
-    });
-});
-
-// Currency Converter Logic
-const currencyOne = document.getElementById('currency-one');
-const amountOne = document.getElementById('amount-one');
-const currencyTwo = document.getElementById('currency-two');
-const amountTwo = document.getElementById('amount-two');
-const searchOne = document.getElementById('search-one');
-const searchTwo = document.getElementById('search-two');
-const rateEl = document.getElementById('rate');
-const swap = document.getElementById('swap');
-const lastUpdatedEl = document.querySelector('.last-updated');
-const refreshBtn = document.getElementById('refresh-rates');
-
-let allCurrencies = [];
-let exchangeRates = {};
-
-const RATES_CACHE_KEY = 'calculator_exchange_rates_v1';
-const RATES_TIMEOUT_MS = 8000;
-
-async function fetchWithTimeout(url) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), RATES_TIMEOUT_MS);
-    try {
-        const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response;
-    } finally {
-        clearTimeout(timeout);
-    }
-}
-
-function normalizeRates(rates) {
-    const normalized = {};
-    Object.keys(rates).forEach(code => {
-        normalized[code.toUpperCase()] = parseFloat(rates[code]);
-    });
-    normalized.USD = 1;
-    return normalized;
-}
-
-// Primary provider: dedicated FX API, no key required
-async function fetchFromPrimary() {
-    const response = await fetchWithTimeout('https://open.er-api.com/v6/latest/USD');
-    const data = await response.json();
-    if (!data || data.result !== 'success' || !data.rates) throw new Error('Primary provider returned no rates');
-    return normalizeRates(data.rates);
-}
-
-// Fallback provider: served from a CDN, works even when finance/crypto domains are blocked
-async function fetchFromFallback() {
-    const response = await fetchWithTimeout('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
-    const data = await response.json();
-    if (!data || !data.usd) throw new Error('Fallback provider returned no rates');
-    return normalizeRates(data.usd);
-}
-
-function loadCachedRates() {
-    try {
-        const cached = JSON.parse(localStorage.getItem(RATES_CACHE_KEY));
-        if (cached && cached.rates && cached.timestamp) return cached;
-    } catch (err) {
-        // Corrupt or unavailable cache — ignore and fetch fresh
     }
     return null;
 }
 
-function saveCachedRates(rates) {
+function equals() {
+    if (errorMsg) return;
+    let expr = tokens;
+    if (justEvaluated) {
+        if (!lastRepeat) return;
+        expr = [last(), { t: 'op', v: lastRepeat.op }, ...lastRepeat.tail.map((t) => ({ ...t }))];
+    }
+    if (!expr.length) return;
+    // Operador pendente no fim ("5 +") é descartado, como no iOS.
+    while (expr.length && (expr[expr.length - 1].t === 'op' || expr[expr.length - 1].t === 'lp')) expr = expr.slice(0, -1);
+    if (!expr.length) return;
+    const text = tokensToText(expr, { ghostParens: true });
     try {
-        localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates, timestamp: Date.now() }));
+        const value = evaluate(expr, { angle: prefs.angle });
+        if (!justEvaluated) lastRepeat = extractRepeat(expr);
+        tokens = [{ t: 'ans', v: value.toString() }];
+        justEvaluated = true;
+        displayPrev.textContent = `${text} =`;
+        pushHistory(text, value);
+        announce(`${text} igual a ${formatDec(value)}`);
+        displayMain.classList.remove('is-pop');
+        void displayMain.offsetWidth;
+        displayMain.classList.add('is-pop');
     } catch (err) {
-        // Storage unavailable/full — non-fatal, just skip caching
+        errorMsg = err instanceof CalcError ? err.message : 'Erro';
+        displayPrev.textContent = text;
+        announce(`Erro: ${errorMsg}`);
+        displayMain.classList.remove('is-shake');
+        void displayMain.offsetWidth;
+        displayMain.classList.add('is-shake');
+        vibrate([12, 40, 12]);
     }
 }
 
-// Fetch all available currencies and rates, with cache + fallback provider for reliability
-async function initCurrencyConverter() {
-    const cached = loadCachedRates();
-    if (cached) {
-        exchangeRates = cached.rates;
-        allCurrencies = Object.keys(exchangeRates).sort();
-        populateSelects();
-        calculate();
-        lastUpdatedEl.innerText = `Cotação de ${new Date(cached.timestamp).toLocaleTimeString('pt-BR')} (cache)`;
-    }
+function announce(msg) {
+    live.textContent = msg;
+}
 
-    if (refreshBtn.disabled) return;
-    refreshBtn.disabled = true;
-    refreshBtn.classList.add('loading');
+/** Valor atual (resultado ou prévia) para copiar. */
+function currentValue() {
+    if (errorMsg || !tokens.length) return tokens.length ? null : Dec.zero;
     try {
-        let rates;
-        try {
-            rates = await fetchFromPrimary();
-        } catch (primaryErr) {
-            rates = await fetchFromFallback();
-        }
-
-        exchangeRates = rates;
-        allCurrencies = Object.keys(exchangeRates).sort();
-        saveCachedRates(rates);
-
-        populateSelects();
-        calculate();
-        lastUpdatedEl.innerText = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
-    } catch (err) {
-        // Os dois provedores falharem é uma condição prevista (offline, rede corporativa,
-        // bloqueador). É `warn`, não `error`: já está tratada e o app segue utilizável.
-        console.warn('Cotações indisponíveis, seguindo com o que há em cache:', err);
-        if (cached) {
-            lastUpdatedEl.innerText =
-                `Sem conexão — usando cotação de ${new Date(cached.timestamp).toLocaleTimeString('pt-BR')}`;
-        } else {
-            rateEl.innerText = 'Cotações indisponíveis. Verifique a conexão e toque em atualizar.';
-            lastUpdatedEl.innerText = 'Falha ao atualizar';
-        }
-        lastUpdatedEl.setAttribute('role', 'status');
-    } finally {
-        refreshBtn.classList.remove('loading');
-        refreshBtn.disabled = false;
+        return evaluate(tokens, { angle: prefs.angle });
+    } catch {
+        return null;
     }
+}
+
+/* ---------------------------------------------------------
+   Render do display
+   --------------------------------------------------------- */
+function fitText(el, text) {
+    // Fonte encolhe com o comprimento (feito em JS para não depender de container queries).
+    const width = el.clientWidth || 300;
+    const short = window.innerHeight < 740;
+    const base = root.dataset.mode === 'scientific' ? (short ? 44 : 54) : (short ? 52 : 60);
+    const charW = 0.58; // largura média de um dígito Outfit em em
+    const size = Math.max(22, Math.min(base, width / (Math.max(1, text.length) * charW)));
+    el.style.fontSize = `${size}px`;
+}
+
+function render() {
+    let text;
+    if (errorMsg) {
+        text = errorMsg;
+        displayMain.classList.add('is-error');
+    } else {
+        displayMain.classList.remove('is-error');
+        text = tokens.length ? tokensToText(tokens) : '0';
+    }
+    const ghost = errorMsg ? 0 : openParens(tokens);
+    displayMain.textContent = text;
+    if (ghost) {
+        const g = document.createElement('span');
+        g.className = 'ghost';
+        g.textContent = ')'.repeat(ghost);
+        displayMain.appendChild(g);
+    }
+    displayMain.setAttribute('aria-label', `Expressão: ${text}`);
+    fitText(displayMain, text + ')'.repeat(ghost));
+    displayMain.scrollLeft = displayMain.scrollWidth;
+
+    // Prévia ao vivo (só quando há operação a fazer).
+    let preview = '';
+    if (!errorMsg && !justEvaluated && tokens.length > 1) {
+        try {
+            const trimmed = tokens.slice();
+            while (trimmed.length && (trimmed[trimmed.length - 1].t === 'op')) trimmed.pop();
+            if (trimmed.length && trimmed.some((t) => t.t !== 'num')) {
+                preview = `= ${formatDec(evaluate(trimmed, { angle: prefs.angle }))}`;
+            }
+        } catch {
+            preview = '';
+        }
+    }
+    displayPreview.textContent = preview;
+}
+
+/* ---------------------------------------------------------
+   Teclado na tela
+   --------------------------------------------------------- */
+function press(btn) {
+    if (btn.dataset.digit) inputDigit(btn.dataset.digit);
+    else if (second && btn.dataset.altFn) inputFn(btn.dataset.altFn);
+    else if (second && btn.dataset.altPost) inputPost(btn.dataset.altPost);
+    else if (btn.dataset.op) inputOp(btn.dataset.op);
+    else if (btn.dataset.fn) inputFn(btn.dataset.fn);
+    else if (btn.dataset.post) inputPost(btn.dataset.post);
+    else if (btn.dataset.const) inputConst(btn.dataset.const);
+    else {
+        switch (btn.dataset.key) {
+            case 'dot': inputDot(); break;
+            case 'neg': toggleSign(); break;
+            case 'back': backspace(); break;
+            case 'clear': clearAll(); break;
+            case 'eq': equals(); break;
+            case 'lp': inputParen('lp'); break;
+            case 'rp': inputParen('rp'); break;
+            default: return;
+        }
+    }
+    // "2nd" vale para uma tecla só (como na Casio).
+    if (second && (btn.dataset.altFn || btn.dataset.altPost)) setSecond(false);
+    render();
+}
+
+keypad.addEventListener('click', (e) => {
+    const btn = e.target.closest('button.btn');
+    if (!btn) return;
+    press(btn);
+});
+keypad.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch' && e.target.closest('button.btn')) vibrate(6);
+});
+
+function flash(btn) {
+    if (!btn) return;
+    btn.classList.add('is-pressed');
+    setTimeout(() => btn.classList.remove('is-pressed'), 110);
+}
+
+function setSecond(on) {
+    second = on;
+    btn2nd.setAttribute('aria-pressed', String(on));
+    keypad.classList.toggle('is-second', on);
+}
+btn2nd.addEventListener('click', () => setSecond(!second));
+
+function setAngle(angle) {
+    prefs.angle = angle;
+    savePrefs();
+    btnAngle.setAttribute('aria-pressed', String(angle === 'rad'));
+    btnAngle.querySelector('[data-angle-label]').textContent = angle === 'deg' ? 'DEG' : 'RAD';
+    btnAngle.setAttribute('aria-label', angle === 'deg' ? 'Ângulos em graus (trocar para radianos)' : 'Ângulos em radianos (trocar para graus)');
+    render();
+}
+btnAngle.addEventListener('click', () => setAngle(prefs.angle === 'deg' ? 'rad' : 'deg'));
+
+/* ---------------------------------------------------------
+   Copiar / colar
+   --------------------------------------------------------- */
+async function copyResult() {
+    const value = currentValue();
+    if (!value) {
+        toast('Nada para copiar');
+        return;
+    }
+    const text = plainDec(value);
+    try {
+        await navigator.clipboard.writeText(text);
+        toast(`Copiado: ${text}`);
+    } catch {
+        // Fallback para contextos sem a API (http, permissões).
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch { ok = false; }
+        ta.remove();
+        toast(ok ? `Copiado: ${text}` : 'Não foi possível copiar');
+    }
+}
+$('#btn-copy').addEventListener('click', copyResult);
+
+function pasteText(text) {
+    const clean = String(text || '').trim().slice(0, 300);
+    if (!clean) return;
+    try {
+        const pasted = tokenize(clean);
+        if (!pasted.length) return;
+        freshIfResult(pasted[0].t === 'op');
+        // Número colado logo após outro número: multiplica implicitamente? Não — separa com ×.
+        if (endsOperand(last()) && pasted[0].t === 'num') tokens.push({ t: 'op', v: '*' });
+        tokens.push(...pasted);
+        tokens = tokens.slice(0, MAX_TOKENS);
+        render();
+        toast('Colado');
+    } catch (err) {
+        toast(err instanceof CalcError ? err.message : 'Texto não é uma conta');
+    }
+}
+
+document.addEventListener('paste', (e) => {
+    if (prefs.mode === 'currency') return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+    e.preventDefault();
+    pasteText(e.clipboardData ? e.clipboardData.getData('text') : '');
+});
+
+/* ---------------------------------------------------------
+   Teclado físico
+   --------------------------------------------------------- */
+const keyFind = (sel) => keypad.querySelector(sel);
+const KEYMAP = {
+    '+': ['[data-op="+"]', () => inputOp('+')],
+    '-': ['[data-op="-"]', () => inputOp('-')],
+    '*': ['[data-op="*"]', () => inputOp('*')],
+    'x': ['[data-op="*"]', () => inputOp('*')],
+    '/': ['[data-op="/"]', () => inputOp('/')],
+    '^': ['[data-op="^"]', () => inputOp('^')],
+    '%': ['[data-post="%"]', () => inputPost('%')],
+    '!': ['[data-post="!"]', () => inputPost('!')],
+    '(': ['[data-key="lp"]', () => inputParen('lp')],
+    ')': ['[data-key="rp"]', () => inputParen('rp')],
+    '.': ['[data-key="dot"]', inputDot],
+    ',': ['[data-key="dot"]', inputDot],
+    'Enter': ['[data-key="eq"]', equals],
+    '=': ['[data-key="eq"]', equals],
+    'Backspace': ['[data-key="back"]', backspace],
+    'Escape': ['[data-key="clear"]', clearAll],
+    'Delete': ['[data-key="clear"]', clearAll],
+    'F9': ['[data-key="neg"]', toggleSign],
+    'p': ['[data-const="pi"]', () => inputConst('pi')],
+    'e': ['[data-const="e"]', () => inputConst('e')],
+    's': ['[data-fn="sin"]', () => inputFn('sin')],
+    'c': ['[data-fn="cos"]', () => inputFn('cos')],
+    't': ['[data-fn="tan"]', () => inputFn('tan')],
+    'l': ['[data-fn="log"]', () => inputFn('log')],
+    'n': ['[data-fn="ln"]', () => inputFn('ln')],
+    'r': ['[data-fn="sqrt"]', () => inputFn('sqrt')]
+};
+
+document.addEventListener('keydown', (e) => {
+    if (prefs.mode === 'currency') return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if (e.altKey) return;
+
+    if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === 'c' && !String(window.getSelection() || '')) {
+            e.preventDefault();
+            copyResult();
+        }
+        return;
+    }
+
+    if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        toggleHistory();
+        return;
+    }
+    if (!historySheet.hidden && e.key === 'Escape') {
+        e.preventDefault();
+        toggleHistory(false);
+        return;
+    }
+
+    if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        inputDigit(e.key);
+        flash(keyFind(`[data-digit="${e.key}"]`));
+        render();
+        return;
+    }
+    const entry = KEYMAP[e.key] || KEYMAP[e.key.toLowerCase()];
+    if (!entry) return;
+    // Funções científicas por letra só no modo científico.
+    if (/^[a-z]$/.test(e.key.toLowerCase()) && e.key !== 'x' && prefs.mode !== 'scientific') return;
+    // Enter num botão focado já dispara o clique nativo.
+    if (e.key === 'Enter' && t && t.tagName === 'BUTTON' && !t.closest('#keypad')) return;
+    e.preventDefault();
+    entry[1]();
+    flash(keyFind(entry[0]));
+    render();
+});
+
+/* ---------------------------------------------------------
+   Histórico
+   --------------------------------------------------------- */
+const historySheet = $('#history-sheet');
+const historyList = $('#history-list');
+const historyEmpty = $('#history-empty');
+const btnHistory = $('#btn-history');
+let history = store.get(KEYS.history, []);
+if (!Array.isArray(history)) history = [];
+
+function pushHistory(expr, value) {
+    const result = value.toString();
+    const top = history[0];
+    if (top && top.expr === expr && top.result === result) return;
+    history.unshift({ expr, result, at: Date.now() });
+    history = history.slice(0, 60);
+    store.set(KEYS.history, history);
+    if (!historySheet.hidden) renderHistory();
+}
+
+function renderHistory() {
+    historyList.textContent = '';
+    historyEmpty.hidden = history.length > 0;
+    $('#btn-history-clear').hidden = history.length === 0;
+    const frag = document.createDocumentFragment();
+    history.forEach((item, idx) => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'history-item';
+        btn.dataset.idx = String(idx);
+        let shown = item.result;
+        try { shown = formatDec(Dec.parse(item.result)); } catch { /* entrada antiga */ }
+        const ex = document.createElement('span');
+        ex.className = 'history-expr';
+        ex.textContent = `${item.expr} =`;
+        const res = document.createElement('span');
+        res.className = 'history-result';
+        res.textContent = shown;
+        btn.append(ex, res);
+        btn.setAttribute('aria-label', `${item.expr} igual a ${shown}. Usar resultado`);
+        li.appendChild(btn);
+        frag.appendChild(li);
+    });
+    historyList.appendChild(frag);
+}
+
+function toggleHistory(force) {
+    if (prefs.mode === 'currency') return;
+    const open = typeof force === 'boolean' ? force : historySheet.hidden;
+    historySheet.hidden = !open;
+    btnHistory.setAttribute('aria-expanded', String(open));
+    if (open) {
+        renderHistory();
+        const first = historySheet.querySelector('.history-item') || $('#btn-history-close');
+        first.focus({ preventScroll: true });
+    } else {
+        btnHistory.focus({ preventScroll: true });
+    }
+}
+
+btnHistory.addEventListener('click', () => toggleHistory());
+$('#btn-history-close').addEventListener('click', () => toggleHistory(false));
+$('#btn-history-clear').addEventListener('click', () => {
+    history = [];
+    store.set(KEYS.history, history);
+    renderHistory();
+    toast('Histórico limpo');
+});
+historyList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.history-item');
+    if (!btn) return;
+    const item = history[Number(btn.dataset.idx)];
+    if (!item) return;
+    // Reusa o resultado como operando: se havia conta em andamento, entra nela.
+    if (justEvaluated || errorMsg || !tokens.length) {
+        tokens = [{ t: 'ans', v: item.result }];
+        justEvaluated = true;
+        lastRepeat = null;
+        displayPrev.textContent = `${item.expr} =`;
+    } else {
+        if (endsOperand(last())) tokens.push({ t: 'op', v: '*' });
+        tokens.push({ t: 'ans', v: item.result });
+    }
+    toggleHistory(false);
+    render();
+});
+historySheet.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        e.stopPropagation();
+        toggleHistory(false);
+    }
+});
+
+/* ---------------------------------------------------------
+   Modos
+   --------------------------------------------------------- */
+function setMode(mode) {
+    if (!['calculator', 'scientific', 'currency'].includes(mode)) mode = 'calculator';
+    prefs.mode = mode;
+    savePrefs();
+    root.dataset.mode = mode;
+    modeBtns.forEach((b) => {
+        const on = b.dataset.mode === mode;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', String(on));
+        b.tabIndex = on ? 0 : -1;
+    });
+    const isCurrency = mode === 'currency';
+    calcPanel.hidden = isCurrency;
+    currencySection.hidden = !isCurrency;
+    if (isCurrency) {
+        historySheet.hidden = true;
+        initCurrency();
+    } else {
+        setSecond(false);
+        render();
+    }
+}
+
+modeBtns.forEach((btn) => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode));
+    btn.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        const i = modeBtns.indexOf(btn);
+        const next = modeBtns[(i + (e.key === 'ArrowRight' ? 1 : modeBtns.length - 1)) % modeBtns.length];
+        next.focus();
+        setMode(next.dataset.mode);
+    });
+});
+
+window.addEventListener('resize', () => {
+    if (prefs.mode !== 'currency') render();
+});
+
+/* =========================================================
+   Conversor de moedas
+   Taxas com base USD; conversão cruzada: valor × (taxaDestino / taxaOrigem).
+   Provedor primário open.er-api.com, fallback no jsDelivr; cache local de
+   1 h evita bater na API a cada visita; offline usa o último cache.
+   ========================================================= */
+const currencyOne = $('#currency-one');
+const currencyTwo = $('#currency-two');
+const amountOne = $('#amount-one');
+const amountTwo = $('#amount-two');
+const rateEl = $('#rate');
+const ratesStatus = $('#rates-status');
+const refreshBtn = $('#refresh-rates');
+const RATES_TIMEOUT_MS = 8000;
+const RATES_FRESH_MS = 60 * 60 * 1000;
+
+let rates = null; // { USD: 1, BRL: 5.4, ... }
+let ratesMeta = null; // { source, updatedAt, fetchedAt }
+let loadingRates = null;
+
+let currencyNames = null;
+try {
+    currencyNames = new Intl.DisplayNames(['pt-BR'], { type: 'currency' });
+} catch {
+    currencyNames = null;
+}
+const nameOf = (code) => {
+    try {
+        const n = currencyNames ? currencyNames.of(code) : '';
+        return n && n !== code ? n : '';
+    } catch {
+        return '';
+    }
+};
+
+async function fetchWithTimeout(url) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), RATES_TIMEOUT_MS);
+    try {
+        const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+function normalizeRates(raw) {
+    const out = {};
+    Object.keys(raw).forEach((code) => {
+        const v = Number(raw[code]);
+        // Só códigos ISO de 3 letras com taxa positiva (o fallback traz cripto e lixo).
+        if (/^[a-z]{3}$/i.test(code) && Number.isFinite(v) && v > 0) out[code.toUpperCase()] = v;
+    });
+    out.USD = 1;
+    return out;
+}
+
+async function fetchPrimary() {
+    const data = await fetchWithTimeout('https://open.er-api.com/v6/latest/USD');
+    if (!data || data.result !== 'success' || !data.rates) throw new Error('sem taxas');
+    return {
+        rates: normalizeRates(data.rates),
+        meta: { source: 'ExchangeRate-API', updatedAt: (data.time_last_update_unix || 0) * 1000 || Date.now() }
+    };
+}
+
+async function fetchFallback() {
+    const data = await fetchWithTimeout('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
+    if (!data || !data.usd) throw new Error('sem taxas');
+    return {
+        rates: normalizeRates(data.usd),
+        meta: { source: 'fawazahmed0/currency-api', updatedAt: data.date ? Date.parse(`${data.date}T00:00:00Z`) : Date.now() }
+    };
+}
+
+const fmtWhen = (ts) => {
+    try {
+        return new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return '';
+    }
+};
+
+function setStatus(text, tone = '') {
+    ratesStatus.textContent = text;
+    ratesStatus.dataset.tone = tone;
 }
 
 function populateSelects() {
-    const val1 = currencyOne.value || 'USD';
-    const val2 = currencyTwo.value || 'BRL';
-
-    const fragmentOne = document.createDocumentFragment();
-    const fragmentTwo = document.createDocumentFragment();
-
-    allCurrencies.forEach(currency => {
-        const option1 = document.createElement('option');
-        option1.value = currency;
-        option1.textContent = currency;
-        if (currency === val1) option1.selected = true;
-        fragmentOne.appendChild(option1);
-
-        const option2 = document.createElement('option');
-        option2.value = currency;
-        option2.textContent = currency;
-        if (currency === val2) option2.selected = true;
-        fragmentTwo.appendChild(option2);
+    const codes = Object.keys(rates).sort((a, b) => {
+        // Moedas mais usadas no topo, depois ordem alfabética.
+        const top = ['BRL', 'USD', 'EUR', 'GBP', 'JPY', 'ARS', 'CAD', 'CHF', 'CNY', 'AUD'];
+        const ia = top.indexOf(a);
+        const ib = top.indexOf(b);
+        if (ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        return a.localeCompare(b);
     });
-
-    currencyOne.innerHTML = '';
-    currencyTwo.innerHTML = '';
-    currencyOne.appendChild(fragmentOne);
-    currencyTwo.appendChild(fragmentTwo);
-    updateCurrencyUI();
+    const build = (select, value) => {
+        const frag = document.createDocumentFragment();
+        codes.forEach((code) => {
+            const opt = document.createElement('option');
+            opt.value = code;
+            const name = nameOf(code);
+            opt.textContent = name ? `${code} — ${name}` : code;
+            frag.appendChild(opt);
+        });
+        select.textContent = '';
+        select.appendChild(frag);
+        select.value = codes.includes(value) ? value : codes[0];
+    };
+    build(currencyOne, prefs.from);
+    build(currencyTwo, prefs.to);
 }
 
-function updateCurrencyUI() {
-    const val1 = currencyOne.value;
-    const val2 = currencyTwo.value;
-    const term1 = (searchOne?.value || '').toLowerCase();
-    const term2 = (searchTwo?.value || '').toLowerCase();
-
-    Array.from(currencyOne.options).forEach((opt) => {
-        const isSame = opt.value === val2 && currencyOne.options.length > 1;
-        const matches = opt.text.toLowerCase().includes(term1);
-        const hide = isSame || !matches;
-        opt.hidden = hide;
-        opt.disabled = isSame;
-        opt.style.display = hide ? 'none' : '';
-    });
-
-    Array.from(currencyTwo.options).forEach((opt) => {
-        const isSame = opt.value === val1 && currencyTwo.options.length > 1;
-        const matches = opt.text.toLowerCase().includes(term2);
-        const hide = isSame || !matches;
-        opt.hidden = hide;
-        opt.disabled = isSame;
-        opt.style.display = hide ? 'none' : '';
-    });
+function applyRates(payload, { cached = false } = {}) {
+    rates = payload.rates;
+    ratesMeta = payload.meta;
+    populateSelects();
+    convert('one');
+    const when = fmtWhen(ratesMeta.updatedAt);
+    setStatus(`${cached ? 'Cache · ' : ''}Cotação de ${when} · ${ratesMeta.source}`);
 }
 
-function filterCurrencies(searchTerm, selectElement) {
-    updateCurrencyUI();
+function loadCache() {
+    const cached = store.get(KEYS.rates, null);
+    if (cached && cached.rates && cached.meta && cached.fetchedAt) return cached;
+    return null;
 }
 
-// Fetch exchange rates and update the DOM
-function calculate(direction = 'one-to-two') {
+async function refreshRates({ force = false } = {}) {
+    if (loadingRates) return loadingRates;
+    const cached = loadCache();
+    if (cached && !rates) applyRates(cached, { cached: true });
+    if (!force && cached && Date.now() - cached.fetchedAt < RATES_FRESH_MS) {
+        applyRates(cached);
+        return null;
+    }
+    refreshBtn.disabled = true;
+    refreshBtn.classList.add('is-loading');
+    if (!rates) setStatus('Carregando cotações…');
+    loadingRates = (async () => {
+        try {
+            let payload;
+            try {
+                payload = await fetchPrimary();
+            } catch {
+                payload = await fetchFallback();
+            }
+            store.set(KEYS.rates, { ...payload, fetchedAt: Date.now() });
+            applyRates(payload);
+            if (force) toast('Cotações atualizadas');
+        } catch (err) {
+            // Previsto (offline, bloqueador): o app segue com o cache.
+            console.warn('Cotações indisponíveis:', err);
+            if (rates) {
+                setStatus(`Sem conexão — usando cotação de ${fmtWhen(ratesMeta.updatedAt)}`, 'warn');
+            } else {
+                setStatus('Cotações indisponíveis. Verifique a conexão e toque em atualizar.', 'error');
+                rateEl.textContent = '—';
+            }
+        } finally {
+            refreshBtn.disabled = false;
+            refreshBtn.classList.remove('is-loading');
+            loadingRates = null;
+        }
+    })();
+    return loadingRates;
+}
+
+function parseAmount(text) {
+    const clean = String(text || '').trim();
+    if (!clean) return null;
+    try {
+        const v = evaluateText(clean);
+        return v.toNumber();
+    } catch {
+        return NaN;
+    }
+}
+
+function formatMoney(value, code) {
+    if (!Number.isFinite(value)) return '';
+    const abs = Math.abs(value);
+    const digits = abs === 0 ? 2 : abs < 0.01 ? 6 : abs < 1 ? 4 : 2;
+    return value.toLocaleString('pt-BR', { minimumFractionDigits: Math.min(2, digits), maximumFractionDigits: digits }) + (code ? '' : '');
+}
+
+function formatRate(r) {
+    const digits = r < 0.001 ? 8 : r < 1 ? 6 : 4;
+    return r.toLocaleString('pt-BR', { maximumFractionDigits: digits });
+}
+
+function convert(direction) {
+    if (!rates) return;
     const from = currencyOne.value;
     const to = currencyTwo.value;
+    const rFrom = rates[from];
+    const rTo = rates[to];
+    if (!rFrom || !rTo) return;
+    const cross = rTo / rFrom;
+    rateEl.innerHTML = '';
+    const a = document.createElement('strong');
+    a.textContent = `1 ${from} = ${formatRate(cross)} ${to}`;
+    const b = document.createElement('span');
+    b.textContent = `1 ${to} = ${formatRate(1 / cross)} ${from}`;
+    rateEl.append(a, b);
 
-    if (!exchangeRates[from] || !exchangeRates[to]) return;
-
-    // Convert everything through USD (base)
-    // from_rate = value_in_usd * rate_from
-    // 1 USD = rate_from FROM
-    // value_in_usd = amount_from / rate_from
-    // amount_to = value_in_usd * rate_to
-
-    const rateFrom = parseFloat(exchangeRates[from]);
-    const rateTo = parseFloat(exchangeRates[to]);
-
-    const crossRate = rateTo / rateFrom;
-    rateEl.innerText = `1 ${from} = ${crossRate.toFixed(6)} ${to}`;
-
-    if (direction === 'one-to-two') {
-        const result = (parseFloat(amountOne.value) * crossRate);
-        amountTwo.value = isNaN(result) ? '' : result.toFixed(parseFloat(amountOne.value) < 1 ? 6 : 2);
-    } else {
-        const reverseRate = rateFrom / rateTo;
-        const result = (parseFloat(amountTwo.value) * reverseRate);
-        amountOne.value = isNaN(result) ? '' : result.toFixed(parseFloat(amountTwo.value) < 1 ? 6 : 2);
+    const srcInput = direction === 'one' ? amountOne : amountTwo;
+    const dstInput = direction === 'one' ? amountTwo : amountOne;
+    const factor = direction === 'one' ? cross : 1 / cross;
+    const v = parseAmount(srcInput.value);
+    srcInput.classList.toggle('is-invalid', Number.isNaN(v));
+    if (v === null || Number.isNaN(v)) {
+        dstInput.value = '';
+        return;
     }
+    dstInput.value = formatMoney(v * factor);
+    dstInput.classList.remove('is-invalid');
+    prefs.from = from;
+    prefs.to = to;
+    if (direction === 'one') prefs.amount = amountOne.value.slice(0, 40);
+    savePrefs();
 }
 
-// Event listeners
-currencyOne.addEventListener('change', () => {
-    updateCurrencyUI();
-    calculate('one-to-two');
+let currencyReady = false;
+function initCurrency() {
+    if (!currencyReady) {
+        currencyReady = true;
+        amountOne.value = prefs.amount || '1';
+    }
+    refreshRates();
+}
+
+currencyOne.addEventListener('change', () => convert('one'));
+currencyTwo.addEventListener('change', () => convert('one'));
+amountOne.addEventListener('input', () => convert('one'));
+amountTwo.addEventListener('input', () => convert('two'));
+[amountOne, amountTwo].forEach((input) => {
+    // Enter "fecha" a conta: 250*4 vira 1.000,00.
+    input.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const v = parseAmount(input.value);
+        if (v !== null && !Number.isNaN(v)) input.value = formatMoney(v);
+        convert(input === amountOne ? 'one' : 'two');
+    });
 });
-currencyTwo.addEventListener('change', () => {
-    updateCurrencyUI();
-    calculate('one-to-two');
-});
-
-amountOne.addEventListener('input', () => calculate('one-to-two'));
-amountTwo.addEventListener('input', () => calculate('two-to-one'));
-
-searchOne.addEventListener('input', (e) => filterCurrencies(e.target.value, currencyOne));
-searchTwo.addEventListener('input', (e) => filterCurrencies(e.target.value, currencyTwo));
-
-refreshBtn.addEventListener('click', initCurrencyConverter);
-
-swap.addEventListener('click', () => {
-    const temp = currencyOne.value;
+refreshBtn.addEventListener('click', () => refreshRates({ force: true }));
+$('#swap').addEventListener('click', () => {
+    if (!rates) return;
+    const a = currencyOne.value;
     currencyOne.value = currencyTwo.value;
-    currencyTwo.value = temp;
-    updateCurrencyUI();
-    calculate('one-to-two');
+    currencyTwo.value = a;
+    $('#swap').classList.remove('is-spin');
+    void $('#swap').offsetWidth;
+    $('#swap').classList.add('is-spin');
+    convert('one');
+});
+$$('.pair-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+        if (!rates) return;
+        const [a, b] = chip.dataset.pair.split('-');
+        if (rates[a]) currencyOne.value = a;
+        if (rates[b]) currencyTwo.value = b;
+        convert('one');
+    });
 });
 
-// Physical Keyboard Support for Simple and Scientific Calculator
-function flashButton(selector, root) {
-    const btn = root.querySelector(selector);
-    if (!btn) return;
-    btn.classList.add('is-pressed');
-    setTimeout(() => btn.classList.remove('is-pressed'), 120);
-}
-
-document.addEventListener('keydown', (e) => {
-    const tag = e.target?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return;
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-    const isSci = scientificSection.classList.contains('active');
-    const isSimple = calculatorSection.classList.contains('active');
-    if (!isSimple && !isSci) return;
-
-    const activeCalc = isSci ? sciCalculator : calculator;
-    const activeRoot = isSci ? scientificSection : calculatorSection;
-    const key = e.key;
-
-    if (/^[0-9]$/.test(key)) {
-        e.preventDefault();
-        activeCalc.appendNumber(key);
-        activeCalc.updateDisplay();
-        const numBtn = Array.from(activeRoot.querySelectorAll('.btn.number')).find(b => b.innerText.trim() === key);
-        if (numBtn) {
-            numBtn.classList.add('is-pressed');
-            setTimeout(() => numBtn.classList.remove('is-pressed'), 120);
-        }
-    } else if (key === '.' || key === ',') {
-        e.preventDefault();
-        activeCalc.appendNumber('.');
-        activeCalc.updateDisplay();
-        const dotBtn = Array.from(activeRoot.querySelectorAll('.btn.number')).find(b => b.innerText.trim() === '.');
-        if (dotBtn) {
-            dotBtn.classList.add('is-pressed');
-            setTimeout(() => dotBtn.classList.remove('is-pressed'), 120);
-        }
-    } else if (key === '+' || key === '-') {
-        e.preventDefault();
-        activeCalc.chooseOperation(key);
-        activeCalc.updateDisplay();
-        flashButton(`[data-action="${key === '+' ? 'add' : 'subtract'}"]`, activeRoot);
-    } else if (key === '*') {
-        e.preventDefault();
-        activeCalc.chooseOperation('×');
-        activeCalc.updateDisplay();
-        flashButton('[data-action="multiply"]', activeRoot);
-    } else if (key === '/') {
-        e.preventDefault();
-        activeCalc.chooseOperation('÷');
-        activeCalc.updateDisplay();
-        flashButton('[data-action="divide"]', activeRoot);
-    } else if (key === '%') {
-        e.preventDefault();
-        activeCalc.percent();
-        activeCalc.updateDisplay();
-        flashButton('[data-action="percent"]', activeRoot);
-    } else if (key === 'Enter' || key === '=') {
-        e.preventDefault();
-        activeCalc.compute();
-        activeCalc.updateDisplay();
-        flashButton('.btn.equals', activeRoot);
-    } else if (key === 'Backspace') {
-        e.preventDefault();
-        activeCalc.delete();
-        activeCalc.updateDisplay();
-        flashButton('[data-action="delete"], [data-action="sci-delete"]', activeRoot);
-    } else if (key === 'Escape' || key === 'Delete') {
-        e.preventDefault();
-        activeCalc.clear();
-        activeCalc.updateDisplay();
-        flashButton('[data-action="clear"], [data-action="sci-clear"]', activeRoot);
-    } else if (isSci && key === '(') {
-        e.preventDefault();
-        sciCalculator.openParen();
-        sciCalculator.updateDisplay();
-        flashButton('[data-action="open-paren"]', activeRoot);
-    } else if (isSci && key === ')') {
-        e.preventDefault();
-        sciCalculator.closeParen();
-        sciCalculator.updateDisplay();
-        flashButton('[data-action="close-paren"]', activeRoot);
-    } else if (isSci && key === '^') {
-        e.preventDefault();
-        sciCalculator.chooseOperation('^');
-        sciCalculator.updateDisplay();
-        flashButton('[data-action="pow"]', activeRoot);
-    }
-});
-
-// Initial load
+/* ---------------------------------------------------------
+   Início
+   --------------------------------------------------------- */
+setAngle(prefs.angle === 'rad' ? 'rad' : 'deg');
+setMode(prefs.mode);
+render();

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
     <title>Gravity — órbitas, buracos negros e colisões | Diogo Paulino</title>
-    <meta name="description" content="Sandbox gravitacional de Diogo Paulino: sistema solar, estrelas binárias, anéis, três corpos e o horizonte de eventos — tudo no canvas.">
+    <meta name="description" content="Sandbox gravitacional N-corpos de Diogo Paulino: Sistema Solar real, binárias, anéis de Saturno, figura-8 de três corpos e buraco negro — integrador simplético e energia conservada.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/gravity/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -19,13 +19,13 @@
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/gravity/">
     <meta property="og:title" content="Gravity — órbitas, buracos negros e colisões | Diogo Paulino">
-    <meta property="og:description" content="Sandbox gravitacional de Diogo Paulino: sistema solar, estrelas binárias, anéis, três corpos e o horizonte de eventos — tudo no canvas.">
+    <meta property="og:description" content="Sandbox gravitacional N-corpos de Diogo Paulino: Sistema Solar real, binárias, anéis de Saturno, figura-8 de três corpos e buraco negro — integrador simplético e energia conservada.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Gravity — órbitas, buracos negros e colisões | Diogo Paulino">
-    <meta name="twitter:description" content="Sandbox gravitacional de Diogo Paulino: sistema solar, estrelas binárias, anéis, três corpos e o horizonte de eventos — tudo no canvas.">
+    <meta name="twitter:description" content="Sandbox gravitacional N-corpos de Diogo Paulino: Sistema Solar real, binárias, anéis de Saturno, figura-8 de três corpos e buraco negro — integrador simplético e energia conservada.">
     <link rel="stylesheet" href="/assets/fonts/space-grotesk/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -34,7 +34,7 @@
           "@type": "WebApplication",
           "name": "Gravity",
           "url": "https://diogopaulino.com.br/labs/gravity/",
-          "description": "Sandbox gravitacional de Diogo Paulino: sistema solar, estrelas binárias, anéis, três corpos e o horizonte de eventos — tudo no canvas.",
+          "description": "Sandbox gravitacional N-corpos de Diogo Paulino: Sistema Solar real, binárias, anéis de Saturno, figura-8 de três corpos e buraco negro — integrador simplético e energia conservada.",
           "applicationCategory": "WebApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -88,126 +88,155 @@
                 </div>
             </template>
             <template data-slot="actions">
-                <button id="fullscreen-btn" class="icon-btn" aria-label="Tela cheia" title="Tela cheia (F)">
+                <button id="fitBtn" class="icon-btn" type="button" aria-label="Enquadrar cena" title="Enquadrar (0)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                    </svg>
+                </button>
+                <button id="fullscreen-btn" class="icon-btn" type="button" aria-label="Tela cheia" title="Tela cheia (F)">
                     <svg class="fullscreen-enter" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                     </svg>
                     <svg class="fullscreen-exit" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        style="display: none;">
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
                     </svg>
                 </button>
             </template>
         </header>
 
-        <canvas id="canvas" aria-label="Simulação gravitacional"></canvas>
+        <canvas id="canvas" role="img" aria-label="Simulação gravitacional de N corpos"></canvas>
 
-        <div class="hud" aria-live="polite">
-            <span class="hud-scene" id="hudScene">Sistema Solar</span>
-            <span class="hud-meta">
-                <span id="fps">60</span> fps ·
-                <span id="count">0</span> poeira ·
-                <span id="bodyCount">0</span> corpos
-            </span>
-            <div class="warp" role="group" aria-label="Dobra temporal">
-                <button type="button" class="warp-btn" data-warp="0.5">½×</button>
-                <button type="button" class="warp-btn active" data-warp="1">1×</button>
-                <button type="button" class="warp-btn" data-warp="2">2×</button>
-                <button type="button" class="warp-btn" data-warp="4">4×</button>
+        <section class="hud" id="hud" aria-label="Telemetria da simulação">
+            <div class="hud-title">
+                <span class="hud-scene" id="hudScene">Sistema Solar</span>
+                <span class="hud-badge" id="hudBadge" hidden>Pausado</span>
             </div>
+            <dl class="telemetry">
+                <div class="tm">
+                    <dt>Tempo</dt>
+                    <dd id="tmTime">0</dd>
+                </div>
+                <div class="tm" title="Energia total E = Σ½mv² − ΣGmᵢmⱼ/√(r²+ε²), em M☉·UA²/ano²">
+                    <dt>Energia</dt>
+                    <dd id="tmEnergy">—</dd>
+                </div>
+                <div class="tm tm-drift" id="tmDriftCell" title="Deriva relativa da energia: erro do integrador (eventos como fusões e corpos novos são descontados)">
+                    <dt>ΔE/E₀</dt>
+                    <dd id="tmDrift">—</dd>
+                </div>
+                <div class="tm" title="Deriva do momento linear total: |P − P₀| / Σ|pᵢ|">
+                    <dt>ΔP/Σ|p|</dt>
+                    <dd id="tmMomentum">—</dd>
+                </div>
+            </dl>
+            <div class="rate" role="group" aria-label="Velocidade da simulação">
+                <button type="button" class="rate-btn" id="slowerBtn" aria-label="Mais devagar" title="Mais devagar ([)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
+                </button>
+                <output class="rate-label" id="rateLabel" aria-live="off">1 s = 3 meses</output>
+                <button type="button" class="rate-btn" id="fasterBtn" aria-label="Mais rápido" title="Mais rápido (])">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14" /></svg>
+                </button>
+            </div>
+        </section>
+
+        <div class="hint" id="hint" aria-hidden="true">
+            <p id="hintText">Arraste para lançar um planeta · toque rápido cria órbita circular · pinça para zoom</p>
         </div>
 
-        <div class="hint" id="hint">
-            <p>Pinça para zoom · arraste dois dedos para panorâmica · toque num planeta para seguir</p>
-        </div>
+        <div class="sling-hint" id="slingHint" aria-hidden="true"></div>
 
-        <div class="slingshot-hint" id="slingshotHint"></div>
-
-        <aside class="inspect" id="inspect" hidden>
+        <aside class="inspect" id="inspect" aria-label="Corpo selecionado" hidden>
             <span class="inspect-swatch" id="inspectSwatch"></span>
             <div class="inspect-copy">
                 <strong id="inspectName">—</strong>
                 <span id="inspectMeta"></span>
+                <span id="inspectOrbit" class="inspect-orbit"></span>
             </div>
             <button type="button" id="followBtn" class="inspect-follow" aria-pressed="false">Seguir</button>
+            <button type="button" id="inspectClose" class="inspect-close" aria-label="Fechar inspetor" title="Fechar (Esc)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
         </aside>
 
-        <div class="dock">
-            <div class="scene-rail" id="sceneRail" role="listbox" aria-label="Cenários"></div>
+        <div class="dock" id="dock">
+            <div class="scene-rail" id="sceneRail" role="toolbar" aria-label="Cenários"></div>
 
             <div class="dock-tools">
-                <div class="tool-group" role="group" aria-label="Ferramenta">
-                    <button class="tool-btn" data-mode="pan" title="Navegar / Selecionar (V)" aria-label="Navegar / Selecionar">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="tool-group tools" role="group" aria-label="Ferramenta">
+                    <button type="button" class="tool-btn" data-mode="pan" title="Navegar e selecionar (V)" aria-label="Navegar e selecionar" aria-pressed="false">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" />
                         </svg>
                     </button>
-                    <button class="tool-btn active" data-mode="spawn" title="Criar poeira (Q)" aria-label="Criar poeira">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 3v18M3 12h18" />
-                            <circle cx="12" cy="12" r="3" />
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-mode="body" title="Lançar planeta (W)" aria-label="Lançar planeta">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button type="button" class="tool-btn active" data-mode="body" title="Lançar corpo (W) — arraste como estilingue" aria-label="Lançar corpo" aria-pressed="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <circle cx="12" cy="12" r="4" />
                             <ellipse cx="12" cy="12" rx="10" ry="4" />
                         </svg>
                     </button>
-                    <button class="tool-btn" data-mode="attract" title="Atrair (A)" aria-label="Atrair">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button type="button" class="tool-btn" data-mode="spawn" title="Semear poeira em órbita (Q)" aria-label="Semear poeira" aria-pressed="false">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <circle cx="6" cy="7" r="1.6" fill="currentColor" />
+                            <circle cx="14" cy="5" r="1.2" fill="currentColor" />
+                            <circle cx="18" cy="12" r="1.8" fill="currentColor" />
+                            <circle cx="9" cy="14" r="1.4" fill="currentColor" />
+                            <circle cx="15" cy="19" r="1.2" fill="currentColor" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-btn" data-mode="attract" title="Poço gravitacional temporário (A)" aria-label="Poço gravitacional" aria-pressed="false">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <circle cx="12" cy="12" r="3" />
                             <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
                         </svg>
                     </button>
-                    <button class="tool-btn" data-mode="repel" title="Repelir (E)" aria-label="Repelir">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M5 5l3 3m8 8l3 3M5 19l3-3m8-8l3-3" />
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-mode="blackhole" title="Horizonte (H)" aria-label="Sugar">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="9" />
-                            <circle cx="12" cy="12" r="3" fill="currentColor" />
-                        </svg>
-                    </button>
-                    <button class="tool-btn" data-mode="erase" title="Apagar (X)" aria-label="Apagar">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m3 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12z" />
+                    <button type="button" class="tool-btn" data-mode="erase" title="Apagar (X)" aria-label="Apagar" aria-pressed="false">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M20 20H9L4 15a2 2 0 0 1 0-2.8L13.2 3a2 2 0 0 1 2.8 0L21 8a2 2 0 0 1 0 2.8L12 20" />
+                            <path d="M7 11l6 6" />
                         </svg>
                     </button>
                 </div>
 
-                <div class="tool-group">
-                    <button id="random" class="tool-btn accent" title="Cenário aleatório (R)" aria-label="Aleatório">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" />
-                            <path d="m18 2 4 4-4 4" />
-                            <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" />
-                            <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8" />
-                            <path d="m18 14 4 4-4 4" />
+                <div class="tool-group actions" role="group" aria-label="Simulação">
+                    <button type="button" id="undoBtn" class="tool-btn" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 14L4 9l5-5" />
+                            <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
                         </svg>
                     </button>
-                    <button id="playPauseBtn" class="tool-btn" title="Pausar (Espaço)" aria-label="Pausar">
-                        <svg class="icon-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <button type="button" id="restartBtn" class="tool-btn" title="Reiniciar cenário (R)" aria-label="Reiniciar cenário">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                            <path d="M3 3v5h5" />
+                        </svg>
+                    </button>
+                    <button type="button" id="playPauseBtn" class="tool-btn play" title="Pausar (Espaço)" aria-label="Pausar">
+                        <svg class="icon-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <rect x="6" y="4" width="4" height="16" rx="1" />
                             <rect x="14" y="4" width="4" height="16" rx="1" />
                         </svg>
-                        <svg class="icon-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+                        <svg class="icon-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <path d="M7 4l13 8-13 8V4z" />
                         </svg>
                     </button>
-                    <button id="clear" class="tool-btn" title="Limpar (C)" aria-label="Limpar">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button type="button" id="stepBtn" class="tool-btn" title="Avançar um passo (N)" aria-label="Avançar um passo">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M5 5l10 7-10 7V5z" />
+                            <rect x="16" y="5" width="3" height="14" rx="1" />
+                        </svg>
+                    </button>
+                    <button type="button" id="clear" class="tool-btn" title="Limpar tudo (C)" aria-label="Limpar tudo">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" />
                         </svg>
                     </button>
-                    <button id="toggleTune" class="tool-btn" title="Ajustes" aria-label="Ajustes"
-                        aria-expanded="false" aria-controls="tunePanel">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button type="button" id="toggleTune" class="tool-btn" title="Ajustes" aria-label="Ajustes" aria-expanded="false" aria-controls="tunePanel">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
                             <path d="M2 14h4M10 8h4M18 16h4" />
                         </svg>
@@ -216,32 +245,16 @@
             </div>
 
             <div class="tune-panel" id="tunePanel" hidden>
+                <fieldset class="seg-group">
+                    <legend>Massa do novo corpo</legend>
+                    <div class="seg" id="massSeg"></div>
+                </fieldset>
                 <div class="slider-row">
-                    <label for="gStrength">Força G <span id="gStrengthValue">1.0</span></label>
-                    <input type="range" id="gStrength" min="0.2" max="3" step="0.1" value="1">
-                </div>
-                <div class="slider-row">
-                    <label for="gravity">Gravidade Y <span id="gravityValue">0.00</span></label>
-                    <input type="range" id="gravity" min="-0.5" max="1" step="0.01" value="0">
-                </div>
-                <div class="slider-row">
-                    <label for="friction">Fricção <span id="frictionValue">1.000</span></label>
-                    <input type="range" id="friction" min="0.95" max="1" step="0.001" value="1">
-                </div>
-                <div class="slider-row">
-                    <label for="bodySize">Planeta <span id="bodySizeValue">18</span></label>
-                    <input type="range" id="bodySize" min="6" max="45" step="1" value="18">
-                </div>
-                <div class="slider-row">
-                    <label for="size">Poeira <span id="sizeValue">3</span></label>
-                    <input type="range" id="size" min="1" max="12" step="1" value="3">
-                </div>
-                <div class="slider-row">
-                    <label for="velocity">Impulso <span id="velocityValue">10</span></label>
-                    <input type="range" id="velocity" min="1" max="30" step="1" value="10">
+                    <label for="spread">Dispersão da poeira <span id="spreadValue">8%</span></label>
+                    <input type="range" id="spread" min="0" max="40" step="1" value="8">
                 </div>
                 <div class="select-group">
-                    <label for="theme-select">Paleta</label>
+                    <label for="theme-select">Paleta da poeira</label>
                     <select id="theme-select">
                         <option value="nebula">Nébula</option>
                         <option value="neon">Neon</option>
@@ -254,27 +267,27 @@
                     </select>
                 </div>
                 <div class="checkbox-grid">
-                    <label class="checkbox-label"><input type="checkbox" id="orbits" checked><span>Órbitas</span></label>
-                    <label class="checkbox-label"><input type="checkbox" id="labels" checked><span>Nomes</span></label>
-                    <label class="checkbox-label"><input type="checkbox" id="trails" checked><span>Rastros</span></label>
+                    <label class="checkbox-label"><input type="checkbox" id="orbits" checked><span>Rastros (T)</span></label>
+                    <label class="checkbox-label"><input type="checkbox" id="labels" checked><span>Nomes (L)</span></label>
+                    <label class="checkbox-label"><input type="checkbox" id="predict" checked><span>Prever trajetória</span></label>
+                    <label class="checkbox-label"><input type="checkbox" id="collide" checked><span>Fusão em colisões</span></label>
                     <label class="checkbox-label"><input type="checkbox" id="glow" checked><span>Brilho</span></label>
                     <label class="checkbox-label"><input type="checkbox" id="stars" checked><span>Estrelas</span></label>
-                    <label class="checkbox-label"><input type="checkbox" id="bounce"><span>Quicar</span></label>
-                    <label class="checkbox-label"><input type="checkbox" id="bodiesAttract"><span>N-corpos</span></label>
-                    <label class="checkbox-label"><input type="checkbox" id="absorb" checked><span>Absorver</span></label>
                     <label class="checkbox-label"><input type="checkbox" id="velocityColor"><span>Cor = velocidade</span></label>
                     <label class="checkbox-label"><input type="checkbox" id="additive"><span>Aditivo</span></label>
                 </div>
+                <p class="diag" id="diag" aria-live="off"></p>
+                <p class="keys">Atalhos: Espaço pausa · N passo · [ ] velocidade · R reinicia · Ctrl+Z desfaz · 1–8 cenas · + − 0 zoom · setas movem</p>
             </div>
         </div>
     </main>
 
-    <div class="toast" id="toast" role="status"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <footer data-lab-footer data-home-href="/"></footer>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=2" defer></script>
+    <script src="script.js?v=3" defer></script>
 </body>
 
 </html>

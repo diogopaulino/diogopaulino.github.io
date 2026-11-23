@@ -10,6 +10,15 @@
  *   pos ← mix(pos, alvo, 1 − exp(−FOLLOW_LAMBDA·dt))
  * A andadura sai da velocidade real: v = |Δpos|/dt (suavizada), ver gaitFor().
  *
+ *   passo limitado: vmax = max(1,2; v_Nina·1,25 + 0,5) + 1,5·max(0, d − 3) m/s
+ *   (acompanha Nina correndo, mas não teletransporta depois de um respawn)
+ *
+ * Carona (Tata, a tartaruga): em terra ela anda a 0,3–0,5 m/s, então viaja no dorso
+ * de Nina. Mola amortecida (semi-implícita, por eixo):
+ *   a = RIDE_K·(dorso − pos) + C·(v_dorso − v),  C = 2·0,7·√RIDE_K
+ *   v += a·dt;  pos += v·dt                     (balança ao frear e ao pousar)
+ * Ao descer no ninho ela cai do dorso com g = 9,8 m/s² até o chão.
+ *
  * Perdido: fica no seu canto alternando parado / comendo / sentado; quando Nina
  * chega a menos de 7 m ele se vira para ela e fica alerta. O patinho boia em
  * círculos no lago:  pos = origem + 1,3·(cos ωt, sin ωt), ω = 0,22 rad/s.
@@ -19,8 +28,10 @@
  */
 import * as THREE from 'three';
 import { createCreature } from '../../shared/gfx/creature.js';
-import { createTurtle } from './turtle.js?v=20';
-import { FOLLOW_GAP, FOLLOW_LAMBDA, HOME } from './config.js?v=20';
+import { createTurtle } from './turtle.js?v=23';
+import { FOLLOW_GAP, FOLLOW_LAMBDA, RIDE_K, HOME } from './config.js?v=23';
+
+const RIDE_C = 2 * 0.7 * Math.sqrt(RIDE_K);
 
 /** preset do kit, idade (0 filhote … 1 adulto), escala de livro infantil e cores. */
 const KINDS = {
@@ -96,7 +107,11 @@ export function createFriend(def, detail = 2) {
         /** raio com que este filhote amassa a grama */
         trample: Math.max(0.45, creature.length * 0.55),
         anim: { mode: 'idle', speed: 0, lookAt: null, groundFn: null, turn: 0 },
-        look: new THREE.Vector3()
+        look: new THREE.Vector3(),
+        /** velocidade da mola da carona e altura/velocidade da queda ao descer */
+        rideV: new THREE.Vector3(),
+        fallH: 0,
+        fallV: 0
     };
 }
 
@@ -117,7 +132,9 @@ function moveToward(friend, tx, tz, maxSpeed, dt) {
 /**
  * @param {object} friend
  * @param {number} dt
- * @param {object} ctx  { valley, nina: Vector3|null, ninaHead: Vector3, ninaYaw, trail(dist, out) → bool, index, t, party }
+ * @param {object} ctx  { valley, nina: Vector3|null, ninaHead: Vector3, ninaYaw, ninaPitch, ninaSpeed,
+ *                        back: Vector3 (dorso), backV: Vector3 (velocidade do dorso), trail(dist, out) → bool,
+ *                        index, t, party }
  */
 export function updateFriend(friend, dt, ctx) {
     const { valley, t } = ctx;
@@ -155,6 +172,31 @@ export function updateFriend(friend, dt, ctx) {
             wantYaw = Math.atan2(HOME.x - p.x, HOME.z - p.z);
             yawRate = 4;
         }
+    } else if (friend.state === 'ride' && ctx.nina) {
+        // carona no dorso: mola amortecida presa ao dorso, gira junto com Nina
+        const rv = friend.rideV;
+        const b = ctx.back;
+        if (p.distanceToSquared(b) > 9) {
+            p.copy(b);
+            rv.copy(ctx.backV);
+        }
+        const h = Math.min(dt, 1 / 30);
+        rv.x += (RIDE_K * (b.x - p.x) + RIDE_C * (ctx.backV.x - rv.x)) * h;
+        rv.y += (RIDE_K * (b.y - p.y) + RIDE_C * (ctx.backV.y - rv.y)) * h;
+        rv.z += (RIDE_K * (b.z - p.z) + RIDE_C * (ctx.backV.z - rv.z)) * h;
+        p.addScaledVector(rv, h);
+        friend.yaw += wrapDelta(friend.yaw, ctx.ninaYaw) * Math.min(1, dt * 10);
+        mesh.rotation.set(ctx.ninaPitch, friend.yaw, 0);
+        friend.speed = 0;
+        friend.swim = false;
+        friend.mode = 'idle';
+        a.mode = 'idle';
+        a.speed = 0.2;
+        a.turn = 0;
+        a.groundFn = null;
+        a.lookAt = null;
+        c.update(dt, a);
+        return;
     } else if (friend.state === 'follow' && ctx.nina) {
         const dist = FOLLOW_GAP * (ctx.index + 1) + 0.35;
         const target = friend.look;
@@ -162,8 +204,17 @@ export function updateFriend(friend, dt, ctx) {
             target.set(ctx.nina.x - Math.sin(ctx.ninaYaw) * dist, 0, ctx.nina.z - Math.cos(ctx.ninaYaw) * dist);
         }
         const k = 1 - Math.exp(-FOLLOW_LAMBDA * dt);
-        p.x += (target.x - p.x) * k;
-        p.z += (target.z - p.z) * k;
+        let sx = (target.x - p.x) * k;
+        let sz = (target.z - p.z) * k;
+        const d = Math.hypot(target.x - p.x, target.z - p.z);
+        const vmax = Math.max(1.2, (ctx.ninaSpeed || 0) * 1.25 + 0.5) + 1.5 * Math.max(0, d - 3);
+        const sl = Math.hypot(sx, sz);
+        if (sl > vmax * dt) {
+            sx *= (vmax * dt) / sl;
+            sz *= (vmax * dt) / sl;
+        }
+        p.x += sx;
+        p.z += sz;
         const dx = p.x - px;
         const dz = p.z - pz;
         if (Math.hypot(dx, dz) > 0.012) wantYaw = Math.atan2(dx, dz);
@@ -212,9 +263,15 @@ export function updateFriend(friend, dt, ctx) {
     friend.speed += (v - friend.speed) * Math.min(1, dt * 10);
     const dy = wrapDelta(friend.yaw, wantYaw);
     friend.yaw += dy * Math.min(1, dt * yawRate);
-    mesh.rotation.y = friend.yaw;
+    mesh.rotation.set(0, friend.yaw, 0);
 
     p.y = valley.floorY(p.x, p.z, c.height);
+    // descendo do dorso: queda livre até o chão
+    if (friend.fallH > 0) {
+        friend.fallV += 9.8 * dt;
+        friend.fallH = Math.max(0, friend.fallH - friend.fallV * dt);
+        bounce += friend.fallH;
+    }
     friend.swim = valley.swimming;
     if (friend.hop > 0) {
         friend.hop = Math.max(0, friend.hop - dt / 0.5);

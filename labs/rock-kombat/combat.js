@@ -11,7 +11,7 @@ import {
   PARRY_COOLDOWN, METER_GAIN, WORLD_W,
   LEFT_WALL, RIGHT_WALL, GROUND,
   PUSH_DISTANCE, COMBO_DECAY, MIN_SCALE, COMBO_TIERS
-} from './constants.js';
+} from './constants.js?v=23';
 import { clamp, lerp, random, overlap } from './utils.js';
 import audio from './audio.js';
 

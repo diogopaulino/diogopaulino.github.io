@@ -5,9 +5,9 @@
  */
 
 import * as THREE from 'three';
-import { createCreature } from './cast.js?v=40';
-import { TigerAI } from '../ai/TigerAI.js?v=40';
-import { angleDamp } from '../utils/math.js';
+import { createCreature } from './cast.js?v=50';
+import { TigerAI } from '../ai/TigerAI.js?v=50';
+import { angleDamp } from '../utils/math.js?v=50';
 
 const MODE = { Sleep: 'sleep', Idle: 'alert', Growl: 'roar', Walk: 'walk', Jump: 'attack', Attack: 'attack' };
 

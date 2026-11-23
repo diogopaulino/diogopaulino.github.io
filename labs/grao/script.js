@@ -1,13 +1,25 @@
 /**
  * Grão — companheiro de cafeína
  *
- * Modelo: absorção instantânea + decaimento exponencial.
- * C(t) = dose × 0,5 ^ (Δt / meia-vida)
+ * Modelo farmacocinético de um compartimento com absorção de 1ª ordem
+ * (função de Bateman), o padrão para cafeína oral:
  *
- * O “último café” resolve o instante T mais tarde em que uma dose D
- * ainda deixa o total abaixo do teto na hora de dormir:
- *   existente(deitar) + D × 0,5^((deitar − T) / τ) ≤ teto
- *   T = deitar − τ × log2(D / folga)
+ *   A(t) = F · D · ka / (ka − ke) · (e^(−ke·t) − e^(−ka·t))      t ≥ 0
+ *
+ *   D   dose ingerida (mg)              F  biodisponibilidade ≈ 0,99 → 1
+ *   ke  eliminação = ln 2 / t½          t½ ajustável (3–7 h; média ≈ 5 h)
+ *   ka  absorção   = ln 2 / t½abs       t½abs ≈ 9,5 min → ka ≈ 4,4 /h
+ *
+ * Com t½ = 5 h o pico (Tmax = ln(ka/ke) / (ka − ke)) cai ~49 min depois da
+ * xícara, com ~89% da dose no corpo — bate com a literatura (pico em 30–60 min).
+ * Antes o modelo era “absorção instantânea”: a curva saltava para 100% da dose
+ * no minuto zero, o que não acontece.
+ *
+ * “Último café” (dose D, teto L, hora de deitar B):
+ *   existente(B) + D · g(B − T) ≤ L,  com g = A/D (curva de uma dose unitária)
+ * Só vale o ramo DESCENDENTE de g (B − T ≥ Tmax): uma xícara tomada logo antes
+ * de deitar ainda estaria subindo durante o sono. Se D · gmax ≤ folga, qualquer
+ * horário serve. Resolvido por bisseção (g é monotônica nesse ramo).
  */
 
 const STORAGE_KEY = 'grao:v1';
@@ -15,6 +27,9 @@ const DAY_START_HOUR = 4;
 const HISTORY_DAYS = 14;
 const WEEK_LABELS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 const CHART_SAMPLES = 280;
+const ABSORB_HALF_LIFE_H = 0.158; // ≈ 9,5 min
+const KA_PER_MS = Math.LN2 / (ABSORB_HALF_LIFE_H * 36e5);
+const BIOAVAILABILITY = 1;
 
 const CATALOG = [
     { id: 'espresso', name: 'Espresso', hint: '50 ml', mg: 63, icon: '☕' },
@@ -103,14 +118,24 @@ function halfLifeMs() {
     return state.settings.halfLifeHours * 60 * 60 * 1000;
 }
 
-/**
- * Cafeína restante de uma dose no instante `at`.
- * Antes da ingestão o valor é 0; depois cai pela metade a cada meia-vida.
- */
+/** Fração de uma dose unitária no corpo Δt ms depois da ingestão (Bateman). */
+function unitCurve(dt, tau) {
+    if (dt <= 0) return 0;
+    const ke = Math.LN2 / tau;
+    const ka = KA_PER_MS;
+    return BIOAVAILABILITY * (ka / (ka - ke)) * (Math.exp(-ke * dt) - Math.exp(-ka * dt));
+}
+
+/** Instante do pico (ms após a dose) e fração da dose nesse pico. */
+function unitPeak(tau) {
+    const ke = Math.LN2 / tau;
+    const tmax = Math.log(KA_PER_MS / ke) / (KA_PER_MS - ke);
+    return { tmax, gmax: unitCurve(tmax, tau) };
+}
+
+/** Cafeína de uma dose no corpo no instante `at` (0 antes de tomar). */
 function remainingFromDose(mg, takenAt, at, tau) {
-    const dt = at - takenAt;
-    if (dt < 0) return 0;
-    return mg * Math.pow(0.5, dt / tau);
+    return mg * unitCurve(at - takenAt, tau);
 }
 
 function totalAt(at, drinks = state.drinks) {
@@ -161,13 +186,30 @@ function statusFor(mg, threshold) {
     return 'Pico alto. Água, luz e movimento ajudam mais do que mais café.';
 }
 
-function toast(message) {
+function toast(message, action) {
     const region = $('toast-region');
     const el = document.createElement('div');
     el.className = 'toast';
-    el.textContent = message;
+    const text = document.createElement('span');
+    text.textContent = message;
+    el.appendChild(text);
+    let timer = 0;
+    if (action) {
+        el.classList.add('has-action');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'toast-action';
+        btn.textContent = action.label;
+        btn.addEventListener('click', () => {
+            clearTimeout(timer);
+            el.remove();
+            action.run();
+        });
+        el.appendChild(btn);
+    }
+    while (region.childElementCount >= 3) region.firstElementChild.remove();
     region.appendChild(el);
-    setTimeout(() => el.remove(), 2400);
+    timer = setTimeout(() => el.remove(), action ? 5200 : 2400);
 }
 
 function announce(message) {
@@ -196,9 +238,23 @@ function addDrink({ name, mg, icon, at }) {
 }
 
 function removeDrink(id) {
+    const removed = state.drinks.find((d) => d.id === id);
+    if (!removed) return;
     state.drinks = state.drinks.filter((d) => d.id !== id);
     persist();
     render();
+    announce(`Removido ${removed.name}.`);
+    toast(`${removed.name} removido`, {
+        label: 'Desfazer',
+        run: () => {
+            if (state.drinks.some((d) => d.id === removed.id)) return;
+            state.drinks.push(removed);
+            state.drinks.sort((a, b) => a.at - b.at);
+            persist();
+            render();
+            announce(`${removed.name} restaurado.`);
+        }
+    });
 }
 
 function catalogById(id) {
@@ -206,10 +262,6 @@ function catalogById(id) {
 }
 
 /* ---------- Corte para o sono ---------- */
-
-function log2(n) {
-    return Math.log(n) / Math.LN2;
-}
 
 function cutoffForDose(now, bed, doseMg) {
     const threshold = state.settings.sleepThresholdMg;
@@ -219,33 +271,68 @@ function cutoffForDose(now, bed, doseMg) {
     if (slack <= 0) {
         return { kind: 'over', existingAtBed };
     }
-    if (doseMg <= slack) {
+
+    const tau = halfLifeMs();
+    const { tmax, gmax } = unitPeak(tau);
+    if (doseMg * gmax <= slack) {
         return { kind: 'anytime', existingAtBed, slack };
     }
 
-    const tau = halfLifeMs();
-    const wait = tau * log2(doseMg / slack);
-    const latest = new Date(bed.getTime() - wait);
+    // Bisseção no ramo descendente: menor espera Δ ≥ Tmax com D·g(Δ) ≤ folga.
+    const target = slack / doseMg;
+    let lo = tmax;
+    let hi = tmax + 12 * tau;
+    for (let i = 0; i < 40; i += 1) {
+        const mid = (lo + hi) / 2;
+        if (unitCurve(mid, tau) > target) lo = mid;
+        else hi = mid;
+    }
+    const latest = new Date(bed.getTime() - hi);
     if (latest < now) {
         return { kind: 'late', latest, existingAtBed, slack };
     }
     return { kind: 'ok', latest, existingAtBed, slack };
 }
 
+/**
+ * Primeiro instante a partir de agora em que o total fica abaixo do teto e não
+ * volta a subir acima dele (doses recentes ainda estão sendo absorvidas, então
+ * a curva pode subir antes de cair). Varre em passos de 5 min e refina.
+ */
 function clearAt(now) {
     const threshold = state.settings.sleepThresholdMg;
-    if (totalAt(now.getTime()) <= threshold) return now;
-
-    const tau = halfLifeMs();
-    let lo = now.getTime();
-    let hi = lo + 3 * tau;
-    if (totalAt(hi) > threshold) hi += 4 * tau;
-    for (let i = 0; i < 28; i += 1) {
+    const start = now.getTime();
+    const step = 5 * 60 * 1000;
+    const horizon = start + 48 * 36e5;
+    let lastAbove = -1;
+    for (let t = start; t <= horizon; t += step) {
+        if (totalAt(t) > threshold) lastAbove = t;
+    }
+    if (lastAbove < 0) return now;
+    let lo = lastAbove;
+    let hi = Math.min(horizon, lastAbove + step);
+    for (let i = 0; i < 20; i += 1) {
         const mid = (lo + hi) / 2;
         if (totalAt(mid) > threshold) lo = mid;
         else hi = mid;
     }
     return new Date(hi);
+}
+
+/** Próximo pico (se a curva ainda está subindo por causa de uma dose recente). */
+function upcomingPeak(now) {
+    const t0 = now.getTime();
+    const tau = halfLifeMs();
+    const { tmax } = unitPeak(tau);
+    const recent = state.drinks.filter((d) => d.at <= t0 && t0 - d.at < tmax);
+    if (!recent.length) return null;
+    let best = { t: t0, mg: totalAt(t0) };
+    const end = Math.max(...recent.map((d) => d.at)) + tmax * 1.4;
+    for (let t = t0; t <= end; t += 60 * 1000) {
+        const mg = totalAt(t);
+        if (mg > best.mg) best = { t, mg };
+    }
+    return best.t > t0 + 60 * 1000 ? best : null;
 }
 
 /* ---------- Render ---------- */
@@ -270,14 +357,25 @@ function renderHero(now) {
 
     const today = drinksToday(now);
     const ingested = today.reduce((sum, d) => sum + d.mg, 0);
-    const peak = today.length
-        ? Math.max(...today.map((d) => totalAt(d.at + 60 * 1000)))
-        : mg;
-    const tauH = state.settings.halfLifeHours;
+    const tau = halfLifeMs();
+    const { tmax } = unitPeak(tau);
+    // Pico do dia: maior valor da curva desde o início do dia (amostras de 5 min).
+    let peak = mg;
+    if (today.length) {
+        const from = caffeineDayStart(now).getTime();
+        const to = Math.max(now.getTime(), today[today.length - 1].at + tmax * 1.5);
+        for (let t = from; t <= to; t += 5 * 60 * 1000) peak = Math.max(peak, totalAt(t));
+    }
+    const tauH = String(state.settings.halfLifeHours).replace('.', ',');
+    const rising = upcomingPeak(now);
+    if (rising) {
+        $('status-label').textContent = `Subindo — a última xícara ainda está sendo absorvida. Pico de ~${Math.round(rising.mg)} mg às ${formatTime(new Date(rising.t))}.`;
+    }
+    $('hero-level').dataset.trend = rising ? 'up' : mg >= 2 ? 'down' : 'flat';
 
     $('hero-meta').textContent = today.length
-        ? `Hoje: ${Math.round(ingested)} mg ingeridos · pico ~ ${Math.round(peak)} mg · meia-vida ${tauH} h`
-        : `A cafeína cai pela metade a cada ${tauH} horas. Toque numa xícara para começar.`;
+        ? `Hoje: ${Math.round(ingested)} mg ingeridos · pico ~${Math.round(peak)} mg · meia-vida ${tauH} h`
+        : `Cada dose atinge o pico ~${Math.round(tmax / 60000)} min depois e cai pela metade a cada ${tauH} h. Toque numa xícara para começar.`;
 }
 
 function renderSleep(now) {
@@ -608,10 +706,21 @@ function showHover(clientX) {
     hover.hidden = false;
     $('chart-hover-time').textContent = formatTime(new Date(t));
     $('chart-hover-mg').textContent = `${mg < 10 ? mg.toFixed(1) : Math.round(mg)} mg`;
+    // Mira: linha vertical + ponto sobre a curva (DOM, sem redesenhar o canvas).
+    const x = xOf(t);
+    const y = yOf(mg);
+    const cursor = $('chart-cursor');
+    cursor.hidden = false;
+    cursor.style.transform = `translateX(${x.toFixed(1)}px)`;
+    const dot = $('chart-dot');
+    dot.style.transform = `translateY(${y.toFixed(1)}px)`; // o X vem do cursor pai
+    // Balão fica do lado oposto ao dedo para não ficar embaixo dele.
+    hover.classList.toggle('is-right', x < chart.width * 0.45);
 }
 
 function hideHover() {
     $('chart-hover').hidden = true;
+    $('chart-cursor').hidden = true;
 }
 
 function render() {
@@ -626,15 +735,24 @@ function render() {
 
 /* ---------- Modais ---------- */
 
+let modalOpener = null;
+
 function openModal(id) {
     const el = $(id);
+    modalOpener = document.activeElement;
     el.hidden = false;
+    document.body.classList.add('has-modal');
     const close = el.querySelector('.icon-btn');
     close?.focus();
 }
 
 function closeModal(id) {
-    $(id).hidden = true;
+    const el = $(id);
+    if (el.hidden) return;
+    el.hidden = true;
+    if (!document.querySelector('.modal-backdrop:not([hidden])')) document.body.classList.remove('has-modal');
+    if (modalOpener && document.contains(modalOpener)) modalOpener.focus({ preventScroll: true });
+    modalOpener = null;
 }
 
 function toLocalInput(date) {
@@ -687,9 +805,15 @@ function bind() {
         event.preventDefault();
         const name = $('custom-name').value.trim() || 'Dose';
         const mg = Number($('custom-mg').value);
-        const when = $('custom-when').value ? new Date($('custom-when').value) : new Date();
-        if (!Number.isFinite(mg) || mg <= 0) return;
-        addDrink({ name, mg, icon: '✨', at: when.getTime() });
+        let when = $('custom-when').value ? new Date($('custom-when').value) : new Date();
+        if (!Number.isFinite(when.getTime())) when = new Date();
+        if (!Number.isFinite(mg) || mg <= 0) {
+            $('custom-mg').focus();
+            return;
+        }
+        // Registro é do que já foi bebido: no máximo “agora”, no mínimo 14 dias atrás.
+        const at = clamp(when.getTime(), Date.now() - HISTORY_DAYS * 864e5, Date.now());
+        addDrink({ name, mg, icon: '✨', at });
         closeModal('custom-modal');
     });
 
@@ -714,18 +838,32 @@ function bind() {
         const a = document.createElement('a');
         a.href = url;
         a.download = `grao-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        a.remove();
+        // Revogar no mesmo tick cancela o download no Safari/Firefox.
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
         toast('Histórico exportado');
     });
 
     $('btn-clear').addEventListener('click', () => {
-        if (!confirm('Apagar todos os cafés registrados neste aparelho?')) return;
+        if (!state.drinks.length) {
+            toast('Nada para apagar');
+            return;
+        }
+        const backup = state.drinks.slice();
         state.drinks = [];
         persist();
         closeModal('settings-modal');
         render();
-        toast('Histórico apagado');
+        toast('Histórico apagado', {
+            label: 'Desfazer',
+            run: () => {
+                state.drinks = backup;
+                persist();
+                render();
+            }
+        });
     });
 
     const canvas = $('curve');
@@ -739,7 +877,11 @@ function bind() {
         }
         showHover(event.clientX);
     });
-    canvas.addEventListener('pointerup', () => setTimeout(hideHover, 900));
+    let hideTimer = 0;
+    canvas.addEventListener('pointerup', (event) => {
+        clearTimeout(hideTimer);
+        if (event.pointerType !== 'mouse') hideTimer = setTimeout(hideHover, 1400);
+    });
     canvas.addEventListener('pointerleave', hideHover);
     canvas.addEventListener('pointercancel', hideHover);
 
@@ -766,5 +908,6 @@ function bind() {
 
 bind();
 render();
-if (window.LabRuntime) LabRuntime.createInterval(render, 30_000).start();
-else setInterval(render, 30_000);
+// 15 s: a curva com absorção muda rápido na primeira hora depois de uma xícara.
+if (window.LabRuntime) LabRuntime.createInterval(render, 15_000).start();
+else setInterval(render, 15_000);

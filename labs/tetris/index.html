@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#fafbfc">
     <title>Tetris 90s — clássico estilo Game Boy | Diogo Paulino</title>
-    <meta name="description" content="Tetris clássico com visual de Game Boy, controles por teclado e toque, próxima peça, pontuação e recorde salvo no navegador.">
+    <meta name="description" content="Tetris com visual de Game Boy e regras modernas: rotação SRS com wall kicks, saco de 7, peça guardada, sombra, T-spin, DAS/ARR ajustáveis, teclado e toque.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/tetris/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -19,12 +19,12 @@
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/tetris/">
     <meta property="og:title" content="Tetris 90s — clássico estilo Game Boy | Diogo Paulino">
-    <meta property="og:description" content="Tetris clássico com visual de Game Boy, controles por teclado e toque, próxima peça, pontuação e recorde salvo no navegador.">
+    <meta property="og:description" content="Tetris com visual de Game Boy e regras modernas: rotação SRS com wall kicks, saco de 7, peça guardada, sombra, T-spin, DAS/ARR ajustáveis, teclado e toque.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Tetris 90s — clássico estilo Game Boy | Diogo Paulino">
-    <meta name="twitter:description" content="Tetris clássico com visual de Game Boy, controles por teclado e toque, próxima peça, pontuação e recorde salvo no navegador.">
+    <meta name="twitter:description" content="Tetris com visual de Game Boy e regras modernas: rotação SRS com wall kicks, saco de 7, peça guardada, sombra, T-spin, DAS/ARR ajustáveis, teclado e toque.">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
     <link rel="stylesheet" href="/assets/fonts/press-start-2p/font.css">
     <script type="application/ld+json">
     {
@@ -34,7 +34,7 @@
           "@type": "WebApplication",
           "name": "Tetris 90s",
           "url": "https://diogopaulino.com.br/labs/tetris/",
-          "description": "Tetris clássico com visual de Game Boy, controles por teclado e toque, próxima peça, pontuação e recorde salvo no navegador.",
+          "description": "Tetris com visual de Game Boy e regras modernas: rotação SRS com wall kicks, saco de 7, peça guardada, sombra, T-spin, DAS/ARR ajustáveis, teclado e toque.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -84,34 +84,44 @@
 
         <main class="game-boy">
             <div class="screen-border">
-                <div class="power-led"></div>
+                <div class="power-led" aria-hidden="true"></div>
                 <div class="screen-glass">
                     <div class="screen">
+                        <!-- Coluna esquerda: peça guardada e placar da partida. -->
+                        <div class="side side-left">
+                            <div class="panel">
+                                <div class="label">GUARDA</div>
+                                <canvas id="hold" class="mini" width="40" height="24" role="img"
+                                    aria-label="Peça guardada: nenhuma"></canvas>
+                            </div>
+                            <div class="stat">
+                                <div class="label">PONTOS</div>
+                                <div class="value" id="score">0</div>
+                            </div>
+                            <div class="stat">
+                                <div class="label">NÍVEL</div>
+                                <div class="value" id="level">1</div>
+                            </div>
+                            <div class="stat">
+                                <div class="label">LINHAS</div>
+                                <div class="value" id="lines">0</div>
+                            </div>
+                        </div>
                         <div class="game-area">
                             <canvas id="tetris" width="200" height="400" role="img"
                                 aria-label="Tabuleiro do Tetris"></canvas>
+                            <p class="action-text" id="actionText" aria-hidden="true"></p>
                         </div>
-                        <div class="sidebar">
-                            <div class="score-box">
-                                <div class="label">PONTOS</div>
-                                <div id="score">0</div>
+                        <!-- Coluna direita: fila das próximas 3 peças e recorde. -->
+                        <div class="side side-right">
+                            <div class="panel">
+                                <div class="label">PRÓX.</div>
+                                <canvas id="next" class="mini mini-queue" width="40" height="96" role="img"
+                                    aria-label="Próximas peças"></canvas>
                             </div>
-                            <div class="score-box">
+                            <div class="stat">
                                 <div class="label">MELHOR</div>
-                                <div id="highscore">0</div>
-                            </div>
-                            <div class="level-box">
-                                <div class="label">NÍVEL</div>
-                                <div id="level">1</div>
-                            </div>
-                            <div class="level-box">
-                                <div class="label">LINHAS</div>
-                                <div id="lines">0</div>
-                            </div>
-                            <div class="next-box">
-                                <div class="label">PRÓXIMA</div>
-                                <canvas id="next" width="80" height="80" role="img"
-                                    aria-label="Próxima peça"></canvas>
+                                <div class="value" id="highscore">0</div>
                             </div>
                         </div>
                         <!-- Overlay do estado do jogo: pronto, pausa e fim de jogo. O anúncio
@@ -125,7 +135,11 @@
                             </div>
                             <p class="overlay-hint" id="overlayHint">Peças caem devagar</p>
                             <button type="button" class="lcd-btn lcd-btn-go" id="overlayGo">▶ JOGAR</button>
-                            <button type="button" class="lcd-btn lcd-btn-small" id="overlayMenu" hidden>TROCAR MODO</button>
+                            <div class="overlay-row">
+                                <button type="button" class="lcd-btn lcd-btn-small" id="overlayRestart" hidden>↻ REINICIAR</button>
+                                <button type="button" class="lcd-btn lcd-btn-small" id="overlayMenu" hidden>TROCAR MODO</button>
+                                <button type="button" class="lcd-btn lcd-btn-small" id="overlaySettings">⚙ AJUSTES</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -133,26 +147,26 @@
             </div>
             <div class="controls">
                 <div class="d-pad">
-                    <button type="button" class="up" aria-label="Girar peça"></button>
+                    <button type="button" class="up" aria-label="Cima: queda rápida"></button>
                     <button type="button" class="right" aria-label="Mover para a direita"></button>
-                    <button type="button" class="down" aria-label="Descer peça"></button>
+                    <button type="button" class="down" aria-label="Baixo: descer mais rápido"></button>
                     <button type="button" class="left" aria-label="Mover para a esquerda"></button>
                     <div class="center" aria-hidden="true"></div>
                 </div>
                 <div class="action-buttons">
                     <div class="btn-group">
-                        <button type="button" class="btn-b" aria-label="B: queda rápida"></button>
+                        <button type="button" class="btn-b" aria-label="B: girar no sentido anti-horário"></button>
                         <div class="label" aria-hidden="true">B</div>
                     </div>
                     <div class="btn-group">
-                        <button type="button" class="btn-a" aria-label="A: girar peça"></button>
+                        <button type="button" class="btn-a" aria-label="A: girar no sentido horário"></button>
                         <div class="label" aria-hidden="true">A</div>
                     </div>
                 </div>
                 <div class="option-buttons">
                     <div class="option-group">
-                        <button type="button" class="btn-select" aria-label="Select: reiniciar partida"></button>
-                        <div class="label" aria-hidden="true">SELECT</div>
+                        <button type="button" class="btn-select" aria-label="Select: guardar peça"></button>
+                        <div class="label" aria-hidden="true">GUARDA</div>
                     </div>
                     <div class="option-group">
                         <button type="button" class="btn-start" aria-label="Start: jogar ou pausar"></button>
@@ -160,7 +174,7 @@
                     </div>
                 </div>
             </div>
-            <div class="speaker">
+            <div class="speaker" aria-hidden="true">
                 <div class="slot"></div>
                 <div class="slot"></div>
                 <div class="slot"></div>
@@ -173,17 +187,62 @@
         <p id="gameStatus" class="sr-only" role="status" aria-live="polite"></p>
 
         <div class="instructions">
-            <p class="touch-only"><strong>Toque</strong> na tela para girar • <strong>arraste</strong> para os lados
-                para mover • <strong>arraste para cima</strong> para derrubar</p>
-            <p class="fine-only"><strong>← →</strong> mover • <strong>↑</strong> girar • <strong>↓</strong> descer • <strong>Espaço</strong> derrubar</p>
-            <p class="fine-only"><strong>Enter</strong> ou <strong>Start</strong> jogar/pausar • <strong>R</strong> recomeçar</p>
+            <p class="touch-only"><strong>Toque</strong> gira • <strong>arraste</strong> para os lados move •
+                <strong>arraste para baixo</strong> desce • <strong>deslize rápido para baixo</strong> derruba •
+                <strong>deslize para cima</strong> guarda</p>
+            <p class="fine-only"><strong>← →</strong> mover • <strong>↓</strong> descer • <strong>Espaço</strong> derrubar •
+                <strong>↑ / X</strong> girar • <strong>Z</strong> girar ao contrário • <strong>C / Shift</strong> guardar</p>
+            <p class="fine-only"><strong>Enter / Esc</strong> pausa • <strong>R</strong> recomeçar</p>
         </div>
+
+        <!-- Ajustes de manuseio no padrão dos Tetris modernos: DAS (atraso até a
+             repetição), ARR (intervalo entre repetições) e velocidade da queda suave. -->
+        <dialog class="settings" id="settings" aria-labelledby="settingsTitle">
+            <form method="dialog" class="settings-card">
+                <div class="settings-head">
+                    <h2 id="settingsTitle">Ajustes</h2>
+                    <button type="submit" class="settings-close" aria-label="Fechar ajustes">✕</button>
+                </div>
+                <label class="setting">
+                    <span class="setting-name">DAS <small>atraso até repetir</small></span>
+                    <input type="range" id="setDas" min="50" max="300" step="1">
+                    <output for="setDas" id="outDas">167 ms</output>
+                </label>
+                <label class="setting">
+                    <span class="setting-name">ARR <small>intervalo da repetição</small></span>
+                    <input type="range" id="setArr" min="0" max="100" step="1">
+                    <output for="setArr" id="outArr">33 ms</output>
+                </label>
+                <label class="setting">
+                    <span class="setting-name">Queda suave <small>× gravidade</small></span>
+                    <select id="setSdf">
+                        <option value="5">5×</option>
+                        <option value="10">10×</option>
+                        <option value="20">20× (padrão)</option>
+                        <option value="40">40×</option>
+                        <option value="0">Instantânea</option>
+                    </select>
+                </label>
+                <label class="setting setting-check">
+                    <input type="checkbox" id="setGhost">
+                    <span class="setting-name">Sombra da peça <small>mostra onde ela vai cair</small></span>
+                </label>
+                <label class="setting setting-check">
+                    <input type="checkbox" id="setHaptics">
+                    <span class="setting-name">Vibração <small>no celular, ao travar e limpar linhas</small></span>
+                </label>
+                <div class="settings-foot">
+                    <button type="button" class="settings-btn ghost" id="setReset">Padrão</button>
+                    <button type="submit" class="settings-btn">Pronto</button>
+                </div>
+            </form>
+        </dialog>
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=5" defer></script>
+    <script src="script.js?v=6" defer></script>
 </body>
 
 </html>

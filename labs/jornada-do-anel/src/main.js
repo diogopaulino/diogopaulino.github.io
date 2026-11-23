@@ -5,10 +5,19 @@
  * (AO, bloom, névoa de altura, raios, grade de cor) e resolução dinâmica; cada
  * capítulo troca a atmosfera com `stage.setPreset` e monta o próprio mundo.
  *
- * Câmera (colisão): do ponto de mira acima do portador até a posição desejada
- * são testadas 16 amostras; a primeira dentro de chão/colisor encurta a distância
- *   d_livre = d · (i − 1)/16 − folga
- * A distância encolhe rápido (20/s) e volta devagar (2,5/s) para não "pular".
+ * Câmera: `camera.js` (pivô suavizado, recentralização, colisão com chão,
+ * colisores e a caixa das minas). Movimento e pulo: `player.js` + config.js.
+ *
+ * Nunca prender (regras de saída):
+ *   carregamento     cada espera (texturas, modelos, impostores, aquecimento)
+ *                    tem prazo (LOAD_TIMEOUT); falha ao montar → volta ao mapa
+ *   queda/fora       −1 coração e volta ao último chão firme (trilha de 8 pontos)
+ *   preso            pedindo movimento sem sair do lugar por 4 s → aviso;
+ *                    8 s → volta ao caminho sozinho (também na pausa)
+ *   pausa            Continuar · Recomeçar capítulo · Voltar ao caminho ·
+ *                    Pular capítulo · Voltar ao mapa
+ *   aba oculta/blur  pausa e solta todas as teclas
+ *   progresso        salvo ao entrar em cada capítulo; o menu oferece "Continuar"
  *
  * Modo infantil (regras de perdão):
  *   vida            5 corações (invulnerável 1,4 s depois de cada golpe)
@@ -22,16 +31,17 @@
 
 import * as THREE from 'three';
 import { createStage, PRESETS } from '../../shared/gfx/stage.js';
-import { pickTier, damp } from '../../shared/gfx/core.js';
+import { pickTier } from '../../shared/gfx/core.js';
 import { preload } from '../../shared/gfx/assets.js';
-import { CHAPTERS, ATMOSPHERES, STORAGE_KEY, CAMERA } from './config.js?v=31';
-import { clamp, lerp, formatTime, wait } from './utils.js?v=31';
-import { Input } from './input.js?v=31';
-import { GameAudio } from './audio.js?v=31';
-import { Hud, statsBlock } from './hud.js?v=31';
-import { Player } from './player.js?v=31';
-import { nearestInteractable } from './actors.js?v=31';
-import { buildChapter } from './chapters.js?v=31';
+import { CHAPTERS, ATMOSPHERES, STORAGE_KEY, CAMERA, LOAD_TIMEOUT } from './config.js?v=32';
+import { clamp, lerp, formatTime, wait, withTimeout } from './utils.js?v=32';
+import { CameraRig } from './camera.js?v=32';
+import { Input } from './input.js?v=32';
+import { GameAudio } from './audio.js?v=32';
+import { Hud, statsBlock } from './hud.js?v=32';
+import { Player } from './player.js?v=32';
+import { nearestInteractable } from './actors.js?v=32';
+import { buildChapter } from './chapters.js?v=32';
 import { Guide } from '../../shared/gfx/guide.js?v=1';
 
 Object.assign(PRESETS, ATMOSPHERES);
@@ -62,8 +72,11 @@ class Game {
         this.fpsAccum = 0;
         this.orbit = 0.6;
         this.pendingChapter = 0;
-        this.camFree = CAMERA.distance;
         this.loadToken = 0;
+        /** trilha de chão firme (mais recente no fim) para respawn de queda/preso */
+        this.trail = [];
+        this.stuck = { x: 0, z: 0, t: 0, warned: false };
+        this.loopError = false;
         this.fadeEl = document.getElementById('fade');
         this.lastFade = -1;
         this.guide = new Guide(document.getElementById('guide'));
@@ -81,7 +94,9 @@ class Game {
             volume: 70,
             muted: false,
             best: 0,
-            unlocked: 0
+            unlocked: 0,
+            /** progresso ao entrar no último capítulo jogado (menu → "Continuar") */
+            saved: null
         };
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
@@ -131,21 +146,29 @@ class Game {
         this.audio = new GameAudio();
         this.player = new Player(this.scene);
         this.player.root.visible = false;
+        this.rig = new CameraRig(this.camera);
         this._bindUi();
 
         preload({ models: ['antique_estoc', 'wooden_lantern_01'] });
-        stage.start((dt) => this._update(dt));
-        await this.player.equip({ drawn: false });
-        await this._loadChapter(0, { menu: true });
+        stage.start((dt) => this._safeUpdate(dt));
+        await withTimeout(this.player.equip({ drawn: false }), 8000);
+        const ok = await this._loadChapter(0, { menu: true });
+        if (ok === null) {
+            this.hud.showError('O cenário não pôde ser montado. Recarregue a página.');
+            return;
+        }
         this.hud.setLoading(1, 'A estrada espera.');
         this.hud.hideLoading();
-        this._refreshChapterList();
+        // menu já aponta para onde a jornada parou
+        const saved = this.settings.saved;
+        if (saved && saved.chapter > 0 && saved.chapter <= this.settings.unlocked) this.pendingChapter = saved.chapter;
 
         this.hud.el.qualitySelect.value = this.settings.quality;
         this.hud.el.volumeSlider.value = String(this.settings.volume);
         this.hud.setVolumeLabel(this.settings.volume);
         this.hud.setBest(this.settings.best);
         this.hud.setMuted(this.settings.muted);
+        this._refreshChapterList();
         this.hud.showMenu(true);
         this.state = 'menu';
         this.hud.setState('menu');
@@ -157,6 +180,13 @@ class Game {
             this.pendingChapter = i;
             this._refreshChapterList();
         });
+        this.hud.setStartLabel(this._canContinue() ? `Continuar · ${CHAPTERS[this.pendingChapter].roman}` : 'Jogar');
+    }
+
+    /** O capítulo escolhido é o salvo (e não o primeiro)? Então "Continuar" restaura o progresso. */
+    _canContinue() {
+        const s = this.settings.saved;
+        return Boolean(s && s.chapter > 0 && s.chapter === this.pendingChapter);
     }
 
     _bindUi() {
@@ -170,8 +200,15 @@ class Game {
             this.audio.setVolume(this.settings.volume / 100);
             this.saveSettings();
         });
-        document.getElementById('startButton').addEventListener('click', () => this.start(this.pendingChapter));
+        document.getElementById('startButton').addEventListener('click', () => this.start(this.pendingChapter, { resume: this._canContinue() }));
         document.getElementById('resumeButton').addEventListener('click', () => this.resume());
+        document.getElementById('restartButton')?.addEventListener('click', () => this.restartChapter());
+        document.getElementById('unstuckButton')?.addEventListener('click', () => {
+            this.resume();
+            this._unstick('Você voltou para o caminho.');
+        });
+        document.getElementById('skipChapterButton')?.addEventListener('click', () => this.skipChapter());
+        document.getElementById('errorReload')?.addEventListener('click', () => location.reload());
         document.getElementById('pauseMenuButton').addEventListener('click', () => this.toMenu());
         document.getElementById('retryButton').addEventListener('click', () => this.retry());
         document.getElementById('defeatMenuButton').addEventListener('click', () => this.toMenu());
@@ -190,7 +227,15 @@ class Game {
         this.skipEl?.addEventListener('click', () => this._skip());
         // aba oculta: o palco já para de desenhar; o jogo pausa para não voltar no meio de um perigo
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden && this.state === 'playing') this.pause();
+            if (document.hidden) {
+                this.input.release();
+                if (this.state === 'playing') this.pause();
+            }
+        });
+        // janela perdeu o foco (alt-tab, notificação): pausa e solta teclas presas
+        window.addEventListener('blur', () => {
+            this.input.release();
+            if (this.state === 'playing') this.pause();
         });
         // Esc solta o mouse sem chegar como tecla: soltar o mouse jogando abre a pausa
         document.addEventListener('pointerlockchange', () => {
@@ -204,7 +249,7 @@ class Game {
             else if (this.state === 'pause') this.resume();
         });
         this.input.on('camera', () => {
-            const dists = [4.4, 6.4, 9.4];
+            const dists = CAMERA.presets;
             const i = dists.findIndex((d) => Math.abs(this.player.camDist - d) < 0.3);
             this.player.camDist = dists[(i + 1) % dists.length];
         });
@@ -268,6 +313,9 @@ class Game {
         });
         stick.addEventListener('pointerup', end);
         stick.addEventListener('pointercancel', end);
+        stick.addEventListener('lostpointercapture', end);
+        // pausa/blur soltam tudo: o pino volta ao centro
+        this.input.on('released', end);
 
         const lookZone = document.getElementById('lookZone');
         let lookId = null;
@@ -282,8 +330,9 @@ class Game {
         lookZone?.addEventListener('pointermove', (e) => {
             if (lookId !== e.pointerId) return;
             // o toque gira mais por pixel que o mouse travado (tela pequena)
-            this.input.lookX += (e.clientX - lx) * 2.2;
-            this.input.lookY += (e.clientY - ly) * 2.2;
+            const k = CAMERA.touchSens / CAMERA.mouseSens;
+            this.input.lookX += (e.clientX - lx) * k;
+            this.input.lookY += (e.clientY - ly) * k;
             lx = e.clientX;
             ly = e.clientY;
         });
@@ -292,6 +341,28 @@ class Game {
         };
         lookZone?.addEventListener('pointerup', endLook);
         lookZone?.addEventListener('pointercancel', endLook);
+
+        // pular: segurar = pulo alto, toque rápido = pulinho (pointer, não click: resposta imediata)
+        const jump = document.getElementById('btnJump');
+        const jumpUp = () => {
+            this.input.touchJump = false;
+            jump?.classList.remove('is-down');
+        };
+        jump?.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            capturePointer(jump, e.pointerId);
+            jump.classList.add('is-down');
+            if (this.state === 'dialogue') {
+                this._advanceDialogue();
+                return;
+            }
+            this.input.touchJump = true;
+            this.input.jumpPressed = true;
+        });
+        jump?.addEventListener('pointerup', jumpUp);
+        jump?.addEventListener('pointercancel', jumpUp);
+        jump?.addEventListener('lostpointercapture', jumpUp);
+        this.input.on('released', jumpUp);
 
         document.getElementById('btnInteract')?.addEventListener('click', () => {
             if (this.state === 'dialogue') this._advanceDialogue();
@@ -313,6 +384,8 @@ class Game {
      * Troca o mundo: descarta o capítulo anterior, monta o novo, aplica a
      * atmosfera e espera texturas, modelos e impostores (o laço segue rodando,
      * então a floresta assa os impostores enquanto a tela está em fade).
+     * Cada espera tem prazo: o capítulo abre com o que chegou (o resto aparece
+     * depois). Devolve true (pronto), false (carga obsoleta) ou null (falhou).
      */
     async _loadChapter(index, { menu = false } = {}) {
         const token = ++this.loadToken;
@@ -324,17 +397,24 @@ class Game {
         if (this.world) {
             const old = this.world;
             this.world = null;
-            old.dispose();
+            try {
+                old.dispose();
+            } catch (err) { console.warn('[jornada] descarte do capítulo', err); }
         }
-        if (stage.tier !== this.wantedTier() && !stage.software) stage.setTier(this.wantedTier());
-        stage.setPreset(ch.atmosphere);
-        stage.sun.castShadow = PRESETS[ch.atmosphere].sun > 0;
-
-        const world = buildChapter(ch.id, { stage, tier: stage.tier });
-        world.tramplers.push(this.player.trample);
-        this.scene.add(world.group);
-        stage.follow(world.terrain || { heightAt: world.heightAt, bounds: { minY: world.fogBase ?? 0 } });
-        world.applyAtmosphere?.(stage);
+        let world;
+        try {
+            if (stage.tier !== this.wantedTier() && !stage.software) stage.setTier(this.wantedTier());
+            stage.setPreset(ch.atmosphere);
+            stage.sun.castShadow = PRESETS[ch.atmosphere].sun > 0;
+            world = buildChapter(ch.id, { stage, tier: stage.tier });
+            world.tramplers.push(this.player.trample);
+            this.scene.add(world.group);
+            stage.follow(world.terrain || { heightAt: world.heightAt, bounds: { minY: world.fogBase ?? 0 } });
+            world.applyAtmosphere?.(stage);
+        } catch (err) {
+            console.error('[jornada] falha ao montar', ch.id, err);
+            return null;
+        }
         this.audio.setTheme(ch.music);
         // câmera já no lugar para a grama e a floresta gerarem o que vai aparecer
         if (menu) {
@@ -344,53 +424,83 @@ class Game {
             const s = world.spawn;
             this.player.spawn(s.x, s.z, s.yaw, world.heightAt);
             this.player.setHasRing(index > 0);
-            this.camFree = this.player.camDist;
-            this.player.cameraPosition(CAM);
-            this.camera.position.copy(CAM);
-            this.camera.lookAt(this.player.lookAt(LOOK));
+            this.world = world;
+            this.rig.snap(this.player);
+            this.rig.update(1 / 60, this.player, world);
         }
         this.world = world;
-        await Promise.all([world.ready(), this.player.equip(world.gear || {})]);
+        this.trail.length = 0;
+        await withTimeout(Promise.all([world.ready(), this.player.equip(world.gear || {})]), LOAD_TIMEOUT);
         if (token !== this.loadToken) return false;
-        await stage.warmup();
+        await withTimeout(stage.warmup(), 6000);
         return true;
     }
 
-    async start(index = 0) {
+    /**
+     * Começa a jornada num capítulo. `resume`: restaura páginas/glória/tempo
+     * salvos ao entrar nele (menu "Continuar"); senão começa do zero.
+     */
+    async start(index = 0, { resume = false } = {}) {
         if (this.busy) return;
         this.busy = true;
-        await this.audio.unlock();
-        this.audio.setVolume(this.settings.volume / 100);
-        this.audio.setMuted(this.settings.muted);
+        try {
+            await withTimeout(this.audio.unlock(), 1500);
+            this.audio.setVolume(this.settings.volume / 100);
+            this.audio.setMuted(this.settings.muted);
 
-        this.pendingChapter = index;
-        this.elapsed = 0;
-        this.pages = 0;
-        this.score = 0;
-        this.caught = 0;
-        this.kills = 0;
-        this.player.hasRing = index > 0;
-        this.player.maxHealth = 5;
-        this.hud.hideDefeat();
-        this.hud.hideVictory();
-        this.hud.showMenu(false);
-        this.hud.hideDialogue();
-        this.hud.showPause(false);
-        this.hud.showHud(false);
+            this.pendingChapter = index;
+            const saved = resume ? this.settings.saved : null;
+            this.elapsed = saved?.elapsed ?? 0;
+            this.pages = saved?.pages ?? 0;
+            this.score = saved?.score ?? 0;
+            this.caught = saved?.caught ?? 0;
+            this.kills = saved?.kills ?? 0;
+            this.player.hasRing = index > 0;
+            this.player.maxHealth = 5;
+            this.hud.hideDefeat();
+            this.hud.hideVictory();
+            this.hud.showMenu(false);
+            this.hud.hideDialogue();
+            this.hud.showPause(false);
+            this.hud.showHud(false);
 
-        await this._travel(index);
-        this.busy = false;
+            await this._travel(index);
+        } finally {
+            this.busy = false;
+        }
     }
 
     /** Derrota → recomeça o capítulo atual com o progresso que havia ao entrar nele. */
     async retry() {
         if (this.busy) return;
         this.busy = true;
-        Object.assign(this, this.checkpoint);
-        this.hud.hideDefeat();
-        this.hud.showHud(false);
-        await this._travel(this.chapterIndex);
-        this.busy = false;
+        try {
+            Object.assign(this, this.checkpoint);
+            this.hud.hideDefeat();
+            this.hud.showHud(false);
+            await this._travel(this.chapterIndex);
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    /** Pausa → "Recomeçar capítulo": mesmo efeito do "Tentar de novo". */
+    restartChapter() {
+        if (this.state !== 'pause') return;
+        this.hud.showPause(false);
+        this.state = 'transition';
+        this.retry();
+    }
+
+    /**
+     * Pausa → "Pular capítulo": válvula de escape para quem empacou. Abre o
+     * próximo capítulo (sem a glória de concluir); no último, encerra a jornada.
+     */
+    skipChapter() {
+        if (this.state !== 'pause') return;
+        this.hud.showPause(false);
+        this.state = 'playing';
+        this._completeChapter(200, { skipped: true });
     }
 
     /** Botão "Pular": encerra a abertura do capítulo. */
@@ -398,17 +508,26 @@ class Game {
         if (this.state === 'intro') this.introT = 99;
     }
 
-    /** Fade para preto → carrega → abertura do capítulo. */
+    /** Fade para preto → carrega → abertura do capítulo. Falha ao montar → volta ao mapa. */
     async _travel(index) {
         this.state = 'transition';
         this.hud.setState('transition');
         this.input.enabled = false;
+        this.input.release();
+        this.input.exitLock();
+        this.guide.hide();
         this.fadeDir = 1;
         this.hud.setTravel(CHAPTERS[index]);
         await wait(Math.max(60, (1 - this.fade) * 900));
         this.fade = 1;
-        await this._loadChapter(index);
+        const ok = await this._loadChapter(index);
         this.hud.setTravel(null);
+        if (ok === false) return; // outra carga assumiu
+        if (ok === null) {
+            this.busy = false;
+            await this.toMenu(`Não foi possível abrir “${CHAPTERS[index].title}”. Tente de novo ou escolha outro capítulo.`);
+            return;
+        }
         this._beginIntro();
     }
 
@@ -417,10 +536,15 @@ class Game {
         this.hud.setState('intro');
         this.introT = 0;
         this.checkpoint = { pages: this.pages, score: this.score, kills: this.kills, caught: this.caught, elapsed: this.elapsed };
+        // salva onde a jornada está: o menu oferece "Continuar" daqui
+        this.settings.saved = { chapter: this.chapterIndex, ...this.checkpoint };
+        this.settings.unlocked = Math.max(this.settings.unlocked, this.chapterIndex);
+        this.saveSettings();
         this.hintT = 0;
-        this.safe.x = this.player.x;
-        this.safe.z = this.player.z;
-        this.safe.t = 0;
+        this.trail.length = 0;
+        this._markSafe(true);
+        this.stuck.t = 0;
+        this.stuck.warned = false;
         if (this.skipEl) this.skipEl.hidden = false;
         this.player.root.visible = true;
         this.hud.showHud(true);
@@ -444,6 +568,7 @@ class Game {
         this.state = 'pause';
         this.hud.setState('pause');
         this.hud.showPause(true);
+        this.input.release();
         this.input.exitLock();
         // o teclado segue ligado para P/Esc tirarem da pausa (o mundo não anda em 'pause')
     }
@@ -454,33 +579,47 @@ class Game {
         this.hud.setState('playing');
         this.hud.showPause(false);
         this.input.enabled = true;
-        this.input.consumeInteract();
+        this.input.release();
         if (!this.mobile) this.input.requestLock();
     }
 
-    async toMenu() {
+    /** Volta ao menu (opcional: aviso no rodapé do cartão do menu). */
+    async toMenu(notice = '') {
         if (this.busy) return;
         this.busy = true;
-        this.hud.showPause(false);
-        this.hud.hideDefeat();
-        this.hud.hideVictory();
-        this.hud.hideDialogue();
-        this.hud.showHud(false);
-        this.input.exitLock();
-        this.state = 'transition';
-        this.hud.setState('transition');
-        this.fadeDir = 1;
-        await wait(700);
-        this.fade = 1;
-        this.player.root.visible = false;
-        await this._loadChapter(0, { menu: true });
-        this.input.enabled = true;
-        this._refreshChapterList();
-        this.hud.showMenu(true);
-        this.state = 'menu';
-        this.hud.setState('menu');
-        this.fadeDir = -1;
-        this.busy = false;
+        try {
+            this.hud.showPause(false);
+            this.hud.hideDefeat();
+            this.hud.hideVictory();
+            this.hud.hideDialogue();
+            this.hud.showHud(false);
+            this.hud.setTravel(null);
+            this.input.exitLock();
+            this.input.release();
+            this.dialogue = null;
+            this.state = 'transition';
+            this.hud.setState('transition');
+            this.fadeDir = 1;
+            await wait(700);
+            this.fade = 1;
+            this.player.root.visible = false;
+            const ok = await this._loadChapter(0, { menu: true });
+            if (ok === null && !this.world) {
+                this.hud.showError('O cenário não pôde ser montado. Recarregue a página.');
+                return;
+            }
+            this.input.enabled = true;
+            const saved = this.settings.saved;
+            this.pendingChapter = saved && saved.chapter <= this.settings.unlocked ? saved.chapter : Math.min(this.pendingChapter, this.settings.unlocked);
+            this._refreshChapterList();
+            this.hud.showMenu(true);
+            if (notice) this.hud.setMenuNotice(notice);
+            this.state = 'menu';
+            this.hud.setState('menu');
+            this.fadeDir = -1;
+        } finally {
+            this.busy = false;
+        }
     }
 
     toggleMute() {
@@ -490,7 +629,22 @@ class Game {
         this.saveSettings();
     }
 
+    /** Laço protegido: um erro num quadro não derruba o jogo — pausa e deixa recomeçar. */
+    _safeUpdate(dt) {
+        try {
+            this._update(dt);
+        } catch (err) {
+            if (!this.loopError) {
+                this.loopError = true;
+                console.error('[jornada] erro no quadro', err);
+            }
+            if (this.state === 'playing') this.pause();
+        }
+    }
+
     _update(dt) {
+        // dt já vem limitado pelo palco; o jogo limita de novo a 1/20 s (física estável)
+        dt = Math.min(dt, 0.05);
         this.time += dt;
         this.hud.tick(dt);
         this.audio.update(dt);
@@ -529,8 +683,8 @@ class Game {
             return;
         }
         if (this.state === 'dialogue') {
-            // E, Espaço ou clique avançam a fala
-            if (this.input.consumeInteract() | this.input.consumeAttack()) this._advanceDialogue();
+            // E, Espaço, J ou clique avançam a fala
+            if (this.input.consumeInteract() | this.input.consumeAttack() | this.input.consumeJump()) this._advanceDialogue();
         }
         if (this.state === 'dialogue' || this.state === 'defeat' || this.state === 'victory' || this.state === 'scene') {
             this.player.animate(dt, 0);
@@ -548,8 +702,9 @@ class Game {
             this.hudAccum = 0;
         }
 
+        this.rig.look(this.player, this.input, this.time);
         const info = this.player.update(dt, this.input, world);
-        if (info.footstep) this.audio.footstep();
+        if (info.footstep || info.land) this.audio.footstep();
         if (info.strike) {
             const hits = this.player.attackHit(world.goblins);
             for (const g of hits) {
@@ -560,8 +715,10 @@ class Game {
                 }
             }
         }
+        this.rig.recenter(this.player, dt, this.time);
 
         this._updateNpcs(dt);
+        if (this.state !== 'playing') return; // derrota neste quadro
         this._updateInteract();
         this._checkHazards(dt);
         this._followCamera(dt);
@@ -607,6 +764,7 @@ class Game {
         this.camera.lookAt(l);
     }
 
+    /** Abertura: voo da vista do capítulo até a câmera de jogo (3,6 s, suavizado). */
     _updateIntro(dt) {
         this.introT += dt;
         const world = this.world;
@@ -614,9 +772,11 @@ class Game {
         const e = t * t * (3 - 2 * t);
         const o = world.overview;
         const l = world.overviewLook;
-        this.camFree = this.player.camDist;
-        this.player.cameraPosition(CAM, this._freeDistance(world));
-        this.player.lookAt(LOOK);
+        // posição final = câmera de jogo já com colisão
+        this.rig.snap(this.player);
+        this.rig.update(dt, this.player, world);
+        CAM.copy(this.camera.position);
+        LOOK.copy(this.rig.pivot);
         const ox = l.x + o.x;
         const oz = l.z + o.z;
         const oy = Math.max(l.y + o.y, world.heightAt(ox, oz) + 2.4);
@@ -629,36 +789,16 @@ class Game {
             this.input.enabled = true;
             this.input.consumeAttack();
             this.input.consumeInteract();
+            this.input.consumeJump();
             this.bestGoalD = undefined;
             if (this.skipEl) this.skipEl.hidden = true;
             this.hud.say(this.mobile ? 'Siga a seta dourada. Arraste a tela para olhar.' : 'Siga a seta dourada. Clique no mundo para olhar com o mouse.', 3.6);
         }
     }
 
-    /** Maior distância livre entre o ponto de mira e a posição desejada da câmera. */
-    _freeDistance(world) {
-        const want = this.player.camDist;
-        const N = 16;
-        for (let i = 1; i <= N; i++) {
-            const d = (want * i) / N;
-            this.player.cameraPosition(TMP, d);
-            if (world.solidAt(TMP.x, TMP.y, TMP.z, CAMERA.skin)) return Math.max(0.9, (want * (i - 1)) / N - 0.15);
-        }
-        return want;
-    }
-
     _followCamera(dt) {
-        const world = this.world;
-        if (!world) return;
-        const free = this._freeDistance(world);
-        this.camFree = damp(this.camFree, free, free < this.camFree ? 20 : 2.5, dt || 0.016);
-        this.player.cameraPosition(CAM, Math.min(this.camFree, free + 0.4));
-        this.player.lookAt(LOOK);
-        const gy = world.heightAt(CAM.x, CAM.z) + CAMERA.skin;
-        if (CAM.y < gy) CAM.y = gy;
-        const k = 1 - Math.exp(-14 * (dt || 0.016));
-        this.camera.position.lerp(CAM, k);
-        this.camera.lookAt(LOOK);
+        if (!this.world) return;
+        this.rig.update(dt, this.player, this.world);
     }
 
     _updateNpcs(dt) {
@@ -784,15 +924,63 @@ class Game {
         if (!this.mobile) this.input.requestLock();
     }
 
+    /**
+     * Guarda um ponto de chão firme na trilha (no máx. 8, ≥ 2 m entre si).
+     * Firme = no chão, bem acima da fenda e fora de colisores.
+     */
+    _markSafe(force = false) {
+        const p = this.player;
+        const w = this.world;
+        if (!w) return;
+        if (!force && !(p.grounded && p.y > w.fallY + 4 && w.heightAt(p.x, p.z) > w.fallY + 4)) return;
+        if (w.blockedAt(p.x, p.z, 0.45)) return;
+        const last = this.trail[this.trail.length - 1];
+        if (!force && last && Math.hypot(last.x - p.x, last.z - p.z) < 2) return;
+        this.trail.push({ x: p.x, z: p.z });
+        if (this.trail.length > 8) this.trail.shift();
+    }
+
+    /** Leva o portador a um ponto da trilha (`back` = quantos pontos voltar). */
+    _respawn(back = 0) {
+        const p = this.player;
+        const w = this.world;
+        const t = this.trail;
+        const pt = t.length ? t[Math.max(0, t.length - 1 - back)] : w.spawn;
+        // remove o que veio depois (o lugar ruim não vira ponto de volta)
+        if (t.length) t.length = Math.max(1, t.length - back);
+        p.x = pt.x;
+        p.z = pt.z;
+        p.y = w.heightAt(p.x, p.z);
+        p.stop();
+        p.invuln = 1;
+        p.sync();
+        this.rig.snap(p);
+        p.camYaw = p.yaw + Math.PI;
+        this.stuck.t = 0;
+        this.stuck.warned = false;
+    }
+
+    /** Pausa › "Voltar ao caminho" ou detecção automática de "preso". */
+    _unstick(msg) {
+        if (!this.world) return;
+        this._respawn(Math.min(2, Math.max(0, this.trail.length - 1)));
+        this.hud.say(msg, 3);
+    }
+
     _checkHazards(dt) {
         const world = this.world;
         const p = this.player;
-        // chão firme: guarda a posição a cada 0,5 s enquanto o portador pisa bem acima da fenda
+        // posição inválida (NaN) nunca deveria acontecer — se acontecer, volta ao início
+        if (!Number.isFinite(p.x + p.y + p.z)) {
+            this.trail.length = 0;
+            this._respawn(0);
+            return;
+        }
+        // chão firme: tenta guardar um ponto a cada 0,5 s
         this.safe.t += dt;
-        if (this.safe.t > 0.5 && p.grounded && p.y > world.fallY + 4 && world.heightAt(p.x, p.z) > world.fallY + 4) {
+        if (this.safe.t > 0.5) {
             this.safe.t = 0;
-            this.safe.x = p.x;
-            this.safe.z = p.z;
+            this._markSafe();
         }
         if (p.y < world.fallY) {
             // caiu: perde um coração e volta ao último chão firme
@@ -804,14 +992,29 @@ class Game {
                 this._defeat('A fenda engoliu o portador.');
                 return;
             }
-            p.x = this.safe.x;
-            p.z = this.safe.z;
-            p.y = world.heightAt(p.x, p.z);
-            p.vx = p.vz = p.vy = 0;
-            p.sync();
-            this.camFree = p.camDist;
+            this._respawn(0);
             this.hud.say('Cuidado com a beirada! Você voltou para o chão firme.', 3);
             return;
+        }
+        // preso: pede movimento e não sai de um raio de 0,6 m
+        const st = this.stuck;
+        if (p.wantsMove && p.grounded) {
+            st.t += dt;
+            if (Math.hypot(p.x - st.x, p.z - st.z) > 0.6) {
+                st.x = p.x;
+                st.z = p.z;
+                st.t = 0;
+                st.warned = false;
+            }
+            if (st.t > 4 && !st.warned) {
+                st.warned = true;
+                this.hud.say(this.mobile ? 'Preso? Tente pular — ou espere que eu te tiro daí.' : 'Preso? Pule com Espaço — ou espere que eu te tiro daí.', 3.5);
+            }
+            if (st.t > 8) this._unstick('Você voltou para o caminho.');
+        } else {
+            st.t = 0;
+            st.x = p.x;
+            st.z = p.z;
         }
         if (world.shadowZ !== undefined && this.player.z > world.shadowZ && !world.shadowAwake) {
             world.shadowAwake = true;
@@ -820,16 +1023,17 @@ class Game {
         }
     }
 
-    async _completeChapter(hold = 1400) {
+    async _completeChapter(hold = 1400, { skipped = false } = {}) {
         if (this.state === 'transition' || this.state === 'scene') return;
         this.state = 'scene';
         this.hud.setState('transition');
         this.hud.setPrompt('');
         this.guide.hide();
         this.input.enabled = false;
+        this.input.release();
         this.input.exitLock();
-        this.score += 200;
-        this.hud.say(this.chapterIndex === CHAPTERS.length - 1 ? 'A jornada segue…' : 'A estrada continua.', 2.5);
+        if (!skipped) this.score += 200;
+        this.hud.say(skipped ? 'Capítulo pulado. A estrada continua.' : this.chapterIndex === CHAPTERS.length - 1 ? 'A jornada segue…' : 'A estrada continua.', 2.5);
         await wait(hold);
 
         const next = this.chapterIndex + 1;
@@ -840,7 +1044,13 @@ class Game {
             this._victory();
             return;
         }
-        await this._travel(next);
+        try {
+            await this._travel(next);
+        } catch (err) {
+            console.error('[jornada] viagem', err);
+            this.busy = false;
+            this.toMenu('A viagem tropeçou. Escolha o capítulo para continuar.');
+        }
     }
 
     _defeat(reason) {
@@ -867,10 +1077,9 @@ class Game {
         this.input.exitLock();
         this.input.enabled = true;
         const total = this.score + this.pages * 50 + Math.max(0, 600 - Math.floor(this.elapsed));
-        if (total > this.settings.best) {
-            this.settings.best = total;
-            this.saveSettings();
-        }
+        if (total > this.settings.best) this.settings.best = total;
+        this.settings.saved = null; // jornada completa: o menu volta a "Jogar"
+        this.saveSettings();
         this.hud.showVictory(statsBlock([
             ['Glória', String(total)],
             ['Tempo', formatTime(this.elapsed)],
@@ -902,11 +1111,11 @@ class Game {
                 g.player.sync();
                 return [x, g.player.y, z];
             },
-            cam(yaw, pitch = 0.18, dist = 6.4) {
+            cam(yaw, pitch = 0.24, dist = 5) {
                 g.player.camYaw = yaw;
                 g.player.camPitch = pitch;
                 g.player.camDist = dist;
-                g.camFree = dist;
+                g.rig.free = dist;
             },
             /** Câmera livre: congela o jogo em 'pause' e posiciona à mão. */
             free(px, py, pz, tx, ty, tz) {
@@ -940,6 +1149,15 @@ class Game {
             },
             interact() {
                 g.input.interactPressed = true;
+            },
+            /** estado físico do portador (testes de pulo/velocidade) */
+            body() {
+                const p = g.player;
+                return { x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), vy: +p.vy.toFixed(2), speed: +p.speed.toFixed(2), grounded: p.grounded, mode: p.state.mode, state: g.state };
+            },
+            camera() {
+                const c = g.camera.position;
+                return { x: +c.x.toFixed(2), y: +c.y.toFixed(2), z: +c.z.toFixed(2), free: +g.rig.free.toFixed(2), solid: g.world.solidAt(c.x, c.y, c.z, 0) };
             }
         };
     }

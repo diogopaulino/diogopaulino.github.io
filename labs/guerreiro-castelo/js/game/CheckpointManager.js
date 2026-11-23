@@ -1,4 +1,4 @@
-import { STORAGE_KEY } from '../core/assets.js';
+import { STORAGE_KEY } from '../core/assets.js?v=50';
 
 export const CHECKPOINTS = [
     'home_intro',

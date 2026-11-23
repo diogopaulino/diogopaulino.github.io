@@ -147,3 +147,112 @@ export class CineCamera {
         }
     }
 }
+
+/**
+ * Câmera de terceira pessoa do passeio (órbita em volta do ombro).
+ *
+ *   alvo      a = pé + (0; 1,55; 0), suavizado: a ← damp(a, alvo, 10)   (tira o tranco dos degraus)
+ *   posição   c = a + d·(sin ψ·cos θ; sin θ; cos ψ·cos θ)              ψ = guinada, θ = arfagem
+ *   colisão   10 amostras em a→c; a 1ª abaixo do chão + 0,45 m encurta o raio.
+ *             O raio encolhe rápido (λ = 20) e volta devagar (λ = 3), sem "pulos".
+ *   recentra  parado o mouse/dedo por 1,4 s e andando, ψ desliza para trás do herói:
+ *             ψ ← ψ + Δψ·(1 − e^(−λ·dt)),  λ = 0,9·min(1, v / 3,4 m/s)
+ *   lente     fov 52° (paisagem) · 66° (retrato), para o herói e o caminho caberem.
+ */
+export class FollowCamera {
+    constructor(camera, groundAt) {
+        this.camera = camera;
+        this.groundAt = groundAt;
+        this.yaw = 0;
+        this.pitch = 0.32;
+        this.dist = 6.5;
+        this.free = 6.5;
+        this.target = new THREE.Vector3();
+        this.idle = 0;
+        this.override = null; // { pos, look, k } para o final
+        this._look = new THREE.Vector3();
+        this._pos = new THREE.Vector3();
+    }
+
+    /** Posiciona atrás do herói sem suavização (entrada no passeio / volta à trilha). */
+    snap(x, y, z, heading) {
+        this.yaw = heading + Math.PI;
+        this.pitch = 0.32;
+        this.target.set(x, y + 1.55, z);
+        this.free = this.dist;
+        this.idle = 2;
+        this.override = null;
+        this.place(1);
+    }
+
+    /** dx, dy em pixels arrastados; zoom em "cliques" de rolagem. */
+    look(dx, dy, zoom) {
+        if (dx || dy) {
+            this.yaw -= dx * 0.0052;
+            this.pitch = Math.min(1.05, Math.max(-0.12, this.pitch + dy * 0.0042));
+            this.idle = 0;
+        }
+        if (zoom) this.dist = Math.min(13, Math.max(2.8, this.dist * (1 + zoom * 0.12)));
+    }
+
+    /** heading = direção do herói (rad, 0 = +Z); speed em m/s. */
+    update(dt, x, y, z, heading, speed) {
+        this.idle += dt;
+        const k = 1 - Math.exp(-10 * dt);
+        this.target.x += (x - this.target.x) * k;
+        this.target.y += (y + 1.55 - this.target.y) * k;
+        this.target.z += (z - this.target.z) * k;
+        if (this.idle > 1.4 && speed > 0.6) {
+            let d = heading + Math.PI - this.yaw;
+            d = Math.atan2(Math.sin(d), Math.cos(d));
+            this.yaw += d * (1 - Math.exp(-0.9 * Math.min(1, speed / 3.4) * dt));
+        }
+        this.place(dt);
+    }
+
+    place(dt) {
+        const t = this.target;
+        const cp = Math.cos(this.pitch);
+        const dx = Math.sin(this.yaw) * cp;
+        const dy = Math.sin(this.pitch);
+        const dz = Math.cos(this.yaw) * cp;
+        let free = this.dist;
+        const N = 10;
+        for (let i = 1; i <= N; i++) {
+            const d = (this.dist * i) / N;
+            const sx = t.x + dx * d;
+            const sz = t.z + dz * d;
+            if (t.y + dy * d < this.groundAt(sx, sz) + 0.45) {
+                free = Math.max(1.4, d - this.dist / N);
+                break;
+            }
+        }
+        const lam = free < this.free ? 20 : 3;
+        this.free += (free - this.free) * (dt >= 1 ? 1 : 1 - Math.exp(-lam * dt));
+        const dist = Math.min(this.free, this.dist);
+        const pos = this._pos.set(t.x + dx * dist, t.y + dy * dist, t.z + dz * dist);
+        const g = this.groundAt(pos.x, pos.z) + 0.9;
+        if (pos.y < g) pos.y = g;
+        const look = this._look.copy(t);
+        const o = this.override;
+        if (o) {
+            // final: voa até um ponto de vista fixo e olha a menagem (k sobe de 0 a 1)
+            pos.lerp(o.pos, o.k);
+            look.lerp(o.look, o.k);
+        }
+        this.camera.position.copy(pos);
+        this.camera.up.set(0, 1, 0);
+        this.camera.lookAt(look);
+        const a = this.camera.aspect;
+        const fov = a < 0.8 ? 66 : a < 1.3 ? 58 : 52;
+        if (Math.abs(this.camera.fov - fov) > 0.01) {
+            this.camera.fov = fov;
+            this.camera.updateProjectionMatrix();
+        }
+    }
+
+    /** Distância da câmera ao alvo (foco do DOF). */
+    get focus() {
+        return this.camera.position.distanceTo(this.override ? this._look : this.target);
+    }
+}

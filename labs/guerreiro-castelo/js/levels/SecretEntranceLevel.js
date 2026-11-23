@@ -4,8 +4,8 @@
  */
 
 import * as THREE from 'three';
-import { Level } from './Level.js?v=40';
-import { ISLAND_MARKS } from '../world/Island.js?v=40';
+import { Level } from './Level.js?v=50';
+import { ISLAND_MARKS } from '../world/Island.js?v=50';
 
 const _d = new THREE.Vector3();
 

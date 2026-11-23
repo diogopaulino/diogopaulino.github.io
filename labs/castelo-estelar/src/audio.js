@@ -136,7 +136,7 @@ export class FanfareAudio {
         this._nodes.push(o);
     }
 
-    _chime(freq, when, gain = 0.06) {
+    _chime(freq, when, gain = 0.06, track = true) {
         const ctx = this.ctx;
         if (!ctx) return;
         const o = ctx.createOscillator();
@@ -150,7 +150,8 @@ export class FanfareAudio {
         g.connect(this.sfx);
         o.start(when);
         o.stop(when + 1.5);
-        this._nodes.push(o);
+        // só as notas da fanfarra entram na lista de cancelamento (efeitos avulsos não acumulam)
+        if (track) this._nodes.push(o);
     }
 
     playFanfare() {
@@ -194,26 +195,85 @@ export class FanfareAudio {
         });
     }
 
+    /** Ruído branco com decaimento quadrático, criado uma vez e reaproveitado. */
+    _noise() {
+        if (this._noiseBuf) return this._noiseBuf;
+        const n = Math.floor(this.ctx.sampleRate * 0.35);
+        const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+        this._noiseBuf = buf;
+        return buf;
+    }
+
+    /** Toca o ruído por um passa-faixa: estampidos, passos, respingos. */
+    _burst(when, freq, q, gain, rate = 1, dest = this.sfx) {
+        const src = this.ctx.createBufferSource();
+        src.buffer = this._noise();
+        src.playbackRate.value = rate;
+        const bp = this.ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = freq;
+        bp.Q.value = q;
+        const g = this.ctx.createGain();
+        g.gain.value = gain;
+        src.connect(bp);
+        bp.connect(g);
+        g.connect(dest);
+        src.start(when);
+    }
+
     /** Estampido de fogo; `delay` (s) = distância / 340 m/s. */
     firework(delay = 0) {
         if (!this.ctx || !this.enabled) return;
         const t = this.ctx.currentTime + delay;
-        const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.35, this.ctx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
-            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
-        }
-        const src = this.ctx.createBufferSource();
-        src.buffer = buf;
-        const bp = this.ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.value = 1800;
-        const g = this.ctx.createGain();
-        g.gain.value = 0.22;
-        src.connect(bp);
-        bp.connect(g);
-        g.connect(this.sfx);
-        src.start(t);
-        this._chime(880 + Math.random() * 400, t, 0.04);
+        this._burst(t, 1800, 1, 0.22);
+        this._chime(880 + Math.random() * 400, t, 0.04, false);
+    }
+
+    /**
+     * Passo: ruído curto (encurtado por playbackRate) com timbre por piso —
+     * grama abafada (420 Hz), pedra seca (1,6 kHz), água (respingo largo em 2,4 kHz).
+     */
+    step(surface = 'grass') {
+        if (!this.ctx || !this.enabled || this.ctx.state !== 'running') return;
+        const t = this.ctx.currentTime;
+        const r = 0.9 + Math.random() * 0.2;
+        if (surface === 'stone') this._burst(t, 1600 * r, 2.2, 0.05, 7);
+        else if (surface === 'water') this._burst(t, 2400 * r, 0.7, 0.07, 3.2);
+        else this._burst(t, 420 * r, 1.1, 0.07, 6);
+    }
+
+    /** Estrela recolhida: arpejo ascendente que sobe um grau a cada estrela (n = 1…). */
+    pickup(n = 1) {
+        if (!this.ctx || !this.enabled) return;
+        const t = this.ctx.currentTime + 0.02;
+        const scale = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.7];
+        const base = scale[Math.min(scale.length - 1, n - 1)];
+        [1, 1.25, 1.5, 2].forEach((m, i) => this._chime(base * m, t + i * 0.07, 0.05, false));
+        this._harp(base / 2, t, 1.4, 0.05);
+    }
+
+    /**
+     * Final do passeio (sincronizado com a fada: voo de 9,8 s, estrela, fogos):
+     * harpa em escala durante o voo, sinos na estrela e o acorde de Dó dos metais.
+     */
+    finale() {
+        this.init();
+        if (!this.ctx || !this.enabled) return;
+        const t0 = this.ctx.currentTime + 0.05;
+        const harp = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.7, 1318.5, 1568.0, 1760.0, 2093.0];
+        harp.forEach((f, i) => this._harp(f, t0 + 0.2 + i * 0.86, 1.6, 0.045));
+        [1046.5, 1318.5, 1568, 2093, 2637].forEach((f, i) => this._chime(f, t0 + 9.8 + i * 0.11, 0.05));
+        for (const f of [261.63, 329.63, 392.0, 523.25]) this._brass(f, t0 + 10, 4.2, f > 400 ? 0.09 : 0.06);
+    }
+
+    /** Pausa/retoma o relógio do áudio (aba oculta): as notas agendadas não se adiantam. */
+    suspend() {
+        if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {});
+    }
+
+    resume() {
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
     }
 }

@@ -28,7 +28,7 @@
         content="Constelação musical de Diogo Paulino: plante orbes — a altura é a nota, a posição o tempo, e eles pulsam no BPM e se respondem em cânone.">
     <link rel="stylesheet" href="/assets/fonts/oxanium/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=4">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -133,6 +133,11 @@
             <span id="hudMeta">72 BPM · 0 orbes</span>
         </div>
 
+        <button type="button" class="audio-status" id="audioStatus" data-state="idle">
+            <span class="audio-status-dot" aria-hidden="true"></span>
+            <span class="audio-status-text" aria-live="polite">Toque para ligar o som.</span>
+        </button>
+
         <div class="instructions" id="hint">
             <p>Toque para plantar um orbe. Alto é agudo, baixo é grave — a esquerda começa o compasso.</p>
             <p class="sub">Arraste para afinar · toque duplo para apagar · <kbd>1</kbd>–<kbd>4</kbd> modos</p>
@@ -181,7 +186,7 @@
     </div>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=3" defer></script>
+    <script src="script.js?v=4" defer></script>
 </body>
 
 </html>

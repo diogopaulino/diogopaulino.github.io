@@ -12,7 +12,7 @@ import { createHuman, poseHuman, SKIN_TONES } from '../../shared/gfx/human.js';
 import { createParticles } from '../../shared/gfx/particles.js';
 import { seeded, clamp } from '../../shared/gfx/core.js';
 import { buildSteamer } from './ships.js';
-import { kasatoPose, LAYOUT } from './config.js';
+import { kasatoPose, LAYOUT, SHIP_DYN } from './config.js';
 
 const SUITS = [0x2a2a30, 0x3a342c, 0x4a4438, 0x23262e, 0x5a5346, 0x33302a];
 const KIMONO = [0x3a4a7a, 0x5a3a4a, 0x2e4a44, 0x6a5a7a, 0x4a3a2a];
@@ -107,7 +107,7 @@ export function createKasato(ctx, world) {
         group: ship.group,
         update(t, dt, camera) {
             kasatoPose(t, pose);
-            const moving = clamp(pose.speed / 5, 0, 1);
+            const moving = clamp(pose.speed / SHIP_DYN.vmax, 0, 1);
             const g = ship.group;
             g.position.set(pose.x, Math.sin(t * 0.5) * 0.06 * (0.3 + moving), pose.z);
             g.rotation.set(Math.sin(t * 0.42) * 0.006 * (0.4 + moving), pose.heading, Math.sin(t * 0.31 + 1) * 0.008 * (0.4 + moving));

@@ -11,9 +11,9 @@ import { fbm2, smoothstep, lerp, seeded } from '../../shared/gfx/core.js';
 import {
     createCourse, createTerrain, createGrass, createForest, createWater, createPath, createFence, scatter, scatterModel
 } from '../../shared/gfx/terrain.js';
-import { ChapterWorld, own, makeRing, lightShaft, makePage, halo, emitter, addAmbient } from './world.js?v=31';
-import { Batch, trs, block, turned, stoneBridge, addBurrow, addTent, TAU } from './build.js?v=31';
-import { makeVillager, makeWizard, Extra, Critter, createCreature } from './actors.js?v=31';
+import { ChapterWorld, own, makeRing, lightShaft, makePage, halo, emitter, addAmbient } from './world.js?v=32';
+import { Batch, trs, block, turned, stoneBridge, addBurrow, addTent, TAU } from './build.js?v=32';
+import { makeVillager, makeWizard, Extra, Critter, createCreature } from './actors.js?v=32';
 
 /** Tocas: centro da fachada (x, z), direção para onde a porta olha e cor da porta. */
 const MAIN_DEF = { x: -21.5, z: -6.5, face: Math.atan2(8, 7), door: 0x3f7f3a, H: 4.4, R: 10.5, w: 6.8 };

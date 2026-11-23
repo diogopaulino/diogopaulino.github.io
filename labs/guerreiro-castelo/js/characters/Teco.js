@@ -6,9 +6,9 @@
  */
 
 import * as THREE from 'three';
-import { createCreature } from './cast.js?v=40';
-import { MonkeyAI } from '../ai/MonkeyAI.js?v=40';
-import { angleDamp, damp } from '../utils/math.js';
+import { createCreature } from './cast.js?v=50';
+import { MonkeyAI } from '../ai/MonkeyAI.js?v=50';
+import { angleDamp, damp } from '../utils/math.js?v=50';
 
 const MODE = { Idle: 'idle', Walk: 'walk', Run: 'run', Climb: 'run', Shoulder: 'sit', Grab: 'eat', Scared: 'alert', Celebrate: 'roar' };
 

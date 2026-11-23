@@ -658,3 +658,106 @@ header .app-logo .logo-mark {
     .log-item .remove { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     .week-bars { gap: 0.35rem; }
 }
+
+/* --- remaster: mira do gráfico, tendência e toast com desfazer --- */
+.chart-cursor {
+    position: absolute;
+    top: 24px;
+    bottom: 32px;
+    left: 0;
+    width: 0;
+    border-left: 1px dashed color-mix(in srgb, var(--bean, #8a4b2a) 70%, transparent);
+    pointer-events: none;
+    will-change: transform;
+}
+
+.chart-cursor[hidden] {
+    display: none;
+}
+
+.chart-dot {
+    position: absolute;
+    left: -6px;
+    top: -30px; /* compensa o top do cursor: o Y é relativo ao canvas */
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--bean, #8a4b2a);
+    border: 2px solid var(--bg-card, #fff);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--crema, #d9a36a) 35%, transparent);
+}
+
+.chart-hover.is-right {
+    left: auto;
+    right: 12px;
+}
+
+.hero-level[data-trend="up"]::after,
+.hero-level[data-trend="down"]::after {
+    align-self: flex-start;
+    margin-left: 0.35rem;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.2rem 0.4rem;
+    border-radius: 999px;
+}
+
+.hero-level[data-trend="up"]::after {
+    content: "↑";
+    color: var(--bean, #8a4b2a);
+    background: color-mix(in srgb, var(--crema, #d9a36a) 28%, transparent);
+}
+
+.hero-level[data-trend="down"]::after {
+    content: "↓";
+    color: var(--text-tertiary, #64748b);
+    background: var(--ring-track, rgba(15, 23, 42, 0.08));
+}
+
+.toast-region {
+    bottom: max(1.4rem, calc(env(safe-area-inset-bottom, 0px) + 0.8rem));
+    width: min(92vw, 26rem);
+    align-items: center;
+}
+
+.toast {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 100%;
+    pointer-events: auto;
+    animation: toastIn 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.toast.has-action {
+    padding-right: 0.35rem;
+}
+
+.toast-action {
+    min-height: 36px;
+    padding: 0 0.85rem;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--crema, #d9a36a) 85%, #fff);
+    color: #2a1609;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+@media (pointer: coarse) {
+    .toast-action { min-height: 44px; }
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(10px); }
+}
+
+body.has-modal {
+    overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast { animation: none; }
+}

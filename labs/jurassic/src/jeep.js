@@ -1,5 +1,5 @@
 /**
- * Jurassic — o jipe da Reserva Âmbar (Unidade 4) e a sua física arcade.
+ * Jurassic — o jipe da Reserva Âmbar (Unidade 4) e a sua física veicular.
  *
  * Modelo: utilitário aberto de safári, desenho próprio — laterais em chapa
  * perfilada com arcos de roda recortados, capô abaulado, grade de barras
@@ -9,25 +9,49 @@
  * Pintura PBR verde-petróleo com verniz (clearcoat) e emblema de amonite.
  * Frente = +Z, esquerda = +X, rodas em x = ±track/2, z = ±wheelBase/2.
  *
- * FÍSICA
- *   v' = acelerador·accel·aderência  |  freio·brake  |  −atrito·v       (limites: ré e máxima·aderência)
- *   aderência = 1 na trilha, 0,55 fora dela; ×0,85 com chuva
- *   ψ' = −direção·turn·clamp(|v|/5; 0,22; 1)·sinal(v)
+ * FÍSICA (SI; constantes em config.js → JEEP; passo interno ≤ 1/120 s, dt do quadro ≤ 1/20 s)
+ *   rumo ψ: frente f = (sin ψ, cos ψ), esquerda e = (cos ψ, −sin ψ); V = velocidade no mundo
+ *   v = V·f (longitudinal, + para a frente)   u = V·e (deslizamento lateral)
+ *   LONGITUDINAL   m·v' = F_motor − F_freio − F_rol − F_ar − F_mato − m·g·sin θ
+ *     F_motor = acelerador · min(F_max, P / |v|, μ·m·g) · regulador     (torque baixo, depois potência)
+ *     reduzida automática: subindo rampa (tan θ > 0,15 no sentido do movimento) abaixo de 6 m/s,
+ *       F_max = μ·m·g (limite do pneu) — a trilha da crista tem ~33° e um 4×4 em reduzida a vence
+ *     regulador  = clamp((v_reg − v) / 1,5; 0; 1)                       (80 km/h na trilha)
+ *     F_rol = C_rr·m·g · sinal(v)       F_ar = ½·ρ·CdA·v²       F_mato = k_mato·v² (só fora da trilha)
+ *     F_freio = freio · m · min(a_freio, μ·g)   (ABS: nunca trava; não inverte o sentido)
+ *     freio-motor sem acelerador: 350 + 18·|v| N · sem pedal e a < 1 m/s: freio 60 % (assistente de rampa)
+ *     sin θ = (g_frente − g_trás) / entre-eixos  (rampa: sobe devagar, desce embalado)
+ *     μ = 0,75 na trilha · 0,58 no capim · ×0,8 molhado
+ *   GUINADA (bicicleta cinemática + limite de aderência)
+ *     δ = direção · δ_max / (1 + |v|/9)                 (direção mais leve em velocidade, como nos SUVs)
+ *     r_alvo = −v·tan δ / L                              (direita = guinada negativa)
+ *     |r_alvo| ≤ k · a_lat_max / |v|,  k = 1 trilha · 1,08 capim · 1,5 freio de mão
+ *                                                        (sem aderência o carro "sai de frente")
+ *     r' = (r_alvo − r) / τ_guinada                      (τ = 0,12 s de inércia)
+ *   PNEU LATERAL (círculo de atrito)
+ *     a_lat_max = √((μ·g)² − a_long²)                    (frear ou acelerar forte reduz a curva)
+ *     Δu = −u·(1 − e^(−k·h)) limitado a a_lat_max·h      (passou do limite → derrapa e escorrega)
+ *     freio de mão (Espaço): traseira bloqueia → μ_lat × 0,5 e r_alvo × 1,35 (dá para "jogar" a traseira)
+ *   COLISÃO  n = empurrão do obstáculo normalizado;  V −= (1 + e)·min(0, V·n)·n,  e = 0,15
+ *            a componente tangencial perde 10 %; `impact` guarda a velocidade normal (tremor/som)
  * SUSPENSÃO (o chão sob cada roda vem do terreno)
  *   g_i = altura do terreno sob a roda i
- *   arfagem alvo = atan2(g_trás − g_frente, entre-eixos) − 0,010·a      (mergulha ao frear, levanta ao acelerar)
- *   rolagem alvo = atan2(g_esq − g_dir, bitola) + 0,006·direção·v       (inclina para fora da curva)
+ *   arfagem alvo = atan2(g_trás − g_frente, entre-eixos) − 0,008·a_long   (mergulha ao frear, agacha ao acelerar)
+ *   rolagem alvo = atan2(g_esq − g_dir, bitola) + 0,009·a_lat            (inclina para fora da curva; a_lat = v·r)
+ *   arfagem e rolagem: oscilador amortecido θ'' = ω²(θ_alvo − θ) − 2ζω·θ',  ω = 9 rad/s, ζ = 0,45
  *   carroceria: mola-amortecedor  y'' = k·(ȳ − y) − c·y',  k = 90, c = 11  (quica ao passar em lombadas)
+ *   fora da trilha: costela de vaca  ±0,012 rad · min(1, v/8) de vibração nos alvos
  *   curso de cada roda = clamp(g_i − y; ±0,20 m): a roda acompanha o chão dentro do batente
+ * CÂMBIO (só som e HUD): marcha k enquanto v < 0,92·gears[k];  rpm = 850 + 3150·v / gears[k]
  */
 
 import * as THREE from 'three';
-import { JEEP } from './config.js';
+import { JEEP } from './config.js?v=23';
 import { clamp, damp } from '../../shared/gfx/core.js';
 import { pbrMaterial } from '../../shared/gfx/assets.js';
 import { createHero } from '../../shared/gfx/hero.js';
-import { wrapPi } from './utils.js';
-import { rbox, loft, pipe, lathe, merge, mesh, xf, canvasTexture } from './geo.js';
+import { wrapPi } from './utils.js?v=23';
+import { rbox, loft, pipe, lathe, merge, mesh, xf, canvasTexture } from './geo.js?v=23';
 
 const WB = JEEP.wheelBase / 2;
 const TR = JEEP.track / 2;
@@ -380,6 +404,9 @@ export function buildJeep(quality) {
     return { root, body, wheels, lights, lampMat, tailMat, steerWheel, driver };
 }
 
+const G = 9.81;
+const SUB = 1 / 120;
+
 export class Jeep {
     constructor(scene, quality) {
         const b = buildJeep(quality);
@@ -391,13 +418,32 @@ export class Jeep {
         this.y = 0;
         this.vy = 0;
         this.yaw = 0;
+        /** Velocidade no mundo (m/s) e as suas projeções no chassi. */
+        this.vx = 0;
+        this.vz = 0;
         this.speed = 0;
-        this.accelNow = 0;
+        this.slip = 0;
+        this.yawRate = 0;
         this.steer = 0;
+        this.delta = 0;
+        this.throttle = 0;
+        this.brake = 0;
+        this.handbrake = false;
+        this.aLong = 0;
+        this.aLat = 0;
         this.pitch = 0;
         this.roll = 0;
+        this.pitchV = 0;
+        this.rollV = 0;
+        this.odo = 0;
+        this.impact = 0;
+        this.gear = 1;
+        this.rpm = 850;
+        this.reverseHold = 0;
         this.lightsOn = true;
         this.onRoad = true;
+        this.grip = 1;
+        this.collider = null;
         this.head = new THREE.Vector3();
         this.driverState = { mode: 'sit', upper: 'ride', speed: 1 };
         this._out = { x: 0, z: 0, y: 0, speed: 0 };
@@ -407,12 +453,24 @@ export class Jeep {
         this.x = spawn.x;
         this.z = spawn.z;
         this.yaw = spawn.yaw;
-        this.speed = 0;
-        this.steer = 0;
-        this.pitch = 0;
-        this.roll = 0;
+        this.vx = this.vz = 0;
+        this.speed = this.slip = this.yawRate = 0;
+        this.steer = this.delta = 0;
+        this.throttle = this.brake = 0;
+        this.aLong = this.aLat = 0;
+        this.pitch = this.roll = this.pitchV = this.rollV = 0;
         this.vy = 0;
+        this.impact = 0;
+        this.gear = 1;
+        this.rpm = 850;
+        this.reverseHold = 0;
         this.y = world ? world.heightAt(this.x, this.z) : 0;
+        // o jipe também é obstáculo para os dinossauros (dinâmico; ele mesmo se ignora em collide)
+        if (world && !this.collider) this.collider = world.addCollider(this.x, this.z, 1.7, false);
+        if (this.collider) {
+            this.collider.x = this.x;
+            this.collider.z = this.z;
+        }
         this._place(world, 0, true);
     }
 
@@ -425,6 +483,20 @@ export class Jeep {
             // a sombra do farol só é desenhada com ele aceso (o mapa custa uma passada da cena)
             if (l.userData.shadow) l.castShadow = on;
         }
+    }
+
+    /**
+     * Empurrão externo (mordida do rex, batida): soma `dv` m/s na direção (dx, dz)
+     * e um tranco de guinada. Usado pelo knockback de main.js.
+     */
+    push(dx, dz, dv, spin = 0) {
+        const l = Math.hypot(dx, dz) || 1;
+        this.vx += (dx / l) * dv;
+        this.vz += (dz / l) * dv;
+        this.yawRate += spin;
+        this.vy += 1.6;
+        this.pitchV -= 0.8;
+        this.rollV += spin * 0.6;
     }
 
     /** Assenta a carroceria e as rodas no relevo (ver SUSPENSÃO no cabeçalho). */
@@ -442,20 +514,32 @@ export class Jeep {
             if (w.x > 0) gL += w.g * 0.5;
             else gRt += w.g * 0.5;
         }
+        this.slope = (gF - gR) / (WB * 2);
         const target = (gF + gR) * 0.5;
-        const pitchT = Math.atan2(gR - gF, WB * 2) - clamp(this.accelNow, -20, 20) * 0.01;
-        const rollT = Math.atan2(gL - gRt, TR * 2) + this.steer * this.speed * 0.006;
+        // costela de vaca fora da trilha: vibração pequena, só com o jipe andando
+        const rough = this.onRoad ? 0 : 0.012 * Math.min(1, Math.abs(this.speed) / 8);
+        const bumpP = rough * (Math.sin(this.odo * 2.3) + 0.6 * Math.sin(this.odo * 5.1 + 1.7));
+        const bumpR = rough * (Math.sin(this.odo * 1.9 + 0.4) + 0.5 * Math.sin(this.odo * 4.3));
+        const pitchT = Math.atan2(gR - gF, WB * 2) - clamp(this.aLong, -9, 9) * 0.008 + bumpP;
+        const rollT = Math.atan2(gL - gRt, TR * 2) + clamp(this.aLat, -9, 9) * 0.009 + bumpR;
         if (snap) {
             this.y = target;
             this.vy = 0;
             this.pitch = pitchT;
             this.roll = rollT;
+            this.pitchV = this.rollV = 0;
         } else {
             this.vy += (90 * (target - this.y) - 11 * this.vy) * dt;
             this.y += this.vy * dt;
-            this.y = clamp(this.y, target - 0.12, target + 0.3);
-            this.pitch = damp(this.pitch, pitchT, 9, dt);
-            this.roll = damp(this.roll, rollT, 8, dt);
+            if (this.y < target - 0.12) {
+                this.y = target - 0.12;
+                if (this.vy < 0) this.vy = 0;
+            } else if (this.y > target + 0.3) this.y = target + 0.3;
+            // oscilador amortecido (ω = 9, ζ = 0,45)
+            this.pitchV += (81 * (pitchT - this.pitch) - 8.1 * this.pitchV) * dt;
+            this.rollV += (81 * (rollT - this.roll) - 8.1 * this.rollV) * dt;
+            this.pitch = clamp(this.pitch + this.pitchV * dt, -0.5, 0.5);
+            this.roll = clamp(this.roll + this.rollV * dt, -0.5, 0.5);
         }
         this.mesh.position.set(this.x, this.y, this.z);
         this.mesh.rotation.set(0, this.yaw, 0);
@@ -468,47 +552,175 @@ export class Jeep {
         this.head.set(this.x, this.y + 1.75, this.z);
     }
 
-    update(dt, input, world, wet = 0) {
-        const throttle = input.move.z;
-        this.steer = damp(this.steer, input.move.x, 8, dt);
-        const road = world.onRoad(this.x, this.z);
-        this.onRoad = road;
-        const grip = (road ? 1 : 0.55) * (1 - 0.15 * wet);
-        const max = JEEP.maxSpeed * grip;
-        const v0 = this.speed;
+    /** Um passo de integração de `h` segundos (ver FÍSICA no cabeçalho). */
+    _step(h, world, wet) {
+        const J = JEEP;
+        const m = J.mass;
+        const sn = Math.sin(this.yaw);
+        const cs = Math.cos(this.yaw);
+        let v = this.vx * sn + this.vz * cs;
+        let u = this.vx * cs - this.vz * sn;
+        const av = Math.abs(v);
+        const mu = (this.onRoad ? J.muRoad : J.muOff) * (1 - (1 - J.wetGrip) * wet);
+        this.grip = mu;
+        const muG = mu * G;
 
-        if (throttle > 0.08) this.speed += throttle * JEEP.accel * grip * dt;
-        else if (throttle < -0.08) this.speed += throttle * JEEP.brake * dt;
-        else this.speed = damp(this.speed, 0, JEEP.friction, dt);
-        this.speed = clamp(this.speed, -JEEP.reverseMax, Math.max(max, v0 - 12 * dt));
+        // ── longitudinal ──
+        let drive = 0;
+        if (this.throttle !== 0) {
+            const dir = Math.sign(this.throttle);
+            const vDir = v * dir; // velocidade no sentido pedido
+            const cap = dir > 0 ? J.governor : J.reverseMax;
+            const gov = clamp((cap - vDir) / 1.5, 0, 1);
+            // reduzida automática (4×4): subindo rampa devagar, a tração vai até o limite do pneu
+            const climbing = (this.slope || 0) * dir > J.lowRangeSlope && Math.abs(vDir) < J.lowRangeSpeed;
+            const fMax = climbing ? mu * m * G : J.maxForce;
+            drive = dir * Math.abs(this.throttle) * Math.min(fMax, J.power / Math.max(1, Math.abs(vDir)), mu * m * G) * gov;
+        }
+        const crr = this.onRoad ? J.crrRoad : J.crrOff;
+        let resist = crr * m * G + 0.5 * J.airDensity * J.cdA * v * v + (this.onRoad ? 0 : J.rough * v * v);
+        if (this.throttle === 0) resist += J.engineBrake + 18 * av;
+        const grade = -m * G * clamp(this.slope || 0, -0.6, 0.6);
+        let a = (drive + grade) / m;
+        // resistências e freio só se opõem ao movimento (e nunca o invertem)
+        const stop = (resist + this.brake * m * Math.min(J.brakeDecel, muG) + (this.handbrake ? 0.5 * m * muG : 0)) / m;
+        if (av > 0.02) {
+            const dv = -Math.sign(v) * stop * h;
+            const nv = v + a * h + dv;
+            v = Math.sign(nv) !== Math.sign(v) && Math.abs(a) < stop ? 0 : nv;
+        } else {
+            // parado: só sai se a força vencer o atrito estático do conjunto
+            v = Math.abs(a) > stop ? v + (a - Math.sign(a) * stop) * h : 0;
+        }
+        const aLong = (v - (this.vx * sn + this.vz * cs)) / h;
 
-        const turnScale = clamp(Math.abs(this.speed) / 5, 0.22, 1);
-        this.yaw = wrapPi(this.yaw - this.steer * JEEP.turn * turnScale * Math.sign(this.speed || 1) * dt * (Math.abs(this.speed) > 0.05 ? 1 : 0));
+        // velocidade no mundo com o rumo antigo (o pneu só muda v; u segue pela inércia)
+        let wx = sn * v + cs * u;
+        let wz = cs * v - sn * u;
 
+        // ── guinada ──
+        const frontMax = Math.sqrt(Math.max(0.2, muG * muG - aLong * aLong));
+        const latMu = muG * (this.handbrake ? 0.5 : 1);
+        const latMax = Math.sqrt(Math.max(0.2, latMu * latMu - aLong * aLong));
+        let rT = -v * Math.tan(this.delta) / J.wheelBase;
+        if (this.handbrake && Math.abs(v) > 3) rT *= 1.35;
+        // no asfalto/terra firme o pneu dianteiro satura primeiro (sai de frente);
+        // no capim a traseira escapa um pouco; com o freio de mão ela gira de vez
+        const over = this.handbrake ? 1.5 : this.onRoad ? 1.0 : 1.08;
+        const rMax = (over * frontMax) / Math.max(1, Math.abs(v));
+        rT = clamp(rT, -rMax, rMax);
+        this.yawRate += (rT - this.yawRate) * (1 - Math.exp(-h / J.yawLag));
+        this.yaw = wrapPi(this.yaw + this.yawRate * h);
+
+        // ── pneu lateral no rumo novo: tira o deslizamento até o limite do círculo de atrito ──
+        const s2 = Math.sin(this.yaw);
+        const c2 = Math.cos(this.yaw);
+        v = wx * s2 + wz * c2;
+        u = wx * c2 - wz * s2;
+        const want = -u * (1 - Math.exp(-J.latStiff * h));
+        u += clamp(want, -latMax * h, latMax * h);
+        this.vx = s2 * v + c2 * u;
+        this.vz = c2 * v - s2 * u;
+        this.speed = v;
+        this.slip = u;
+        this.aLong = damp(this.aLong, aLong, 12, h);
+        this.aLat = damp(this.aLat, v * this.yawRate, 12, h);
+
+        // ── posição, obstáculos e água ──
         const px = this.x;
         const pz = this.z;
-        let nx = px + Math.sin(this.yaw) * this.speed * dt;
-        let nz = pz + Math.cos(this.yaw) * this.speed * dt;
-        const hit = world.collide(nx, nz, JEEP.radius);
-        nx = hit.x;
-        nz = hit.z;
-        if (hit.hit) this.speed *= Math.pow(0.02, dt);
-        // água funda (lago ou mar): o jipe não entra
-        if (world.flooded(nx, nz)) {
-            nx = px;
-            nz = pz;
-            this.speed *= -0.2;
+        const nx = px + this.vx * h;
+        const nz = pz + this.vz * h;
+        const hit = world.collide(nx, nz, JEEP.radius, this.collider);
+        if (hit.hit) {
+            let ox = hit.x - nx;
+            let oz = hit.z - nz;
+            const ol = Math.hypot(ox, oz) || 1;
+            ox /= ol;
+            oz /= ol;
+            const vn = this.vx * ox + this.vz * oz;
+            if (vn < 0) {
+                this.impact = Math.max(this.impact, -vn);
+                this.vx -= 1.15 * vn * ox;
+                this.vz -= 1.15 * vn * oz;
+                this.vx *= 0.9;
+                this.vz *= 0.9;
+            }
         }
-        this.x = nx;
-        this.z = nz;
-        this.accelNow = damp(this.accelNow, (this.speed - v0) / Math.max(dt, 1e-3), 10, dt);
+        if (world.flooded(hit.x, hit.z)) {
+            // água funda (lago ou mar): o jipe não entra
+            this.impact = Math.max(this.impact, Math.hypot(this.vx, this.vz) * 0.5);
+            this.vx *= -0.2;
+            this.vz *= -0.2;
+        } else {
+            this.x = hit.x;
+            this.z = hit.z;
+        }
+        this.odo += Math.abs(v) * h;
+    }
+
+    update(dt, input, world, wet = 0) {
+        dt = Math.min(dt, 1 / 20);
+        const J = JEEP;
+        const move = input.move;
+        this.handbrake = !!move.handbrake;
+        // pedais: frente = acelerador; trás = freio e, já parado, ré (após 0,25 s segurando)
+        const z = Math.abs(move.z) < 0.08 ? 0 : move.z;
+        this.throttle = 0;
+        this.brake = 0;
+        if (z > 0) {
+            if (this.speed < -0.6) this.brake = z;
+            else this.throttle = z;
+            this.reverseHold = 0;
+        } else if (z < 0) {
+            if (this.speed > 0.6) {
+                this.brake = -z;
+                this.reverseHold = 0;
+            } else {
+                this.reverseHold += dt;
+                if (this.reverseHold > 0.25 || this.speed < -0.2) this.throttle = z;
+                else this.brake = -z;
+            }
+        } else {
+            this.reverseHold = 0;
+            // assistente de rampa: quase parado e sem pedal, o freio segura o jipe
+            if (Math.abs(this.speed) < 1) this.brake = 0.6;
+        }
+
+        // caixa de direção com velocidade finita; ângulo máximo cai com a velocidade
+        const steerIn = clamp(move.x, -1, 1);
+        const rate = J.steerRate * (Math.abs(steerIn) < 0.05 ? 1.4 : 1) * dt;
+        this.steer += clamp(steerIn - this.steer, -rate, rate);
+        this.delta = this.steer * J.steerMax / (1 + Math.abs(this.speed) / 9);
+        this.onRoad = world.onRoad(this.x, this.z);
+
+        const n = Math.max(1, Math.ceil(dt / SUB));
+        const h = dt / n;
+        for (let i = 0; i < n; i++) this._step(h, world, wet);
+        if (this.collider) {
+            this.collider.x = this.x;
+            this.collider.z = this.z;
+        }
         this._place(world, dt);
+
+        // câmbio automático (som e HUD)
+        const av = Math.abs(this.speed);
+        if (this.speed < -0.3) this.gear = -1;
+        else {
+            const G4 = J.gears;
+            let g = 0;
+            while (g < G4.length - 1 && av > G4[g] * (g + 1 === this.gear ? 0.95 : 0.88)) g++;
+            this.gear = g + 1;
+        }
+        const top = this.gear < 0 ? J.reverseMax * 1.2 : J.gears[this.gear - 1];
+        const rpmT = 850 + 3150 * clamp(av / top, 0, 1.05) + (Math.abs(this.throttle) > 0 && av < 1 ? 900 * Math.abs(this.throttle) : 0);
+        this.rpm = damp(this.rpm, rpmT, 10, dt);
 
         // rodas: giro = distância / raio; as dianteiras esterçam
         const spin = (this.speed * dt) / WR;
         for (const w of this.wheels) {
             w.spin.rotation.x += spin;
-            if (w.front) w.pivot.rotation.y = -this.steer * 0.5;
+            if (w.front) w.pivot.rotation.y = -this.delta;
         }
         this.steerWheel.rotation.z = this.steer * 1.9;
         this.driver.update(dt, this.driverState);

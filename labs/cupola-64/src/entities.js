@@ -6,9 +6,9 @@
  */
 
 import * as THREE from 'three';
-import { QUEST, STAR_META } from './config.js?v=13';
+import { QUEST, STAR_META } from './config.js?v=14';
 import { randRange } from './utils.js?v=13';
-import { createCoin, createStar, createFungus, createKingBomb } from './models.js?v=14';
+import { createCoin, createStar, createFungus, createKingBomb } from './models.js?v=15';
 
 const YELLOW = [
     [0, 8], [2, 10], [-2, 10], [4, 14], [-4, 14], [0, 18],

@@ -52,7 +52,8 @@ export function createCamera(ctx) {
     const { camera, canvas, post } = ctx;
     const curves = SHOTS.map((sh) => new THREE.CatmullRomCurve3(sh.pos.map((p) => new THREE.Vector3(...p)), false, 'centripetal'));
     const state = {
-        filmT: 0, playing: false, yaw: 0, pitch: 0, drag: false, lastX: 0, lastY: 0, release: 0
+        filmT: 0, playing: false, yaw: 0, pitch: 0, drag: false, lastX: 0, lastY: 0, release: 0,
+        rate: 1, ended: false
     };
     const pos = new THREE.Vector3();
     const look = new THREE.Vector3();
@@ -83,6 +84,7 @@ export function createCamera(ctx) {
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
+    window.addEventListener('blur', onUp); // arrasto preso quando a janela perde o foco
 
     const resolve = (ref, t, out) => (ref.ship ? toWorld(ref.ship, t, out) : out.set(ref[0], ref[1], ref[2]));
 
@@ -142,23 +144,34 @@ export function createCamera(ctx) {
     return {
         get filmT() { return state.filmT; },
         get playing() { return state.playing; },
-        set playing(v) { state.playing = v; },
+        set playing(v) { state.playing = v; if (v) state.ended = false; },
+        get ended() { return state.ended; },
+        /** Velocidade de reprodução (0,5× / 1× / 2×) — o filme inteiro, não só o navio. */
+        get rate() { return state.rate; },
+        set rate(v) { state.rate = v; },
         look,
         restart() {
             state.filmT = 0;
+            state.ended = false;
             state.yaw = state.pitch = 0;
             apply(0);
         },
         free(pos, lookAt, fov) { state.debug = pos ? { pos, look: lookAt, fov } : null; },
         seek(t) {
             state.filmT = clamp(t, 0, FILM_DURATION - 0.01);
+            state.ended = false;
             state.yaw = state.pitch = 0;
             apply(state.filmT);
         },
         update(dt) {
             if (state.playing) {
-                state.filmT += dt;
-                if (state.filmT >= FILM_DURATION) state.filmT = 0;
+                state.filmT += dt * state.rate;
+                // fim do filme: para no último quadro (main.js mostra o cartão final)
+                if (state.filmT >= FILM_DURATION - 0.01) {
+                    state.filmT = FILM_DURATION - 0.01;
+                    state.playing = false;
+                    state.ended = true;
+                }
             }
             if (state.release > 0 && !state.drag) {
                 state.release += dt;
@@ -177,6 +190,7 @@ export function createCamera(ctx) {
             window.removeEventListener('pointermove', onMove);
             window.removeEventListener('pointerup', onUp);
             window.removeEventListener('pointercancel', onUp);
+            window.removeEventListener('blur', onUp);
         }
     };
 }

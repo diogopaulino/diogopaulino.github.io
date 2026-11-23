@@ -1153,3 +1153,94 @@ body[data-state="dialogue"] .lab-foot { visibility: hidden; pointer-events: none
     .stealth { position: static; translate: none; margin: 0.5rem auto 0; }
     .guide { position: static; translate: none; margin: 0.45rem auto 0; width: max-content; animation: none; }
 }
+
+/* ================================================================
+   Remaster: pausa com saídas, aviso do menu, controles de toque 2×2
+   ================================================================ */
+.pause-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: 0.85rem;
+}
+.pause-grid .ghost-button {
+    margin: 0;
+    min-height: 44px;
+    justify-content: center;
+    text-align: center;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.86rem;
+    line-height: 1.2;
+}
+.ghost-button:focus-visible, .primary-button:focus-visible, .pad:focus-visible, .chapter-chip:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+.compact-card { max-height: calc(100dvh - 5rem - var(--safe-top) - var(--safe-bottom)); overflow-y: auto; }
+
+.menu-notice {
+    margin: 0 0 0.6rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in oklab, var(--ember) 55%, transparent);
+    background: color-mix(in oklab, var(--ember) 14%, transparent);
+    color: var(--parchment);
+    font-size: 0.86rem;
+}
+.menu-notice[hidden] { display: none; }
+
+/* Botões de ação em grade 2×2 no canto direito:
+     correr  usar
+     ⚔      PULAR   ← o polegar descansa no pulo (maior), como nos jogos de plataforma */
+.touch-buttons {
+    display: grid;
+    grid-template-columns: auto auto;
+    grid-template-areas: "run use" "atk jump";
+    align-items: end;
+    justify-items: center;
+    gap: 0.5rem;
+    flex-direction: unset;
+}
+.pad-run { grid-area: run; }
+.pad-use { grid-area: use; }
+.pad-atk { grid-area: atk; }
+.pad-jump { grid-area: jump; }
+.pad {
+    min-width: 56px;
+    min-height: 56px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.pad-atk { border-radius: 50%; width: 60px; height: 60px; padding: 0; font-size: 1.3rem; }
+.pad-jump {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    padding: 0;
+    font-weight: 700;
+    color: var(--ink, #1a1208);
+    background: linear-gradient(180deg, oklch(80% 0.13 82), oklch(62% 0.13 70));
+    border-color: oklch(85% 0.12 82 / 0.7);
+    box-shadow: 0 8px 22px oklch(55% 0.13 75 / 0.35);
+    transition: transform 0.08s ease, filter 0.08s ease;
+}
+.pad-jump.is-down, .pad:active { transform: scale(0.93); filter: brightness(1.12); }
+.stick { touch-action: none; }
+.look-zone { touch-action: none; }
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .touch-buttons { display: grid; gap: 0.35rem; }
+    .pad { min-width: 48px; min-height: 48px; padding: 0.35rem 0.5rem; font-size: 0.64rem; }
+    .pad-atk { width: 50px; height: 50px; font-size: 1.1rem; }
+    .pad-jump { width: 60px; height: 60px; font-size: 0.7rem; }
+    .pause-grid .ghost-button { min-height: 44px; padding: 0.45rem 0.6rem; font-size: 0.8rem; }
+    .compact-card h2 { font-size: 1.35rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .pad-jump { transition: none; }
+}
+/* "usar" legível (antes: tinta escura sobre fundo escuro) */
+.pad-use { color: var(--parchment); border-color: color-mix(in oklab, var(--gold) 55%, transparent); }

@@ -5,7 +5,7 @@
  */
 
 import * as THREE from 'three';
-import { clamp, damp, lerpAngle } from './utils.js';
+import { clamp, damp, lerpAngle } from './utils.js?v=12';
 
 const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
@@ -158,7 +158,9 @@ export class Rope {
  *   dormindo: alerta −0,12/s sempre; dentro de `hearR` (e no mesmo andar) soma
  *             0,12/s andando (anula a queda) ou 0,55/s correndo; a menos de
  *             `closeR` soma mais 0,4/s. Alerta ≥ 1 → acorda ('stir').
- *   acordando: 2,2 s levantando, saindo da cadeira e urrando; depois persegue a `chaseSpeed`.
+ *   acordando: 2,2 s levantando, saindo da cadeira e urrando; depois persegue a `chaseSpeed`
+ *             = 4,3 m/s: um gigante de 9,6 m recém-acordado cambaleia — o João andando (2,1 m/s)
+ *             é alcançado, correndo (4,9 m/s) escapa.
  *   perseguindo: anda reto até o João, contornando os obstáculos (`obstacles`);
  *             a menos de `catchR` → 'caught' e fica tonto por `dazeT` = 3 s
  *             (parado, coçando a cabeça) — o João tem tempo de fugir. Cada passada emite `stomp`
@@ -178,7 +180,7 @@ export class GiantAI {
         this.yaw = Math.PI;
         this.state = 'sleep';
         this.alert = 0;
-        this.chaseSpeed = 7.8;
+        this.chaseSpeed = 4.3;
         this.catchR = 3.3;
         this.hearR = 16;
         this.closeR = 5;

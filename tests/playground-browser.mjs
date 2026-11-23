@@ -41,13 +41,17 @@ async function checkControls(path, evaluate, reload) {
         const cleared = new Set();
         for (let attempt = 0; attempt < 24 && cleared.size < 4; attempt++) {
             const result = await evaluate("import('/tests/runner-controls.mjs').then(m => m.jungleLevel(__lab.game))");
+            // As telas de resultado ignoram cliques nos primeiros 600 ms (anti-pulo
+            // de tela); o teste clica de novo até a tela aceitar e espera a fase
+            // seguinte (ou a repetição) voltar a rodar.
             if (result.state === 'won') {
                 cleared.add(result.level);
-                await evaluate("document.querySelector('#nextLevelBtn').click()");
+                await waitFor("(__lab.game.state === 'won' && document.querySelector('#nextLevelBtn').click(), __lab.game.state !== 'won')");
             } else {
                 assert.equal(result.state, 'over');
-                await evaluate("document.querySelector('#restartBtn').click()");
+                await waitFor("(__lab.game.state === 'over' && document.querySelector('#restartBtn').click(), __lab.game.state !== 'over')");
             }
+            if (cleared.size < 4) await waitFor("__lab.game.state === 'playing'");
         }
         assert.deepEqual([...cleared], [1, 2, 3, 4]);
         assert.equal(await evaluate('__lab.game.currentLevel.id'), 5);
@@ -66,12 +70,18 @@ async function checkControls(path, evaluate, reload) {
         }
     }
     if (lab === 'calculator') {
+        // Modo simples: teclado único (#keypad) e display com a expressão (#display-main).
+        // Também prova a precedência: 2 + 3 × 4 = 14 (não 20).
         const result = await evaluate(`(() => {
-            const keys = [...document.querySelectorAll('#calculator button')];
-            for (const label of ['AC', '9', '×', '7', '=']) keys.find(k => k.textContent.trim() === label).click();
-            return document.querySelector('#calculator .current-operand').textContent;
+            document.querySelector('.mode-btn[data-mode="calculator"]').click();
+            const keys = [...document.querySelectorAll('#keypad button.btn')].filter(k => k.offsetWidth);
+            const press = (labels) => {
+                for (const label of labels) keys.find(k => k.textContent.trim() === label).click();
+                return document.querySelector('#display-main').textContent;
+            };
+            return [press(['AC', '9', '×', '7', '=']), press(['AC', '2', '+', '3', '×', '4', '='])];
         })()`);
-        assert.equal(result, '63');
+        assert.deepEqual(result, ['63', '14']);
     }
     if (lab === 'minesweeper') {
         const endings = await evaluate("import('/tests/board-controls.mjs').then(m => m.minefield())");
@@ -81,7 +91,9 @@ async function checkControls(path, evaluate, reload) {
         await waitFor("document.querySelector('#startButton').offsetWidth");
         await evaluate("import('/tests/board-controls.mjs').then(m => m.chessMatch())");
         await waitFor("!document.querySelector('#resultOverlay').hidden");
-        assert.equal(await evaluate("document.querySelector('#resultTitle').textContent"), 'Xeque-mate');
+        // Mate do louco no modo local: o selo diz "Xeque-mate" e o título, quem venceu.
+        assert.match(await evaluate("document.querySelector('#resultKicker').textContent"), /Xeque-mate/);
+        assert.equal(await evaluate("document.querySelector('#resultTitle').textContent"), 'Pretas vencem');
         await evaluate("document.querySelector('#resultAgain').click()");
         await waitFor("document.body.dataset.state === 'play'");
     }

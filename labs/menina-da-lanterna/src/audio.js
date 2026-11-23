@@ -2,7 +2,7 @@
  * Trilha e efeitos — Web Audio original (canção de ninar da Nara).
  */
 
-import { clamp } from './utils.js';
+import { clamp } from './utils.js?v=22';
 
 const THEMES = {
     aldeia: { base: 196, mode: [0, 2, 4, 7, 9], tempo: 1.05, filter: 980, drone: 98 },

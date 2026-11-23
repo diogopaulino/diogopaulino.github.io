@@ -1,21 +1,34 @@
 /**
  * Nina — regras e fórmulas do vale.
  *
- * Objetivo: coletar amoras, oferecer uma a cada filhote perdido (Espaço)
- * e levá-los ao piquenique no ninho. Podem seguir em fila.
+ * Objetivo: coletar amoras, encostar num filhote perdido com uma amora (ele vem
+ * atrás de você) e levá-los ao piquenique no ninho. Podem seguir em fila.
+ * Sem morte nem tempo-limite: cair na água vira nado, e nada prende Nina.
  *
  * Escala: o vale usa metros reais para grama, árvores e construções; os bichos
  * são de livro infantil (Nina tem ~1,4 m do focinho à cauda, os filhotes de
  * 0,45 a 0,75 m) para que a criança os veja no meio da grama alta.
  *
- * Movimento (terceira pessoa, relativo à câmera):
- *   a = eixo * ACCEL
- *   v *= exp(-FRICTION * dt)
- *   |v.xz| ≤ (correndo ? RUN : WALK)
- *   hop: se grounded ou coyote < COYOTE → vy = JUMP_VY
- *        + impulso horizontal HOP_BOOST * dir
- *   vy -= GRAVITY * dt
- *   y = max(y, chão(x, z))                      altura do pulo = JUMP_VY² / (2·GRAVITY) ≈ 0,9 m
+ * Escala → velocidades. Nina (raposa jovem, ~0,67 m de altura, 1,4 m do focinho
+ * à cauda) tem andaduras naturais do esqueleto: passo ≈ 1 m/s, trote ≈ 2,8 m/s,
+ * galope ≈ 8,7 m/s. O passo normal do jogo é o TROTE (2,8 m/s) e a corrida é um
+ * galope contido de 6 m/s — raposas de verdade trotam a 2,5–3 m/s e galopam até
+ * 13 m/s, mas no vale a criança precisa enxergar onde pisa.
+ *
+ * Movimento (terceira pessoa, relativo à câmera, passo fixo de 1/120 s):
+ *   alvo = dir_entrada · velAlvo               velAlvo = TROTE·|eixo| ou GALOPE (Shift / stick no fim)
+ *   v.xz += (alvo − v.xz) · (1 − exp(−k·dt))   k = ACCEL_K acelerando, DECEL_K freando
+ *   no ar: k ·= AIR_CONTROL                    (≈ 40% do controle; o impulso do pulo se mantém)
+ *   giro do corpo: yaw ← yaw + Δ·(1 − exp(−TURN_K·dt))
+ *
+ * Pulo (parábola assimétrica, unidades m e s):
+ *   vy₀ = JUMP_VY                               altura = vy₀² / (2·GRAVITY) ≈ 0,9 m
+ *   subindo: g = GRAVITY · (botão solto ? JUMP_CUT : 1)   → toque curto ≈ 0,35 m
+ *   descendo: g = GRAVITY · FALL_MULT, vy ≥ −TERMINAL_VY
+ *   coyote: pode pular até COYOTE s depois de sair do chão
+ *   buffer: um toque até JUMP_BUFFER s antes de pousar ainda vale
+ *   chão: y = max(y, chão(x, z)); descendo morro ela "cola" no chão se a
+ *         diferença for < SNAP_DOWN (sem tremer entre chão e ar)
  *   chão(x, z) = max(terreno(x, z), nível_da_água − FLOAT·altura_do_bicho)   (nada no lago)
  *
  * Andadura (Nina e filhotes): escolhida pela velocidade real v contra as
@@ -25,25 +38,55 @@
  * Filhote seguindo, i-ésimo da fila (trilha de migalhas de Nina):
  *   alvo_i = ponto da trilha a GAP·(i+1) metros atrás de Nina, medido sobre o caminho andado
  *            (sem trilha suficiente: líder.pos − líder.forward·GAP·(i+1))
- *   pos = mix(pos, alvo, 1 − exp(−FOLLOW_LAMBDA * dt))
+ *   pos = mix(pos, alvo, 1 − exp(−FOLLOW_LAMBDA * dt)), passo limitado a vmax·dt:
+ *   vmax = max(1,2; v_Nina·1,25 + 0,5) + 1,5·max(0, d − 3)   (alcança sem teletransportar)
  *
- * Aproximação: |pos − filhote| < BEFRIEND_R e amoras ≥ 1
+ * Tartaruga (Tata): em terra anda 0,3–0,5 m/s — jamais acompanharia a fila. Quando vira
+ * amiga, ela sobe nas costas de Nina e vai de carona: posição presa a um ponto do dorso
+ * por mola amortecida (k = RIDE_K, ζ ≈ 0,7), então balança ao frear e ao pousar.
+ *
+ * Aproximação: |pos − filhote| < BEFRIEND_R (Espaço) ou < AUTO_R (encostar) e amoras ≥ 1
  * Depósito:    |pos − ninho| < HOME_R com pelo menos um seguidor
  */
 
 export const WORLD_RADIUS = 40;
 
-export const WALK_SPEED = 4.0;
-export const RUN_SPEED = 7.4;
-export const ACCEL = 26;
-export const FRICTION = 8.0;
+/** Trote (m/s): o andar normal de Nina — igual ao trote natural do esqueleto, pés não escorregam. */
+export const WALK_SPEED = 2.8;
+/** Galope contido (m/s) com Shift, botão 🏃 ou stick empurrado até o fim. */
+export const RUN_SPEED = 6.0;
+/** Nadando (lago/riacho) a velocidade-alvo cai para esta fração. */
+export const SWIM_K = 0.5;
+/** Constantes de tempo (1/s) da aproximação exponencial à velocidade-alvo. */
+export const ACCEL_K = 7.5;
+export const DECEL_K = 11;
+/** Fração do controle horizontal que sobra no ar. */
+export const AIR_CONTROL = 0.4;
+/** Giro do corpo em direção ao movimento (1/s). */
+export const TURN_K = 11;
 export const JUMP_VY = 6.3;
 export const GRAVITY = 22;
+/** Multiplicador da gravidade na queda (cai mais pesado do que sobe). */
+export const FALL_MULT = 1.55;
+/** Multiplicador da gravidade subindo com o botão solto (pulo variável). */
+export const JUMP_CUT = 2.8;
+export const TERMINAL_VY = 14;
 export const COYOTE = 0.12;
-export const HOP_BOOST = 1.5;
+export const JUMP_BUFFER = 0.13;
+/** Desce degraus/morros de até SNAP_DOWN m sem decolar. */
+export const SNAP_DOWN = 0.32;
+export const HOP_BOOST = 0.6;
+/**
+ * Rede de segurança: abaixo do chão, NaN, fora do mapa ou empurrando o stick sem sair do
+ * lugar por STUCK_S s → Nina volta ao último chão seguro (gravado a cada SAFE_EVERY s).
+ */
+export const STUCK_S = 8;
+export const SAFE_EVERY = 0.6;
 
 export const FOLLOW_GAP = 1.15;
 export const FOLLOW_LAMBDA = 7.2;
+/** Rigidez (1/s²) da mola que prende Tata ao dorso de Nina; amortecimento crítico × 0,7. */
+export const RIDE_K = 170;
 export const BEFRIEND_R = 2.1;
 export const HOME_R = 3.8;
 export const BERRY_R = 1.25;

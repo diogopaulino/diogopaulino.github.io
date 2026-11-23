@@ -2,8 +2,8 @@
  * HUD, menus e overlays — tudo que é DOM.
  */
 
-import { CHAPTERS } from './config.js?v=31';
-import { formatTime } from './utils.js?v=31';
+import { CHAPTERS } from './config.js?v=32';
+import { formatTime } from './utils.js?v=32';
 
 const $ = (id) => document.getElementById(id);
 
@@ -55,7 +55,9 @@ export class Hud {
             travel: $('travelCard'),
             travelRoman: $('travelRoman'),
             travelTitle: $('travelTitle'),
-            travelText: $('travelText')
+            travelText: $('travelText'),
+            startLabel: document.querySelector('#startButton span'),
+            menuNotice: $('menuNotice')
         };
         this.messageTimer = 0;
         this.cardTimer = 0;
@@ -235,6 +237,7 @@ export class Hud {
 
     fillChapters(unlocked, currentId, onPick) {
         this.el.chapterList.innerHTML = '';
+        this.setMenuNotice('');
         CHAPTERS.forEach((ch, i) => {
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -248,6 +251,19 @@ export class Hud {
             this.el.chapterList.appendChild(btn);
             if (ch.id === currentId && this.el.chapterBlurb) this.el.chapterBlurb.textContent = ch.blurb;
         });
+    }
+
+    /** Rótulo do botão principal do menu ("Jogar" ou "Continuar · III"). */
+    setStartLabel(text) {
+        if (this.el.startLabel) this.el.startLabel.textContent = text;
+    }
+
+    /** Aviso no menu (ex.: capítulo que não abriu). Some na próxima escolha. */
+    setMenuNotice(text) {
+        const el = this.el.menuNotice;
+        if (!el) return;
+        el.textContent = text || '';
+        el.hidden = !text;
     }
 
     setBest(n) {

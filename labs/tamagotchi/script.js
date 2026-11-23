@@ -767,6 +767,8 @@
       dirty: false,
       sick: false,
       sickSince: null,
+      // Momento (relógio do jogo) em que o dono VIU o Dino doente — ver processHour.
+      sickSeenAt: null,
       alive: true,
       ending: null,
       foodBias: { meat: 0, vegetable: 0, pasta: 0 },
@@ -822,6 +824,8 @@
      num timer e, antes disso, criava um AudioContext bloqueado (aviso no
      console e nenhum som). */
   let audioUnlocked = false;
+  let welcomeBack = null;
+  let resetArmedUntil = 0;
 
   function saveState() {
     try {
@@ -865,9 +869,9 @@
     if (!audioContext) {
       const AudioCtor = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtor) return null;
-      audioContext = new AudioCtor();
+      try { audioContext = new AudioCtor(); } catch (error) { return null; }
     }
-    if (audioContext.state === 'suspended') audioContext.resume();
+    if (audioContext.state === 'suspended') audioContext.resume()?.catch?.(() => {});
     return audioContext;
   }
 
@@ -1007,7 +1011,12 @@
       sound.alert();
     }
 
-    if (state.sick && state.sickSince && index * HOUR_MS - state.sickSince > 6 * HOUR_MS) {
+    /* Justiça com quem fechou a aba: a doença só mata 6 h depois de o dono
+       tê-la VISTO (sickSeenAt, gravado quando a página está visível). Doença
+       que começou com a aba fechada fica esperando: ao voltar, o relógio dos
+       6 h começa a contar e o guia manda dar remédio. Fome, sede, sujeira e
+       temperatura continuam correndo em tempo real enquanto você está fora. */
+    if (state.sick && state.sickSeenAt !== null && index * HOUR_MS - state.sickSeenAt > 6 * HOUR_MS) {
       state.alive = false;
       state.ending = 'grave';
       sound.death();
@@ -1029,6 +1038,17 @@
       processHour(state.lastProcessedHour);
       processed += 1;
     }
+    // Ficou fora 3 h ou mais: o guia dá as boas-vindas e resume o que mudou.
+    if (processed >= 3 && state.alive && !state.ending) {
+      welcomeBack = { hours: processed, until: Date.now() + 9000 };
+    }
+    saveState();
+  }
+
+  /** Página visível com o Dino doente = o dono viu. Daqui a 6 h sem remédio, ele morre. */
+  function markSickSeen() {
+    if (document.hidden || !state.sick || !state.alive || state.sickSeenAt !== null) return;
+    state.sickSeenAt = gameTimestamp();
     saveState();
   }
 
@@ -1139,6 +1159,7 @@
       beginAnimation('medicine', 1650, () => {
         state.sick = false;
         state.sickSince = null;
+        state.sickSeenAt = null;
         state.mood = 0;
         state.food = 0;
         state.drink = 0;
@@ -1463,8 +1484,28 @@
     refreshDisplay();
   }
 
+  /* Reset apaga o Dino: com um bichinho vivo, pede um segundo toque em 3 s
+     (um esbarrão no celular não pode matar dias de cuidado). */
+  const resetLabel = resetButton.innerHTML;
   resetButton.addEventListener('click', () => {
     audioUnlocked = true;
+    const precious = state.initialized && state.alive && !state.ending;
+    if (precious && Date.now() > resetArmedUntil) {
+      resetArmedUntil = Date.now() + 3000;
+      resetButton.classList.add('armed');
+      resetButton.innerHTML = '<span aria-hidden="true"></span> toque de novo para zerar';
+      sound.cancel();
+      setTimeout(() => {
+        if (Date.now() >= resetArmedUntil) {
+          resetButton.classList.remove('armed');
+          resetButton.innerHTML = resetLabel;
+        }
+      }, 3100);
+      return;
+    }
+    resetArmedUntil = 0;
+    resetButton.classList.remove('armed');
+    resetButton.innerHTML = resetLabel;
     resetDevice();
   });
 
@@ -1496,6 +1537,12 @@
       return { key: 'ending', icon: state.ending === 'angel' ? '😇' : '😈', text: 'O Dino cresceu e partiu em aventura! Quer começar outro?', action: 'egg' };
     }
     if (!state.lightsOn && !isSleeping()) return { key: 'dark', icon: '💡', text: 'A luz está apagada. Toque na lâmpada para acender.', need: 'light' };
+    if (welcomeBack && Date.now() < welcomeBack.until) {
+      const h = welcomeBack.hours;
+      const away = h >= 48 ? `${Math.round(h / 24)} dias` : `${h} h`;
+      const what = state.sick ? 'Ele ficou doente — o remédio é urgente.' : (state.food === 0 || state.drink === 0) ? 'Ele está com fome ou sede.' : 'Ele sentiu sua falta.';
+      return { key: `welcome${h}`, icon: '👋', text: `Você ficou fora ${away}. ${what}`, need: state.sick ? 'sick' : state.food === 0 ? 'food' : state.drink === 0 ? 'drink' : undefined };
+    }
     if (isSleeping()) {
       return state.lightsOn
         ? { key: 'sleep-light', icon: '💡', text: 'Ele está dormindo (21h às 9h). Apague a luz na lâmpada.', need: 'light' }
@@ -1872,12 +1919,15 @@
   updateIconSelection();
   const syncPet = () => {
     catchUp();
+    markSickSeen();
     maybeAlert();
   };
   syncPet();
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) syncPet();
+    else saveState();
   });
+  window.addEventListener('pagehide', saveState);
   function refreshDisplay() {
     render(performance.now());
   }

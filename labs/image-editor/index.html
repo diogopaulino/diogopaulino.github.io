@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#fafbfc">
     <title>Image Editor — edição local no navegador | Diogo Paulino</title>
-    <meta name="description" content="Editor de imagens no navegador: recorte, filtros, ajustes de brilho, contraste e saturação, tudo processado localmente sem enviar nada para servidor.">
+    <meta name="description" content="Editor de imagens no navegador: recorte com proporções, 20 filtros com intensidade, ajustes de luz e cor, desfazer ilimitado e zoom — tudo local, sem enviar nada a servidor.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/image-editor/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -19,12 +19,12 @@
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/image-editor/">
     <meta property="og:title" content="Image Editor — edição local no navegador | Diogo Paulino">
-    <meta property="og:description" content="Editor de imagens no navegador: recorte, filtros, ajustes de brilho, contraste e saturação, tudo processado localmente sem enviar nada para servidor.">
+    <meta property="og:description" content="Editor de imagens no navegador: recorte com proporções, 20 filtros com intensidade, ajustes de luz e cor, desfazer ilimitado e zoom — tudo local, sem enviar nada a servidor.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Image Editor — edição local no navegador | Diogo Paulino">
-    <meta name="twitter:description" content="Editor de imagens no navegador: recorte, filtros, ajustes de brilho, contraste e saturação, tudo processado localmente sem enviar nada para servidor.">
+    <meta name="twitter:description" content="Editor de imagens no navegador: recorte com proporções, 20 filtros com intensidade, ajustes de luz e cor, desfazer ilimitado e zoom — tudo local, sem enviar nada a servidor.">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
     <link rel="stylesheet" href="/assets/fonts/inter/font.css">
     <script type="application/ld+json">
     {
@@ -34,7 +34,7 @@
           "@type": "WebApplication",
           "name": "Image Editor",
           "url": "https://diogopaulino.com.br/labs/image-editor/",
-          "description": "Editor de imagens no navegador: recorte, filtros, ajustes de brilho, contraste e saturação, tudo processado localmente sem enviar nada para servidor.",
+          "description": "Editor de imagens no navegador: recorte com proporções, 20 filtros com intensidade, ajustes de luz e cor, desfazer ilimitado e zoom — tudo local, sem enviar nada a servidor.",
           "applicationCategory": "UtilitiesApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -78,153 +78,241 @@
     <div class="container">
         <header data-lab-header data-fullscreen data-title="Image Editor">
             <template data-slot="logo">
-                ✂️ Image Editor
+                <div class="app-logo">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+                    Image Editor
+                </div>
             </template>
         </header>
 
-        <main class="editor-container">
+        <main class="editor-container" id="editor" data-state="empty">
             <div class="editor-wrapper">
-                <div class="preview-area" id="previewArea">
-                    <div class="upload-placeholder" id="uploadPlaceholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <polyline points="21 15 16 10 5 21" />
-                        </svg>
-                        <p>Clique ou arraste uma imagem</p>
-                        <span class="upload-hint">ou cole com Ctrl+V</span>
-                        <input type="file" id="fileInput" accept="image/*" aria-label="Selecionar imagem" hidden>
-
-                        <div class="sample-gallery">
-                            <span class="sample-gallery-label">ou experimente um exemplo</span>
-                            <div class="sample-list" id="sampleList">
-                                <button type="button" class="sample-item" data-sample="samples/sunset-horizon.jpg"
-                                    style="background-image:url('samples/sunset-horizon.jpg')"
-                                    aria-label="Carregar exemplo: pôr do sol"></button>
-                                <button type="button" class="sample-item" data-sample="samples/city-dusk.jpg"
-                                    style="background-image:url('samples/city-dusk.jpg')"
-                                    aria-label="Carregar exemplo: skyline ao entardecer"></button>
-                                <button type="button" class="sample-item" data-sample="samples/portrait-bust.jpg"
-                                    style="background-image:url('samples/portrait-bust.jpg')"
-                                    aria-label="Carregar exemplo: retrato"></button>
-                                <button type="button" class="sample-item" data-sample="samples/abstract-blobs.jpg"
-                                    style="background-image:url('samples/abstract-blobs.jpg')"
-                                    aria-label="Carregar exemplo: abstrato"></button>
-                            </div>
-                        </div>
-                    </div>
-                    <canvas id="canvas" aria-label="Prévia da imagem em edição">
-                        Prévia da imagem carregada para edição.
-                    </canvas>
-                    <span class="compare-hint" id="compareHint">Segure a imagem para comparar com o original</span>
-                    <span class="image-dimensions-badge" id="imageDimensionsBadge" aria-live="polite" hidden></span>
-                </div>
-
-                <div class="controls-area" id="controlsArea">
-                    <div class="tabs">
-                        <button class="tab-btn active" data-tab="adjust">Ajustes</button>
-                        <button class="tab-btn" data-tab="filters">Filtros</button>
-                        <button class="tab-btn" data-tab="transform">Transformar</button>
+                <section class="preview-col" aria-label="Prévia">
+                    <div class="toolbar" role="toolbar" aria-label="Edição">
+                        <button class="tb-btn" type="button" id="undoBtn" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h11a5 5 0 0 1 0 10h-4"/><path d="M8 5 4 9l4 4"/></svg>
+                        </button>
+                        <button class="tb-btn" type="button" id="redoBtn" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer" disabled>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 9H9a5 5 0 0 0 0 10h4"/><path d="m16 5 4 4-4 4"/></svg>
+                        </button>
+                        <span class="tb-sep" aria-hidden="true"></span>
+                        <button class="tb-btn" type="button" id="zoomOutBtn" title="Diminuir zoom (−)" aria-label="Diminuir zoom">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M20 20l-3.5-3.5"/></svg>
+                        </button>
+                        <button class="tb-btn zoom-label" type="button" id="zoomLabel" title="Ajustar à tela (0)" aria-label="Ajustar à tela">100%</button>
+                        <button class="tb-btn" type="button" id="zoomInBtn" title="Aumentar zoom (+)" aria-label="Aumentar zoom">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M20 20l-3.5-3.5"/></svg>
+                        </button>
+                        <span class="tb-spacer"></span>
+                        <button class="tb-btn compare-btn" type="button" id="compareBtn" title="Segure para ver o original (\)" aria-label="Segure para ver o original">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+                            <span>Original</span>
+                        </button>
                     </div>
 
-                    <div class="tab-content active" id="adjust-tab">
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label for="brightness" title="Duplo clique para resetar">Brilho</label>
-                                <span class="value">100%</span>
+                    <div class="preview-area" id="previewArea">
+                        <div class="upload-placeholder" id="uploadPlaceholder">
+                            <button class="upload-btn" type="button" id="uploadBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                                <span class="upload-title">Abrir imagem</span>
+                                <span class="upload-hint">toque ou arraste aqui<span class="fine-only"> · cole com <kbd>Ctrl</kbd>+<kbd>V</kbd></span></span>
+                            </button>
+                            <input type="file" id="fileInput" accept="image/*" aria-label="Selecionar imagem" hidden>
+                            <p class="upload-error" id="uploadError" role="alert" hidden></p>
+
+                            <div class="sample-gallery">
+                                <span class="sample-gallery-label">ou experimente um exemplo</span>
+                                <div class="sample-list" id="sampleList">
+                                    <button type="button" class="sample-item" data-sample="samples/sunset-horizon.jpg"
+                                        style="background-image:url('samples/sunset-horizon.jpg')"
+                                        aria-label="Carregar exemplo: pôr do sol"></button>
+                                    <button type="button" class="sample-item" data-sample="samples/city-dusk.jpg"
+                                        style="background-image:url('samples/city-dusk.jpg')"
+                                        aria-label="Carregar exemplo: skyline ao entardecer"></button>
+                                    <button type="button" class="sample-item" data-sample="samples/portrait-bust.jpg"
+                                        style="background-image:url('samples/portrait-bust.jpg')"
+                                        aria-label="Carregar exemplo: retrato"></button>
+                                    <button type="button" class="sample-item" data-sample="samples/abstract-blobs.jpg"
+                                        style="background-image:url('samples/abstract-blobs.jpg')"
+                                        aria-label="Carregar exemplo: abstrato"></button>
+                                </div>
                             </div>
-                            <input type="range" id="brightness" min="0" max="200" value="100" data-default="100" title="Duplo clique para resetar">
                         </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label for="contrast" title="Duplo clique para resetar">Contraste</label>
-                                <span class="value">100%</span>
+
+                        <div class="stage" id="stage">
+                            <canvas id="canvas" role="img" aria-label="Prévia da imagem em edição"></canvas>
+                            <div class="crop-overlay" id="cropOverlay" hidden>
+                                <div class="crop-rect" id="cropRect">
+                                    <span class="crop-grid" aria-hidden="true"></span>
+                                    <span class="crop-handle" data-h="nw"></span>
+                                    <span class="crop-handle" data-h="n"></span>
+                                    <span class="crop-handle" data-h="ne"></span>
+                                    <span class="crop-handle" data-h="e"></span>
+                                    <span class="crop-handle" data-h="se"></span>
+                                    <span class="crop-handle" data-h="s"></span>
+                                    <span class="crop-handle" data-h="sw"></span>
+                                    <span class="crop-handle" data-h="w"></span>
+                                </div>
                             </div>
-                            <input type="range" id="contrast" min="0" max="200" value="100" data-default="100" title="Duplo clique para resetar">
                         </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label for="saturation" title="Duplo clique para resetar">Saturação</label>
-                                <span class="value">100%</span>
-                            </div>
-                            <input type="range" id="saturation" min="0" max="200" value="100" data-default="100" title="Duplo clique para resetar">
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <label for="blur" title="Duplo clique para resetar">Desfoque</label>
-                                <span class="value">0px</span>
-                            </div>
-                            <input type="range" id="blur" min="0" max="10" value="0" step="0.1" data-default="0" title="Duplo clique para resetar">
-                        </div>
+
+                        <div class="loading-veil" id="loadingVeil" hidden><span class="spinner" aria-hidden="true"></span><span>Abrindo imagem…</span></div>
+                        <span class="image-dimensions-badge" id="imageDimensionsBadge" aria-live="polite" hidden></span>
+                        <span class="compare-flag" id="compareFlag" hidden>Original</span>
+                    </div>
+                </section>
+
+                <aside class="controls-area" id="controlsArea" aria-label="Ferramentas">
+                    <div class="tabs" role="tablist" aria-label="Ferramentas">
+                        <button class="tab-btn active" type="button" role="tab" aria-selected="true" aria-controls="adjust-tab" data-tab="adjust">Ajustes</button>
+                        <button class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="filters-tab" data-tab="filters">Filtros</button>
+                        <button class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="crop-tab" data-tab="crop">Cortar</button>
                     </div>
 
-                    <div class="tab-content" id="filters-tab">
+                    <div class="tab-content active" id="adjust-tab" role="tabpanel">
+                        <p class="group-title">Luz</p>
+                        <div class="slider-group" data-unit="">
+                            <div class="slider-header">
+                                <label for="exposure">Exposição</label>
+                                <output class="value" for="exposure">0</output>
+                            </div>
+                            <input type="range" id="exposure" min="-100" max="100" value="0" step="1" data-default="0" data-label="Exposição">
+                        </div>
+                        <div class="slider-group" data-unit="">
+                            <div class="slider-header">
+                                <label for="contrast">Contraste</label>
+                                <output class="value" for="contrast">0</output>
+                            </div>
+                            <input type="range" id="contrast" min="-100" max="100" value="0" step="1" data-default="0" data-label="Contraste">
+                        </div>
+                        <p class="group-title">Cor</p>
+                        <div class="slider-group" data-unit="">
+                            <div class="slider-header">
+                                <label for="saturation">Saturação</label>
+                                <output class="value" for="saturation">0</output>
+                            </div>
+                            <input type="range" id="saturation" min="-100" max="100" value="0" step="1" data-default="0" data-label="Saturação">
+                        </div>
+                        <div class="slider-group" data-unit="">
+                            <div class="slider-header">
+                                <label for="warmth">Temperatura</label>
+                                <output class="value" for="warmth">0</output>
+                            </div>
+                            <input type="range" id="warmth" min="-100" max="100" value="0" step="1" data-default="0" data-label="Temperatura">
+                        </div>
+                        <div class="slider-group" data-unit="°">
+                            <div class="slider-header">
+                                <label for="hue">Matiz</label>
+                                <output class="value" for="hue">0°</output>
+                            </div>
+                            <input type="range" id="hue" min="-180" max="180" value="0" step="1" data-default="0" data-label="Matiz">
+                        </div>
+                        <p class="group-title">Detalhe</p>
+                        <div class="slider-group" data-unit="">
+                            <div class="slider-header">
+                                <label for="sharpen">Nitidez</label>
+                                <output class="value" for="sharpen">0</output>
+                            </div>
+                            <input type="range" id="sharpen" min="0" max="100" value="0" step="1" data-default="0" data-label="Nitidez">
+                        </div>
+                        <div class="slider-group" data-unit="">
+                            <div class="slider-header">
+                                <label for="vignette">Vinheta</label>
+                                <output class="value" for="vignette">0</output>
+                            </div>
+                            <input type="range" id="vignette" min="0" max="100" value="0" step="1" data-default="0" data-label="Vinheta">
+                        </div>
+                        <div class="slider-group" data-unit="px">
+                            <div class="slider-header">
+                                <label for="blur">Desfoque</label>
+                                <output class="value" for="blur">0px</output>
+                            </div>
+                            <input type="range" id="blur" min="0" max="20" value="0" step="0.5" data-default="0" data-label="Desfoque">
+                        </div>
+                        <p class="tab-hint">Duplo clique num controle volta ao padrão.</p>
+                    </div>
+
+                    <div class="tab-content" id="filters-tab" role="tabpanel">
                         <div class="filters-filmstrip" id="filtersFilmstrip"></div>
+                        <div class="slider-group" data-unit="%" id="intensityGroup">
+                            <div class="slider-header">
+                                <label for="intensity">Intensidade do filtro</label>
+                                <output class="value" for="intensity">100%</output>
+                            </div>
+                            <input type="range" id="intensity" min="0" max="100" value="100" data-default="100" data-label="Intensidade">
+                        </div>
                     </div>
 
-                    <div class="tab-content" id="transform-tab">
+                    <div class="tab-content" id="crop-tab" role="tabpanel">
+                        <p class="group-title">Proporção</p>
+                        <div class="aspect-chips" id="aspectChips" role="radiogroup" aria-label="Proporção do corte">
+                            <button type="button" class="chip" role="radio" aria-checked="true" data-aspect="free">Livre</button>
+                            <button type="button" class="chip" role="radio" aria-checked="false" data-aspect="original">Original</button>
+                            <button type="button" class="chip" role="radio" aria-checked="false" data-aspect="1">1:1</button>
+                            <button type="button" class="chip" role="radio" aria-checked="false" data-aspect="0.8">4:5</button>
+                            <button type="button" class="chip" role="radio" aria-checked="false" data-aspect="1.5">3:2</button>
+                            <button type="button" class="chip" role="radio" aria-checked="false" data-aspect="1.7778">16:9</button>
+                            <button type="button" class="chip" role="radio" aria-checked="false" data-aspect="0.5625">9:16</button>
+                        </div>
+                        <p class="group-title">Girar e espelhar</p>
                         <div class="transform-controls">
-                            <button class="tool-btn" id="rotateLeft" title="Girar à esquerda">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                                    <path d="M3 3v5h5" />
-                                </svg>
-                                Girar Esq.
+                            <button class="tool-btn" type="button" id="rotateLeft" title="Girar à esquerda (Shift+R)">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                <span>Girar −90°</span>
                             </button>
-                            <button class="tool-btn" id="rotateRight" title="Girar à direita">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                                    <path d="M21 3v5h-5" />
-                                </svg>
-                                Girar Dir.
+                            <button class="tool-btn" type="button" id="rotateRight" title="Girar à direita (R)">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                                <span>Girar +90°</span>
                             </button>
-                            <button class="tool-btn" id="flipHorizontal" title="Espelhar horizontalmente">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3" />
-                                    <path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3" />
-                                    <path d="M12 20v2M12 14v2M12 8v2M12 2v2" />
-                                </svg>
-                                Espelhar H
+                            <button class="tool-btn" type="button" id="flipHorizontal" title="Espelhar horizontalmente (H)">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M12 20v2M12 14v2M12 8v2M12 2v2"/></svg>
+                                <span>Espelhar ↔</span>
                             </button>
-                            <button class="tool-btn" id="flipVertical" title="Espelhar verticalmente">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3" />
-                                    <path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3" />
-                                    <path d="M4 12H2M10 12H8M16 12h-2M22 12h-2" />
-                                </svg>
-                                Espelhar V
+                            <button class="tool-btn" type="button" id="flipVertical" title="Espelhar verticalmente (V)">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12H2M10 12H8M16 12h-2M22 12h-2"/></svg>
+                                <span>Espelhar ↕</span>
                             </button>
+                        </div>
+                        <div class="crop-actions">
+                            <button class="btn secondary" type="button" id="cropResetBtn">Sem corte</button>
+                            <button class="btn primary" type="button" id="cropApplyBtn">Aplicar corte</button>
                         </div>
                     </div>
 
                     <div class="actions">
                         <div class="actions-row">
-                            <button class="btn secondary" id="resetBtn">Reset</button>
-                            <button class="btn secondary" id="changeImageBtn">Trocar</button>
-                            <button class="btn secondary" id="copyBtn">Copiar</button>
+                            <button class="btn secondary" type="button" id="resetBtn" title="Descarta todas as edições (dá para desfazer)">Redefinir</button>
+                            <button class="btn secondary" type="button" id="changeImageBtn">Trocar</button>
+                            <button class="btn secondary" type="button" id="copyBtn" title="Copiar imagem (Ctrl+C)">Copiar</button>
                         </div>
                         <div class="export-row">
                             <select id="exportFormatSelect" class="export-format-select" aria-label="Formato de exportação">
-                                <option value="image/png" data-ext="png">PNG</option>
-                                <option value="image/jpeg" data-ext="jpg">JPEG</option>
-                                <option value="image/webp" data-ext="webp">WebP</option>
+                                <option value="image/jpeg">JPG</option>
+                                <option value="image/png">PNG</option>
+                                <option value="image/webp">WebP</option>
                             </select>
-                            <button class="btn primary" id="saveBtn">Baixar Imagem</button>
+                            <select id="exportQualitySelect" class="export-format-select" aria-label="Qualidade de exportação">
+                                <option value="0.95">Máxima</option>
+                                <option value="0.9" selected>Alta</option>
+                                <option value="0.8">Média</option>
+                                <option value="0.65">Leve</option>
+                            </select>
+                            <button class="btn primary" type="button" id="saveBtn" title="Baixar (Ctrl+S)">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 19h14"/></svg>
+                                <span>Baixar</span>
+                            </button>
                         </div>
+                        <p class="kbd-hint"><kbd>Ctrl</kbd>+<kbd>Z</kbd> desfazer · <kbd>R</kbd> girar · <kbd>C</kbd> cortar · <kbd>\</kbd> original · roda/pinça = zoom</p>
                     </div>
-                </div>
+                </aside>
             </div>
+            <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
         </main>
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=3" defer></script>
+    <script type="module" src="script.js?v=4"></script>
 </body>
 
 </html>

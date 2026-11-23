@@ -4,8 +4,8 @@
  */
 
 import * as THREE from 'three';
-import { neonSignTexture, SIGN_WORDS, windowTexture, chromeScratchMap } from './textures.js';
-import { pick } from './utils.js';
+import { neonSignTexture, SIGN_WORDS, windowTexture, chromeScratchMap } from './textures.js?v=17';
+import { pick } from './utils.js?v=17';
 import { headGeometry, limbGeometry, torsoGeometry } from '../../shared/realism.js?v=3';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);

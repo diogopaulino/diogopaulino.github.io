@@ -11,12 +11,14 @@ export class SalonAudio {
 
     init() {
         if (this.ctx) {
-            if (this.ctx.state === 'suspended') this.ctx.resume();
+            if (this.ctx.state === 'suspended') this.ctx.resume()?.catch?.(() => {});
             return;
         }
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
-        const ctx = new Ctx();
+        // Áudio é enfeite: se o navegador recusar, o jogo segue mudo.
+        let ctx;
+        try { ctx = new Ctx(); } catch { return; }
         this.ctx = ctx;
         this.master = ctx.createGain();
         this.master.gain.value = this.enabled ? this.volume : 0;
@@ -34,7 +36,7 @@ export class SalonAudio {
         this.enabled = on;
         if (!this.master || !this.ctx) return;
         this.master.gain.setTargetAtTime(on ? this.volume : 0, this.ctx.currentTime, 0.08);
-        if (on && this.ctx.state === 'suspended') this.ctx.resume();
+        if (on && this.ctx.state === 'suspended') this.ctx.resume()?.catch?.(() => {});
     }
 
     _now() {

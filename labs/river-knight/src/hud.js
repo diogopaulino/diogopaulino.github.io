@@ -3,8 +3,8 @@
  * separado da lógica 3D.
  */
 
-import { formatTime } from './utils.js?v=50';
-import { DIFFICULTY } from './config.js?v=51';
+import { formatTime } from './utils.js?v=60';
+import { BOAT, DIFFICULTY } from './config.js?v=60';
 
 const $ = (id) => document.getElementById(id);
 
@@ -34,6 +34,14 @@ export class Hud {
             reticleLabel: $('reticleLabel'),
             throwFill: $('throwFill'),
             hintBar: $('hintBar'),
+            navPanel: $('navPanel'),
+            telegraph: Array.from(document.querySelectorAll('.telegraph [data-gear]')),
+            speedValue: $('speedValue'),
+            staminaFill: $('staminaFill'),
+            rudderNeedle: $('rudderNeedle'),
+            gearTouchLabel: $('gearTouchLabel'),
+            speedTouch: $('speedTouch'),
+            staminaTouch: $('staminaTouch'),
 
             loading: $('loadingOverlay'),
             loadingFill: $('loadingFill'),
@@ -202,12 +210,47 @@ export class Hud {
     setHint(visible, autoFire = false, touch = false) {
         if (!this.el.hintBar) return;
         if (visible) {
-            const steer = touch ? 'Arraste à esquerda para virar' : 'Vire com ← →';
+            const steer = touch ? 'Arraste à esquerda para o leme, ▲▼ para os remos' : 'Leme com ← →, remos com W/S';
             this.el.hintBar.textContent = autoFire
                 ? `${steer}. O canhão atira sozinho!`
                 : `${steer} e dispare com ${touch ? '🔥' : 'Espaço'} — a mira é automática.`;
         }
         this.el.hintBar.classList.toggle('is-on', Boolean(visible));
+    }
+
+    /**
+     * Telégrafo e instrumentos. Velocidade em nós sobre o fundo (1 m/s = 1,944 nós).
+     * Só escreve no DOM quando o valor exibido muda (o HUD roda a ~12 Hz).
+     */
+    setNav(p) {
+        const el = this.el;
+        const knots = Math.hypot(p.vx || 0, p.vz || 0) * 1.944;
+        const speedText = knots.toFixed(1).replace('.', ',');
+        if (speedText !== this._speedText) {
+            this._speedText = speedText;
+            if (el.speedValue) el.speedValue.textContent = speedText;
+            if (el.speedTouch) el.speedTouch.textContent = `${speedText} nós`;
+        }
+        if (p.gear !== this._gear) {
+            this._gear = p.gear;
+            for (const li of el.telegraph) li.dataset.on = String(Number(li.dataset.gear) === p.gear);
+            if (el.gearTouchLabel) el.gearTouchLabel.textContent = BOAT.gears[p.gear]?.short ?? '';
+            if (el.navPanel) el.navPanel.dataset.gear = String(p.gear);
+            if (el.touch) el.touch.dataset.gear = String(p.gear);
+        }
+        const st = `${Math.round((p.stamina ?? 1) * 100)}%`;
+        if (st !== this._stamina) {
+            this._stamina = st;
+            if (el.staminaFill) el.staminaFill.style.width = st;
+            if (el.staminaTouch) el.staminaTouch.style.width = st;
+            const low = (p.stamina ?? 1) < BOAT.staminaMinRam;
+            if (el.navPanel) el.navPanel.dataset.tired = String(low);
+            if (el.touch) el.touch.dataset.tired = String(low);
+        }
+        if (el.rudderNeedle) {
+            const k = Math.max(-1, Math.min(1, (p.rudder || 0) / BOAT.rudderMax));
+            el.rudderNeedle.style.left = `${(50 + k * 46).toFixed(1)}%`;
+        }
     }
 
     /** 0 = recarregando, 1 = canhão pronto. */

@@ -1588,3 +1588,379 @@ noscript {
 @media (max-width: 768px) {
   html, body { overflow-x: clip; }
 }
+
+/* ==========================================================================
+   REMASTER — MODO BOLSO (≤760px)
+   Antes o player inteiro era encolhido por transform (até 0,36×) e cada
+   botão virava um alvo de ~15px. Agora as três janelas viram uma coluna em
+   fluxo, no tamanho real, com controles de 44px+ e rolagem vertical.
+   ========================================================================== */
+
+.wa-pl-item.is-broken .wa-pl-name {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+@media (max-width: 760px) {
+    :root {
+        --taskbar-height: 48px;
+    }
+
+    .desktop-icons {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: auto;
+        height: 64px;
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: center;
+        gap: 4px;
+        padding: 4px max(8px, var(--safe-left, 0px)) 0 max(8px, var(--safe-right, 0px));
+    }
+
+    .desktop-icon {
+        width: auto;
+        min-width: 64px;
+        min-height: 56px;
+        font-size: 10px;
+    }
+
+    .icon-art {
+        transform: scale(0.74);
+        margin: -4px 0;
+    }
+
+    .player-workspace {
+        inset: 64px 0 var(--taskbar-height) 0;
+        display: block;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        padding: 6px max(8px, var(--safe-right, 0px)) 16px max(8px, var(--safe-left, 0px));
+    }
+
+    .player-scale-wrap {
+        width: 100%;
+        height: auto;
+        max-width: 560px;
+        max-height: none;
+        margin: 0 auto;
+    }
+
+    #winamp-stage {
+        width: 100%;
+        height: auto;
+        transform: none;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .wa-window,
+    .wa-main,
+    .wa-eq,
+    .wa-pl {
+        position: relative;
+        top: auto;
+        left: auto;
+        width: 100%;
+        height: auto;
+    }
+
+    .wa-titlebar {
+        height: 30px;
+    }
+
+    .wa-window-btn {
+        min-width: 44px;
+        height: 26px;
+        font-size: 11px;
+    }
+
+    .wa-main-body {
+        gap: 8px;
+        padding: 6px 8px 10px;
+    }
+
+    .wa-display {
+        flex-wrap: wrap;
+        gap: 6px 10px;
+    }
+
+    .wa-display-left {
+        width: auto;
+        flex: 0 0 auto;
+    }
+
+    .wa-time {
+        min-height: 44px;
+    }
+
+    .wa-time-digits {
+        font-size: 36px;
+    }
+
+    .wa-display-right {
+        flex: 1 1 180px;
+    }
+
+    .wa-vis-wrap {
+        height: 64px;
+    }
+
+    .wa-marquee {
+        font-size: 13px;
+    }
+
+    .wa-sliders {
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .wa-slider {
+        font-size: 11px;
+    }
+
+    .wa-slider-label {
+        min-width: 62px;
+    }
+
+    .wa-main input[type="range"],
+    .wa-eq input[type="range"] {
+        height: 44px;
+    }
+
+    .wa-main input[type="range"]::-webkit-slider-runnable-track,
+    .wa-eq input[type="range"]::-webkit-slider-runnable-track {
+        height: 10px;
+    }
+
+    .wa-main input[type="range"]::-webkit-slider-thumb,
+    .wa-eq input[type="range"]::-webkit-slider-thumb {
+        width: 22px;
+        height: 30px;
+        margin-top: -12px;
+    }
+
+    .wa-main input[type="range"]::-moz-range-thumb,
+    .wa-eq input[type="range"]::-moz-range-thumb {
+        width: 22px;
+        height: 30px;
+    }
+
+    .wa-transport {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .wa-transport-main {
+        gap: 4px;
+    }
+
+    .wa-btn {
+        flex: 1 1 0;
+        width: auto;
+        height: 52px;
+    }
+
+    .wa-btn-play {
+        flex-grow: 1.4;
+    }
+
+    .wa-btn-eject {
+        margin-left: 6px;
+    }
+
+    .wa-ico {
+        width: 18px;
+        height: 16px;
+    }
+
+    .wa-transport-modes {
+        gap: 6px;
+    }
+
+    .wa-toggle {
+        flex: 1 1 0;
+        height: 44px;
+        font-size: 11px;
+    }
+
+    /* Equalizador: lateral vira uma linha; 10 bandas dividem a largura. */
+    .wa-eq-body {
+        flex-direction: column;
+        gap: 10px;
+        padding: 8px;
+    }
+
+    .wa-eq-side {
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .wa-toggle-lg {
+        flex: 0 0 72px;
+        height: 44px;
+    }
+
+    .wa-eq-preamp {
+        flex: 1 1 auto;
+        height: 44px;
+        flex-direction: row;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .wa-eq-preamp input[type="range"] {
+        position: static;
+        width: 100% !important;
+        transform: none;
+    }
+
+    .wa-preset {
+        flex: 0 0 120px;
+        width: auto;
+    }
+
+    .wa-preset select {
+        height: 44px;
+        font-size: 13px;
+    }
+
+    .wa-eq-bands {
+        height: 168px;
+        gap: 0;
+    }
+
+    .wa-eq-band {
+        width: auto;
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .wa-eq-band input[type="range"] {
+        top: calc(50% - 10px);
+        width: 136px !important;
+    }
+
+    .wa-eq-band-label {
+        font-size: 10px;
+    }
+
+    /* Playlist: itens de 44px, lista com altura útil e rolagem própria. */
+    .wa-pl-list {
+        max-height: min(52dvh, 420px);
+    }
+
+    .wa-pl-item {
+        align-items: center;
+        min-height: 44px;
+        padding: 6px 8px;
+        font-size: 13px;
+    }
+
+    .wa-pl-footer {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .wa-pl-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .wa-pl-btn {
+        min-height: 44px;
+        font-size: 12px;
+    }
+
+    .wa-pl-empty {
+        position: static;
+        padding: 12px 6px;
+    }
+
+    .desktop-tip {
+        right: 8px;
+        left: 8px;
+        bottom: calc(var(--taskbar-height) + 8px);
+        max-width: none;
+        font-size: 12px;
+    }
+
+    .start-button,
+    .task-button {
+        min-height: 40px;
+    }
+
+    .system-tray {
+        min-height: 40px;
+    }
+}
+
+/* Celular deitado: transporte e sliders lado a lado para caber mais acima da dobra. */
+@media (max-width: 760px) and (max-height: 520px) and (orientation: landscape) {
+    .desktop-icons {
+        display: none;
+    }
+
+    .player-workspace {
+        top: 0;
+    }
+
+    .wa-transport {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .wa-transport-main {
+        flex: 1 1 auto;
+    }
+
+    .wa-btn {
+        height: 46px;
+    }
+
+    .wa-toggle {
+        min-width: 70px;
+    }
+
+    .wa-sliders {
+        flex-direction: row;
+        gap: 10px;
+    }
+
+    .wa-pl-list {
+        max-height: 60dvh;
+    }
+}
+
+@media (max-width: 760px) {
+    /* Em coluna de altura automática, flex:1 (base 0) zeraria a altura. */
+    .wa-main-body,
+    .wa-eq-body,
+    .wa-pl-body,
+    .wa-pl-list {
+        flex: none;
+    }
+
+    .wa-eq-bands {
+        flex: 0 0 168px;
+    }
+
+    .wa-titlebar {
+        height: 44px;
+    }
+
+    .wa-window-btn {
+        min-width: 44px;
+        height: 40px;
+    }
+}

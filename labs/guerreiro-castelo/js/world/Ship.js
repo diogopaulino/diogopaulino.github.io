@@ -17,7 +17,7 @@
 
 import * as THREE from 'three';
 import { loadModel, pbrMaterial } from '../../../shared/gfx/assets.js';
-import { Kit, block, ropeGeo, ropeMaterial, sailGeo, clothMaterial, shadowAll } from './Build.js?v=40';
+import { Kit, block, ropeGeo, ropeMaterial, sailGeo, clothMaterial, shadowAll } from './Build.js?v=50';
 
 export const SHIP_SCALE = 1.4;
 const S = SHIP_SCALE;

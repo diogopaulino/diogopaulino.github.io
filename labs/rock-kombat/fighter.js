@@ -13,7 +13,7 @@ import {
   PARRY_WINDOW, PARRY_COOLDOWN,
   MOVES, NORMAL_VARIANTS, METER_GAIN, FRAME, BODY_WIDTH, THROW_RANGE,
   GRAVITY, JUGGLE_GRAVITY, BACK_WALK, LAND_LAG, INPUT_BUFFER
-} from './constants.js';
+} from './constants.js?v=23';
 import { approach, clamp } from './utils.js';
 import audio from './audio.js';
 import { spawnProjectile, triggerPushblock } from './combat.js';

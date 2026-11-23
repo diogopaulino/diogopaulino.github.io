@@ -12,7 +12,7 @@ import { configureTextures } from '../../shared/gfx/textures.js';
 import { createPipeline } from '../../shared/gfx/post.js';
 import { createSunRig } from '../../shared/gfx/rig.js';
 import { updateWind } from '../../shared/gfx/flora.js';
-import { QUALITY, FILM_DURATION, chapterAt } from './config.js';
+import { QUALITY, FILM_DURATION, CHAPTERS, CAPTIONS, chapterAt, storyClock, kasatoPose } from './config.js';
 import { createMats } from './kit.js';
 import { createWorld } from './world.js';
 import { createKasato } from './kasato.js';
@@ -27,6 +27,13 @@ import { createAudio } from './audio.js';
 const STORAGE = 'santos-1908-settings';
 const $ = (id) => document.getElementById(id);
 const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+/** Hora do dia (segundos desde 0h) → "9:29:41". */
+const clockText = (sec) => {
+    const s = Math.floor(sec);
+    return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+};
+const RATES = [1, 2, 0.5];
+const BOOT_TIMEOUT_MS = 30000;
 
 const BUILDERS = [
     ['kasato', createKasato],
@@ -51,12 +58,17 @@ class Santos1908 {
         this.fpsN = 0;
         this.fps = 0;
         this.focus = new THREE.Vector3();
+        this.pose = {};
         this.bindUi();
+        // Carregamento nunca infinito: passou do limite, mostra o erro com "tentar de novo".
+        this._watchdog = setTimeout(() => {
+            if (this.state === 'boot') this.fail(new Error('O porto demorou demais para carregar. Tente de novo ou use a qualidade Leve.'));
+        }, BOOT_TIMEOUT_MS);
         this.boot();
     }
 
     loadSettings() {
-        const base = { quality: 'auto', volume: 70, muted: false };
+        const base = { quality: 'auto', volume: 70, muted: false, rate: 1 };
         try {
             return { ...base, ...JSON.parse(localStorage.getItem(STORAGE) || '{}') };
         } catch {
@@ -75,6 +87,34 @@ class Santos1908 {
         $('pauseBtn')?.addEventListener('click', () => this.togglePause());
         $('replayButton')?.addEventListener('click', () => this.replay());
         $('muteBtn')?.addEventListener('click', () => this.toggleMute());
+        $('prevBtn')?.addEventListener('click', () => this.jumpChapter(-1));
+        $('nextBtn')?.addEventListener('click', () => this.jumpChapter(1));
+        $('rateBtn')?.addEventListener('click', () => this.cycleRate());
+        $('endReplay')?.addEventListener('click', () => this.replay());
+        $('retryButton')?.addEventListener('click', () => location.reload());
+        $('retryLowButton')?.addEventListener('click', () => {
+            this.settings.quality = 'low';
+            this.saveSettings();
+            location.reload();
+        });
+        const scrub = $('timeline');
+        if (scrub) {
+            scrub.max = String(FILM_DURATION);
+            scrub.addEventListener('input', () => {
+                this._scrubbing = true;
+                this.seek(Number(scrub.value));
+            });
+            scrub.addEventListener('change', () => { this._scrubbing = false; });
+        }
+        // Aba oculta ou janela sem foco: pausa o filme e cala o som (retoma no botão).
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (this.state === 'playing') this.togglePause();
+                this.audio?.setEnabled(false);
+            } else if (!this.settings.muted && this.state !== 'boot') {
+                this.audio?.setEnabled(true);
+            }
+        });
         $('qualitySelect')?.addEventListener('change', (e) => {
             this.settings.quality = e.target.value;
             this.saveSettings();
@@ -95,11 +135,18 @@ class Santos1908 {
         if ($('qualitySelect')) $('qualitySelect').value = this.settings.quality;
 
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && (this.state === 'playing' || this.state === 'paused')) {
+            if (e.code === 'Space' && (this.state === 'playing' || this.state === 'paused' || this.state === 'ended')) {
+                if (e.target.closest?.('button, input, select')) return;
                 e.preventDefault();
-                this.togglePause();
+                if (this.state === 'ended') this.replay();
+                else this.togglePause();
             }
             if (e.code === 'KeyR' && this.state !== 'boot' && this.state !== 'ready') this.replay();
+            if (this.state === 'playing' || this.state === 'paused' || this.state === 'ended') {
+                if (e.code === 'ArrowRight') { e.preventDefault(); this.jumpChapter(1); }
+                if (e.code === 'ArrowLeft') { e.preventDefault(); this.jumpChapter(-1); }
+                if (e.code === 'KeyV') this.cycleRate();
+            }
             if (e.code === 'KeyM') this.toggleMute();
             if (e.code === 'KeyF') {
                 if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
@@ -111,6 +158,9 @@ class Santos1908 {
 
     fail(err) {
         console.error(err);
+        clearTimeout(this._watchdog);
+        this.state = 'error';
+        document.body.dataset.state = 'error';
         $('loadingOverlay').hidden = true;
         if ($('errorText')) $('errorText').textContent = err?.message || String(err);
         $('errorOverlay').hidden = false;
@@ -197,6 +247,8 @@ class Santos1908 {
             await frame();
             progress(1);
 
+            if (this.state === 'error') return; // o watchdog já desistiu
+            clearTimeout(this._watchdog);
             this.bootMs = Math.round(performance.now() - t0);
             this.state = 'ready';
             document.body.dataset.state = 'ready';
@@ -232,8 +284,43 @@ class Santos1908 {
         this.state = 'playing';
         this.cine.restart();
         this.cine.playing = true;
+        this.setRate(this.settings.rate);
         this.updateMuteUi();
         this.updatePauseUi();
+    }
+
+    /** Pula para o começo do capítulo anterior/seguinte (←/→). */
+    jumpChapter(dir) {
+        const t = this.cine.filmT;
+        let i = CHAPTERS.findIndex((c) => c.id === chapterAt(t).id);
+        // "voltar" no meio de um capítulo volta ao início dele, como num player de vídeo
+        if (dir < 0 && t - CHAPTERS[i].t > 2) dir = 0;
+        i = Math.max(0, Math.min(CHAPTERS.length - 1, i + dir));
+        this.seek(CHAPTERS[i].t + 0.01);
+    }
+
+    seek(t) {
+        this.cine.seek(t);
+        if (this.state === 'ended') {
+            $('endCard').hidden = true;
+            this.state = 'paused';
+            document.body.dataset.state = 'paused';
+            this.updatePauseUi();
+        }
+    }
+
+    setRate(r) {
+        const rate = RATES.includes(r) ? r : 1;
+        this.settings.rate = rate;
+        this.cine.rate = rate;
+        const btn = $('rateBtn');
+        if (btn) btn.textContent = `${String(rate).replace('.', ',')}×`;
+    }
+
+    cycleRate() {
+        const i = RATES.indexOf(this.settings.rate);
+        this.setRate(RATES[(i + 1) % RATES.length]);
+        this.saveSettings();
     }
 
     showTitle(ms) {
@@ -245,6 +332,7 @@ class Santos1908 {
     }
 
     replay() {
+        if ($('endCard')) $('endCard').hidden = true;
         this.cine.restart();
         this.cine.playing = true;
         this.state = 'playing';
@@ -254,6 +342,10 @@ class Santos1908 {
     }
 
     togglePause() {
+        if (this.state === 'ended') {
+            this.replay();
+            return;
+        }
         if (this.state === 'playing') {
             this.cine.playing = false;
             this.state = 'paused';
@@ -270,7 +362,7 @@ class Santos1908 {
         if (!btn) return;
         const paused = this.state === 'paused';
         btn.setAttribute('aria-pressed', paused ? 'true' : 'false');
-        btn.textContent = paused ? 'Continuar' : 'Pausar';
+        btn.textContent = paused || this.state === 'ended' ? 'Continuar' : 'Pausar';
     }
 
     toggleMute() {
@@ -346,24 +438,54 @@ class Santos1908 {
         }
         const dt = Math.min(0.05, (now - (this.last || now)) / 1000);
         this.last = now;
-        this.cine.update(dt);
-        const t = this.cine.filmT;
-        this.step(t, dt);
-        const ch = chapterAt(t);
-        this.audio.update(t, dt, ch.id, this.state === 'playing');
-        this.render(dt);
+        let t = 0;
+        let ch = CHAPTERS[0];
+        try {
+            this.cine.update(dt);
+            t = this.cine.filmT;
+            this.step(t, dt);
+            ch = chapterAt(t);
+            this.audio.update(t, dt, ch.id, this.state === 'playing');
+            this.render(dt);
+        } catch (err) {
+            // um quadro com erro não congela o filme: registra uma vez e segue
+            if (!this._loopErr) console.error(err);
+            this._loopErr = true;
+        }
+
+        if (this.cine.ended && this.state === 'playing') {
+            this.state = 'ended';
+            document.body.dataset.state = 'ended';
+            this.updatePauseUi();
+            if ($('endCard')) {
+                $('endCard').hidden = false;
+                $('endReplay')?.focus({ preventScroll: true });
+            }
+        }
 
         if (this._ch !== ch.id) {
             this._ch = ch.id;
             if ($('chapterLabel')) $('chapterLabel').textContent = ch.label;
+            if ($('captionLabel')) $('captionLabel').textContent = CAPTIONS[ch.id] || '';
         }
         const sec = Math.floor(t);
         if (sec !== this._sec) {
             this._sec = sec;
             if ($('filmTime')) $('filmTime').textContent = `${fmt(t)} / ${fmt(FILM_DURATION)}`;
-            // relógio diegético: o filme comprime 9h00 → 9h40 (atracação às 9h30, D05)
-            const mins = t < 112 ? (t / 112) * 30 : 30 + ((t - 112) / 68) * 10;
-            if ($('filmClock')) $('filmClock').textContent = `9:${String(Math.floor(mins)).padStart(2, '0')}`;
+        }
+        // Relógio diegético = hora da HISTÓRIA (salta nos cortes; 9h30 = amarras passadas, D05)
+        const clock = clockText(storyClock(t));
+        if (clock !== this._clock) {
+            this._clock = clock;
+            if ($('filmClock')) $('filmClock').textContent = clock;
+            kasatoPose(t, this.pose);
+            const sp = this.pose.docked ? 'atracado' : `${this.pose.knots.toFixed(1).replace('.', ',')} nós`;
+            if ($('shipSpeed')) $('shipSpeed').textContent = sp;
+        }
+        const scrub = $('timeline');
+        if (scrub && !this._scrubbing) {
+            const v = t.toFixed(1);
+            if (scrub.value !== v) scrub.value = v;
         }
         this.fpsAcc += dt;
         this.fpsN++;

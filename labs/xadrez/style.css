@@ -55,6 +55,17 @@ button:disabled { opacity: .35; cursor: default; }
 .status { display: flex; align-items: center; gap: 9px; margin: 22px 0 10px; color: var(--mint); font-size: 16px; }
 .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .status.is-check { color: var(--danger); }
+/* Relógio: dois mostradores; o da vez acende, menos de 20 s fica âmbar. */
+.clocks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 18px 0 0; }
+.clock { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: #0f1612; transition: border-color .2s, background .2s; }
+.clock span { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.clock b { font: 600 clamp(19px, 2vw, 24px)/1.15 Outfit, system-ui, sans-serif; font-variant-numeric: tabular-nums; color: #cfd5cb; }
+.clock.is-active { border-color: #ceb78b88; background: #ceb78b14; }
+.clock.is-active b { color: var(--gold-bright); }
+.clock.is-low b { color: var(--danger); }
+.clock.is-low.is-active { border-color: #eca99b99; background: #eca99b14; }
+.error-back { display: inline-flex; align-items: center; min-height: 48px; padding: 10px 14px; color: var(--muted); text-decoration: none; border: 1px solid var(--line); border-radius: 7px; }
+.error-back:hover { color: var(--text); }
 .captured { min-height: 28px; margin-bottom: 12px; color: #c2c9bc; font-size: 20px; letter-spacing: 2px; }
 .history-panel { border-top: 1px solid var(--line); padding-top: 12px; }
 .history-panel summary { display: flex; justify-content: space-between; min-height: 34px; cursor: pointer; color: var(--muted); font-size: 14px; list-style: none; }
@@ -138,6 +149,14 @@ body[data-mode="academy"] .history-panel, body[data-mode="puzzles"] .history-pan
     .player-avatar, .player-heading .eyebrow, .captured, .history-panel { display: none; }
     .opponent-name { font-size: 14px; margin: 0; }
     .status { font-size: 14px; margin: 4px 0; gap: 6px; }
+    /* Com relógio, os mostradores tomam o lugar do nome do adversário. */
+    body[data-clock="on"] .player-heading { display: none; }
+    .clocks { margin: 0; gap: 4px; flex: 0 0 auto; }
+    .clock { flex-direction: row; align-items: baseline; gap: 5px; padding: 4px 7px; }
+    .clock span { display: none; }
+    .clock b { font-size: 15px; }
+    .clock[data-side="w"] b::before { content: '♔ '; color: var(--muted); font-weight: 400; }
+    .clock[data-side="b"] b::before { content: '♚ '; color: var(--muted); font-weight: 400; }
     .play-actions { gap: 6px; }
     .play-actions button { min-height: 42px; padding: 7px 10px; }
     kbd { display: none; }
@@ -159,8 +178,11 @@ body[data-mode="academy"] .history-panel, body[data-mode="puzzles"] .history-pan
     #intro .howto li { padding: 26px 0 0; text-align: center; }
     #intro .howto span { display: none; }
     #intro .howto li::before { left: 50%; transform: translateX(-50%); width: 20px; height: 20px; font-size: 11px; }
-    #intro .settings-row { grid-template-columns: 1fr 1fr; gap: 10px; }
-    #intro .settings-row > .field:nth-child(-n+2) { grid-column: auto; }
+    /* Modo e Nível lado a lado; Relógio, Qualidade e Peças numa linha só. */
+    #intro .settings-row { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 8px; }
+    #intro .settings-row > .field { grid-column: span 2; }
+    #intro .settings-row > .field:nth-child(-n+2) { grid-column: span 3; }
+    #intro .settings-row > .field:nth-child(n+3) select { padding-inline: 7px; font-size: 13px; }
     #intro .field { gap: 3px; font-size: 12px; }
     #intro .field select { min-height: 42px; }
     #intro .card-actions { margin-top: 12px; gap: 4px; }
@@ -177,17 +199,23 @@ body[data-mode="academy"] .history-panel, body[data-mode="puzzles"] .history-pan
     .tray { display: block; }
     .status { margin: 8px 0; }
     .player-avatar, .captured, .history-panel { display: none; }
+    .clocks { margin-top: 8px; }
+    .clock { padding: 5px 8px; }
+    .clock b { font-size: 17px; }
     .coach-body { max-height: 160px; }
     .dock { margin-top: auto; }
     #intro { inset: var(--header) 0 0 auto; width: var(--rail); height: auto; max-height: none; padding: 14px 14px max(14px, var(--safe-bottom)); }
     #intro h2, #intro .lede, #intro .eyebrow, .asset-credit { display: none; }
-    #intro .howto { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 10px; font-size: 11px; line-height: 1.3; }
+    /* Paisagem baixa: os 3 passos saem (o Mestre repete na partida) para o botão Jogar caber sem rolar. */
+    #intro .howto { display: none; }
     #intro .howto li { padding: 24px 0 0; text-align: center; }
     #intro .howto span { display: none; }
     #intro .howto li::before { left: 50%; transform: translateX(-50%); width: 20px; height: 20px; font-size: 11px; }
     #intro .settings-row { grid-template-columns: 1fr 1fr; }
-    #intro .settings-row > .field:nth-child(-n+2) { grid-column: auto; }
-    .camera-bar { bottom: 8px; }
+    #intro .settings-row > .field, #intro .settings-row > .field:nth-child(-n+2) { grid-column: auto; }
+    /* top: auto desfaz o top: 8px do retrato — sem isso a barra esticava
+       do teto ao chão e cobria o tabuleiro inteiro. */
+    .camera-bar { top: auto; bottom: 8px; }
     .camera-bar button { padding: 8px; font-size: 12px; }
     .camera-help { display: none; }
 }

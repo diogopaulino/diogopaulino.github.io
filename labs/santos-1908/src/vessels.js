@@ -8,7 +8,7 @@ import { createHuman, poseHuman, SKIN_TONES } from '../../shared/gfx/human.js';
 import { createParticles } from '../../shared/gfx/particles.js';
 import { clamp, lerp, smoothstep } from '../../shared/gfx/core.js';
 import { buildSteamer, buildSailer, buildTug, buildCanoe } from './ships.js';
-import { kasatoPose } from './config.js';
+import { kasatoPose, SHIP_DYN } from './config.js';
 import { bar, P, Batch } from './kit.js';
 
 export function createVessels(ctx, world) {
@@ -107,7 +107,7 @@ export function createVessels(ctx, world) {
             g.position.set(tx, oc.heightAt(tx, tz, t, 0.35), tz);
             g.rotation.set(Math.sin(t * 0.9) * 0.012, pose.heading - away * 0.9, Math.sin(t * 0.7) * 0.02);
             g.updateMatrixWorld();
-            const sp = clamp(pose.speed / 5 + away * (1 - smoothstep(116, 124, t)) * 0.6, 0, 1);
+            const sp = clamp(pose.speed / SHIP_DYN.vmax + away * (1 - smoothstep(116, 124, t)) * 0.6, 0, 1);
             tmp.set(0, 0, 12).applyMatrix4(g.matrixWorld);
             oc.setWake(1, tmp.x, tmp.z, g.rotation.y, sp * 0.3, 2.9, 24);
             tugSmoke.uniforms.uOrigin.value.copy(tug.funnelTop).applyMatrix4(g.matrixWorld);

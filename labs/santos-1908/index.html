@@ -35,7 +35,7 @@
     <link rel="stylesheet" href="/assets/fonts/fraunces/font.css">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
 
     <script type="importmap">
     {
@@ -121,24 +121,53 @@
 
         <div id="hud" class="hud" hidden>
             <div class="hud-meta">
-                <p id="chapterLabel" class="chapter">Mar aberto</p>
+                <div class="hud-titles">
+                    <p id="chapterLabel" class="chapter">Mar aberto</p>
+                    <p id="captionLabel" class="caption">Kasato Maru · 123 m, ~6.000 t de arqueação · 50 dias desde Kōbe (K02, D03)</p>
+                </div>
                 <p class="meta-row">
-                    <span id="filmClock" class="diegetic">9:00</span>
-                    <span aria-hidden="true">·</span>
-                    <span id="filmTime">0:00 / 3:00</span>
+                    <span class="readout" title="Hora da história (salta nos cortes do filme)"><small>Hora</small><span id="filmClock" class="diegetic">9:24:10</span></span>
+                    <span class="readout" title="Velocidade do Kasato Maru"><small>Kasato</small><span id="shipSpeed" class="diegetic">7,0 nós</span></span>
+                    <span class="readout"><small>Filme</small><span id="filmTime">0:00 / 3:00</span></span>
                 </p>
             </div>
-            <p id="hint" class="hint">Arraste para olhar · solte para voltar ao trilho · Espaço pausa · R reinicia</p>
+            <label class="timeline-wrap">
+                <span class="sr-only">Linha do tempo do filme</span>
+                <input id="timeline" class="timeline" type="range" min="0" max="180" step="0.1" value="0">
+                <span class="chapter-ticks" aria-hidden="true">
+                    <i style="--t: 0"></i><i style="--t: 28"></i><i style="--t: 55"></i><i style="--t: 95"></i><i style="--t: 125"></i><i style="--t: 148"></i><i style="--t: 162"></i>
+                </span>
+            </label>
+            <p id="hint" class="hint">Arraste para olhar · ← → capítulos · Espaço pausa · V velocidade · R reinicia</p>
             <div class="dock" role="toolbar" aria-label="Controles do filme">
+                <button id="prevBtn" class="dock-btn icon" type="button" title="Capítulo anterior (←)" aria-label="Capítulo anterior">‹</button>
                 <button id="pauseBtn" class="dock-btn" type="button" title="Pausar / Continuar (Espaço)" aria-pressed="false">
                     Pausar
                 </button>
+                <button id="nextBtn" class="dock-btn icon" type="button" title="Próximo capítulo (→)" aria-label="Próximo capítulo">›</button>
+                <button id="rateBtn" class="dock-btn" type="button" title="Velocidade de reprodução (V)" aria-label="Velocidade de reprodução">1×</button>
                 <button id="replayButton" class="dock-btn accent" type="button" title="Reiniciar (R)">
                     Reiniciar
                 </button>
                 <button id="muteBtn" class="dock-btn" type="button" title="Som (M)" aria-pressed="false">
                     Som
                 </button>
+            </div>
+        </div>
+
+        <div id="endCard" class="overlay end-overlay" hidden>
+            <div class="overlay-card compact-card">
+                <p class="eyebrow"><i></i> 18 de junho de 1908 · 9h30</p>
+                <h2>O Kasato Maru atracou.</h2>
+                <p class="lede">Os 781 passageiros dormiram a bordo; no dia 19 desceram e seguiram de trem,
+                    pelo Valongo, até a Hospedaria do Brás (D07, V02).</p>
+                <footer class="card-actions">
+                    <button id="endReplay" class="primary-button" type="button">
+                        <span>Assistir de novo</span>
+                        <i aria-hidden="true">↻</i>
+                    </button>
+                    <a class="ghost-link" href="research.md">Ler o dossiê histórico</a>
+                </footer>
             </div>
         </div>
 
@@ -161,6 +190,7 @@
                 <ul class="feature-list">
                     <li>Dossiê histórico com fontes e nível de confiança (<a href="research.md">research.md</a>)</li>
                     <li>Mar → estuário → porto vivo → atracação → Valongo → ascensão</li>
+                    <li>Navio com inércia real: 7 nós no canal, freada de ~5 minutos até parar no armazém 14 — o filme corta o tempo entre os planos, como um documentário</li>
                     <li>Céu físico de inverno, mar com ondas e esteira, navio modelado baliza a baliza, cais, cidade, trem e gente com esqueleto</li>
                 </ul>
                 <div class="settings-row">
@@ -193,6 +223,10 @@
                 <h2>O porto não abriu.</h2>
                 <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
                     atualizado ou reative a aceleração de hardware.</p>
+                <footer class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button"><span>Tentar de novo</span><i aria-hidden="true">↻</i></button>
+                    <button id="retryLowButton" class="ghost-link" type="button">Abrir na qualidade Leve</button>
+                </footer>
             </div>
         </div>
 
@@ -201,7 +235,7 @@
 
     <script src="/labs/shared.js?v=16" defer></script>
     <script type="module" src="../shared/gfx/check-webgl.js"></script>
-    <script type="module" src="src/main.js?v=2"></script>
+    <script type="module" src="src/main.js?v=3"></script>
 </body>
 
 </html>

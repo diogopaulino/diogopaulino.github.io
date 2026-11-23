@@ -2,20 +2,28 @@
  * Capítulo 11: Zarpando e Fuga de Navio, ao amanhecer.
  *
  * prep: soltar a amarra → levantar a vela (o pano desfralda) → assumir o leme.
- * helm: 14 m/s em −Z, deriva 8·s m/s; três recifes (raio de batida 6,5 m); livre em z < −150.
- * Flechas chegam da praia (atrás, +Z) enquanto o navio está a menos de 60 m da partida.
+ * helm (escala real de veleiro): 6 m/s (~12 nós) em −Z; leme cheio → deriva 3,5·s m/s
+ * (rumo de até ~30°, o casco gira para ψ = atan(deriva/avanço)). Três recifes em slalom
+ * (raio de batida 6,5 m): o 1º pede virar a boreste, o 2º a bombordo, o 3º para qualquer
+ * lado; livre em z < −104 (~18 s ao leme).
+ * Flechas chegam da praia (atrás, +Z) enquanto o navio está a menos de 30 m da partida,
+ * com mira balística real (ArrowSystem.aim, g = 9,81 m/s²) e erro de ±3,5 m.
  */
 
 import * as THREE from 'three';
-import { Level } from './Level.js?v=40';
-import { buildShip, addShipColliders, updateShip, SHIP_MARKS, deckY } from '../world/Ship.js?v=40';
-import { buildCastle } from '../world/Castle.js?v=40';
-import { makeCrag } from '../world/Build.js?v=40';
-import { makeFriend } from '../characters/cast.js?v=40';
+import { Level } from './Level.js?v=50';
+import { buildShip, addShipColliders, updateShip, SHIP_MARKS, deckY } from '../world/Ship.js?v=50';
+import { buildCastle } from '../world/Castle.js?v=50';
+import { makeCrag } from '../world/Build.js?v=50';
+import { makeFriend } from '../characters/cast.js?v=50';
 
 const _o = new THREE.Vector3();
 const _d = new THREE.Vector3();
 const _l = new THREE.Vector3();
+const _t = new THREE.Vector3();
+const SHIP_SPEED = 6;
+const DRIFT = 3.5;
+const FINISH_Z = -104;
 
 export class ShipEscapeLevel extends Level {
     get id() {
@@ -86,7 +94,7 @@ export class ShipEscapeLevel extends Level {
         /* Cenário fixo no mundo: recifes à frente, a ilha e o castelo ficando para trás. */
         this.world = new THREE.Group();
         this.rocks = [];
-        for (const [x, z, seed] of [[-8, -55, 31], [9, -88, 32], [0, -122, 33]]) {
+        for (const [x, z, seed] of [[-2, -36, 31], [10, -62, 32], [-1, -88, 33]]) {
             const r = makeCrag(seed, { rx: 5, ry: 8, rz: 5.5, detail: 4 });
             r.position.set(x, 1.2, z);
             this.world.add(r);
@@ -140,6 +148,7 @@ export class ShipEscapeLevel extends Level {
             if (g.player.hurt(0.5)) {
                 g.audio.play('hit');
                 g.cameraRig.addShake(0.1, 0.2);
+                g.hud.flashHurt();
                 if (!g.player.alive) g.failCheckpoint('Uma flecha…');
             }
         };
@@ -150,7 +159,7 @@ export class ShipEscapeLevel extends Level {
             return d !== null && _l.y < d + 0.05 && _l.y > d - 2;
         };
 
-        g.hud.showToast('Arraste para olhar. E interage.', 4);
+        g.hud.showToast(g.hud.isTouch ? 'Arraste a tela para olhar. Botão E interage.' : 'Arraste para olhar. E interage.', 4);
         g.dialogue.say('DICO', 'Soltem as amarras!');
     }
 
@@ -174,7 +183,7 @@ export class ShipEscapeLevel extends Level {
         this.ship.position.y = wave.y * 0.8;
         this.ship.rotation.x = wave.pitch * 0.8;
         this.ship.rotation.z = wave.roll * 0.8 + this.steer * 0.05;
-        this.ship.rotation.y = -this.steer * 0.12;
+        this.ship.rotation.y = -Math.atan2(this.steer * DRIFT, SHIP_SPEED);
         this.ship.userData.helm.rotation.z = this.steer * 2.4;
         updateShip(this.ship, dt, 1.2, this.sail ? 1 : 0);
 
@@ -184,12 +193,15 @@ export class ShipEscapeLevel extends Level {
         }
 
         this.arrowT += dt;
-        if (this.phase !== 'done' && this.arrowT > 0.9 && this.shipZ > -60) {
+        if (this.phase !== 'done' && this.arrowT > 1.1 && this.shipZ > -30) {
             this.arrowT = 0;
-            // da praia (≈ 45 m atrás da partida) em arco sobre o convés
+            // da praia (≈ 45 m atrás da partida) em arco sobre o convés, mira balística
             _o.set((Math.random() - 0.5) * 24, 6, 46);
-            _d.set(this.shipX + (Math.random() - 0.5) * 7 - _o.x, 9 + Math.random() * 5, this.shipZ + (Math.random() - 0.5) * 16 - _o.z).normalize();
-            g.arrows.fire(_o, _d, 30 + Math.random() * 6);
+            const deck = deckY(0, 0) ?? 2;
+            _t.set(this.shipX + (Math.random() - 0.5) * 7, deck + 1, this.shipZ + (Math.random() - 0.5) * 10 - SHIP_SPEED * 0.4);
+            const v = 38 + Math.random() * 6;
+            g.arrows.aim(_o, _t, v, _d);
+            g.arrows.fire(_o, _d, v);
             g.audio.play('arrow');
         }
 
@@ -198,8 +210,8 @@ export class ShipEscapeLevel extends Level {
             this.steer += input.move.x * dt * 1.5;
             if (Math.abs(input.move.x) < 0.1) this.steer *= Math.exp(-dt * 0.6);
             this.steer = Math.max(-1, Math.min(1, this.steer));
-            this.shipX += this.steer * 8 * dt;
-            this.shipZ -= 14 * dt;
+            this.shipX += this.steer * DRIFT * dt;
+            this.shipZ -= SHIP_SPEED * dt;
             this.group.position.set(this.shipX, 0, this.shipZ);
 
             for (const r of this.rocks) {
@@ -210,7 +222,7 @@ export class ShipEscapeLevel extends Level {
                 }
             }
 
-            if (this.shipZ < -150) {
+            if (this.shipZ < FINISH_Z) {
                 this.phase = 'done';
                 g.player.controller.setMode('locked');
                 g.story.notify('escaped');

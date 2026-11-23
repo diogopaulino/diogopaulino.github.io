@@ -3,10 +3,10 @@
  */
 
 import * as THREE from 'three';
-import { makeHero } from './cast.js?v=40';
-import { PrincessAI } from '../ai/PrincessAI.js?v=40';
-import { angleDamp } from '../utils/math.js';
-import { mat } from '../world/Build.js?v=40';
+import { makeHero } from './cast.js?v=50';
+import { PrincessAI } from '../ai/PrincessAI.js?v=50';
+import { angleDamp } from '../utils/math.js?v=50';
+import { mat } from '../world/Build.js?v=50';
 
 export class Camila {
     constructor() {

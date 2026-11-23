@@ -16,7 +16,7 @@
  */
 
 import * as THREE from 'three';
-import { WORLD } from './config.js';
+import { WORLD } from './config.js?v=23';
 import { fbm2, smoothstep, lerp, clamp, seeded } from '../../shared/gfx/core.js';
 import {
     createCourse, carveBasin, createTerrain, createGrass, createForest, createWater, createPath, scatter, scatterModel
@@ -40,6 +40,8 @@ float gfxSeaDepth(vec2 xz) {
 }`;
 
 const nextTask = () => new Promise((r) => setTimeout(r, 0));
+/** Lado da célula da grade de colisores fixos (m). */
+const CELL = 8;
 
 export class World {
     /**
@@ -305,41 +307,87 @@ export class World {
         return h < LAKE_LEVEL - 0.55 && Math.hypot(x - WORLD.lake.x, z - WORLD.lake.z) < WORLD.lake.radius * 1.4;
     }
 
+    /**
+     * Obstáculo circular. Os fixos (árvores, rochas, cercas, prédios) entram numa grade
+     * uniforme de `CELL` m — cada consulta só olha as células vizinhas em vez de ~900 círculos.
+     * Os dinâmicos (dinossauros e o próprio jipe) ficam numa lista curta.
+     */
     addCollider(x, z, r, fixed = true) {
         const c = { x, z, r, on: true };
-        (fixed ? this.colliders : this.dynamic).push(c);
+        if (!fixed) {
+            this.dynamic.push(c);
+            return c;
+        }
+        this.colliders.push(c);
+        const g = this._grid || (this._grid = new Map());
+        this._maxR = Math.max(this._maxR || 0, r);
+        const x0 = Math.floor((x - r) / CELL);
+        const x1 = Math.floor((x + r) / CELL);
+        const z0 = Math.floor((z - r) / CELL);
+        const z1 = Math.floor((z + r) / CELL);
+        for (let i = x0; i <= x1; i++) {
+            for (let k = z0; k <= z1; k++) {
+                const key = i * 4096 + k;
+                let cell = g.get(key);
+                if (!cell) g.set(key, (cell = []));
+                cell.push(c);
+            }
+        }
         return c;
+    }
+
+    /** Empurra `out` para fora de um círculo (ver collide). */
+    _push(out, c, radius) {
+        const dx = out.x - c.x;
+        const dz = out.z - c.z;
+        const min = radius + c.r;
+        if (Math.abs(dx) > min || Math.abs(dz) > min) return;
+        const d = Math.hypot(dx, dz);
+        if (d < min && d > 1e-4) {
+            const s = min / d;
+            out.x = c.x + dx * s;
+            out.z = c.z + dz * s;
+            out.hit = true;
+        }
     }
 
     /**
      * Empurra o círculo (x, z, radius) para fora dos obstáculos.
      *   para cada obstáculo c: se d < radius + c.r → p = c + (p − c)·(radius + c.r)/d
+     * `skip` = colisor do próprio corpo (um dinossauro não colide consigo mesmo).
      * Devolve um objeto reutilizado { x, z, hit }.
      */
-    collide(x, z, radius) {
+    collide(x, z, radius, skip = null) {
         const out = this._hit;
         out.x = x;
         out.z = z;
         out.hit = false;
-        for (let pass = 0; pass < 2; pass++) {
-            const list = pass === 0 ? this.colliders : this.dynamic;
-            for (let i = 0; i < list.length; i++) {
-                const c = list[i];
-                if (!c.on) continue;
-                const dx = out.x - c.x;
-                const dz = out.z - c.z;
-                const min = radius + c.r;
-                if (Math.abs(dx) > min || Math.abs(dz) > min) continue;
-                const d = Math.hypot(dx, dz);
-                if (d < min && d > 1e-4) {
-                    const s = min / d;
-                    out.x = c.x + dx * s;
-                    out.z = c.z + dz * s;
-                    out.hit = true;
+        const g = this._grid;
+        if (g) {
+            const x0 = Math.floor((x - radius) / CELL);
+            const x1 = Math.floor((x + radius) / CELL);
+            const z0 = Math.floor((z - radius) / CELL);
+            const z1 = Math.floor((z + radius) / CELL);
+            for (let i = x0; i <= x1; i++) {
+                for (let k = z0; k <= z1; k++) {
+                    const cell = g.get(i * 4096 + k);
+                    if (!cell) continue;
+                    for (let j = 0; j < cell.length; j++) if (cell[j].on) this._push(out, cell[j], radius);
                 }
             }
         }
+        const list = this.dynamic;
+        for (let i = 0; i < list.length; i++) {
+            const c = list[i];
+            if (c.on && c !== skip) this._push(out, c, radius);
+        }
         return out;
+    }
+
+    /** true se um círculo em (x, z) bate em algo fixo ou cai na água (sondagem de desvio da IA). */
+    blocked(x, z, radius, skip = null) {
+        if (this.flooded(x, z)) return true;
+        return this.collide(x, z, radius, skip).hit;
     }
 
     /** Liga a grama/floresta a uma queda de tier (resolução dinâmica do palco). */

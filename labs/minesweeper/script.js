@@ -16,7 +16,21 @@ document.addEventListener('DOMContentLoaded', () => {
          sorteadas depois dele, fora do quadrado tocado e dos 8 vizinhos.
        · Vitória: abrir todos os quadrados sem mina (bandeiras não são exigidas).
          Derrota: abrir uma mina. O relógio conta segundos até 999.
-       · Fácil (8x8 · 6 minas) é o nível padrão, pensado para crianças. */
+       · Fácil (8x8 · 6 minas) é o nível padrão, pensado para crianças.
+       · Sem chute (padrão): o campo só é aceito se um resolvedor lógico
+         consegue limpá-lo inteiro a partir do primeiro toque, sem adivinhar.
+         Regras do resolvedor, repetidas até não haver progresso:
+           1. número − bandeiras = 0           → vizinhos fechados são seguros
+           2. número − bandeiras = fechados    → vizinhos fechados são minas
+           3. subconjunto: se os fechados de A estão contidos nos de B, a
+              diferença tem (resto de B − resto de A) minas → aplica 1 ou 2
+           4. contagem global: minas restantes = 0 ou = casas fechadas.
+         Sorteia campos até achar um resolvível (teto de ~350 ms); se não
+         achar, usa o último sorteio (o primeiro toque continua seguro).
+       · Acorde (chord): tocar num número já aberto com as bandeiras certas em
+         volta abre os outros vizinhos de uma vez.
+       · Bandeiras podem passar do número de minas (o contador fica negativo),
+         como no Windows — um erro de marcação não trava o jogador. */
     const DIFFICULTIES = {
         easy: { rows: 8, cols: 8, mines: 6 },
         beginner: { rows: 9, cols: 9, mines: 10 },
@@ -34,6 +48,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let flags = 0;
     let timer = 0;
     let timerInterval = null;
+    let timerStart = 0;     // performance.now() do início (descontando pausas)
+    let timerElapsed = 0;   // ms acumulados antes da última pausa
+    const NOGUESS_KEY = 'minesweeper95:noguess';
+    const noGuessToggle = document.getElementById('noguess-toggle');
+    let noGuess = true;
+    try {
+        noGuess = localStorage.getItem(NOGUESS_KEY) !== '0';
+    } catch (err) {
+        noGuess = true;
+    }
     let firstClick = true;
     /* Modo bandeira: no toque, segurar 500ms para marcar é lento e falha se o
        dedo escorrega. O botão de alternância transforma o toque simples em
@@ -67,12 +91,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* Caixa de resultado no estilo diálogo do Windows 95, sobre o campo. */
-    function showResult(won) {
+    function showResult(won, seconds = timer) {
         resultTitle.textContent = won ? 'Você venceu!' : 'Boom!';
         resultIcon.textContent = won ? '🎉' : '💥';
         resultText.textContent = won
-            ? `Campo limpo em ${timer} segundo${timer === 1 ? '' : 's'}. Parabéns!`
-            : 'Você abriu uma mina. Tente de novo — o primeiro toque é sempre seguro.';
+            ? `Campo limpo em ${seconds.toLocaleString('pt-BR')} s.${lastWasRecord ? ' Novo recorde! 🏆' : ' Parabéns!'}`
+            : noGuess
+                ? 'Você abriu uma mina. Este campo dava para resolver só com lógica — tente de novo!'
+                : 'Você abriu uma mina. Tente de novo — o primeiro toque é sempre seguro.';
         resultEl.dataset.tone = won ? 'win' : 'lose';
         resultEl.hidden = false;
         resultAgain.focus({ preventScroll: true });
@@ -137,14 +163,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderBest() {
         if (!bestTimeElement) return;
         const best = readBest()[difficultySelect.value];
-        bestTimeElement.textContent = Number.isFinite(best) ? `${best}s` : '—';
+        bestTimeElement.textContent = Number.isFinite(best) ? `${best.toLocaleString('pt-BR')}s` : '—';
     }
 
-    function recordBest() {
+    let lastWasRecord = false;
+    function recordBest(seconds) {
         const key = difficultySelect.value;
         const all = readBest();
-        if (!Number.isFinite(all[key]) || timer < all[key]) {
-            all[key] = timer;
+        lastWasRecord = !Number.isFinite(all[key]) || seconds < all[key];
+        if (lastWasRecord) {
+            all[key] = seconds;
             saveBest(all);
         }
         renderBest();
@@ -163,13 +191,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateCellSize() {
         // Largura útil: viewport menos padding do body e moldura da janela Win95.
-        const available = Math.min(document.documentElement.clientWidth - 72, 720);
+        const available = Math.min(document.documentElement.clientWidth - 48, 760);
         const fit = Math.floor(available / COLS);
         // No toque a célula cabe na tela até o mínimo de 30px (Fácil e Iniciante
         // cabem inteiros num iPhone SE); abaixo disso o campo rola dentro da
         // janela em vez de virar alvo minúsculo. Com mouse, até 36px.
         const cell = window.matchMedia('(pointer: coarse)').matches
-            ? Math.max(30, Math.min(44, fit)) : Math.max(16, Math.min(36, fit));
+            ? Math.max(30, Math.min(46, fit)) : Math.max(18, Math.min(36, fit));
         document.documentElement.style.setProperty('--cell-size', cell + 'px');
         boardElement.style.gridTemplateColumns = `repeat(${COLS}, var(--cell-size))`;
         boardElement.style.gridTemplateRows = `repeat(${ROWS}, var(--cell-size))`;
@@ -194,6 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         revealedCount = 0;
         flags = 0;
         timer = 0;
+        timerElapsed = 0;
         firstClick = true;
         clearInterval(timerInterval);
         timerInterval = null;
@@ -270,19 +299,43 @@ document.addEventListener('DOMContentLoaded', () => {
     function endPress() {
         if (!press) return;
         clearTimeout(press.timer);
+        press.lit?.forEach(el => el.classList.remove('pressed'));
         press = null;
         if (!gameOver) resetBtn.innerText = '🙂';
     }
+
+    /* Segurar um número aberto "afunda" os vizinhos fechados — a prévia do
+       acorde que o Windows mostrava com os dois botões do mouse. */
+    function lightNeighbours(r, c) {
+        const lit = [];
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const n = board[r + dr]?.[c + dc];
+                if (!n || n.isRevealed || n.isFlagged) continue;
+                n.element.classList.add('pressed');
+                lit.push(n.element);
+            }
+        }
+        return lit;
+    }
+
     boardElement.addEventListener('pointerdown', (event) => {
         const cell = event.target.closest('.cell');
         if (!cell || gameOver || event.button !== 0 || press) return;
-        const { r, c } = cell.dataset;
+        const r = +cell.dataset.r, c = +cell.dataset.c;
         capturePointer(cell, event.pointerId);
-        press = { id: event.pointerId, r: +r, c: +c, x: event.clientX, y: event.clientY, held: false };
+        press = { id: event.pointerId, r, c, x: event.clientX, y: event.clientY, held: false };
         resetBtn.innerText = '😮';
+        if (board[r][c].isRevealed) {
+            press.chord = true;
+            press.lit = lightNeighbours(r, c);
+            return;
+        }
+        // Segurar 450 ms marca bandeira (vibra no celular).
         press.timer = setTimeout(() => {
+            if (!press) return;
             press.held = true;
-            handleRightClick(+r, +c);
+            handleRightClick(r, c);
             resetBtn.innerText = '🙂';
         }, 450);
     });
@@ -291,9 +344,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     boardElement.addEventListener('pointerup', (event) => {
         if (press?.id !== event.pointerId) return;
-        const { r, c, held } = press;
+        const { r, c, held, chord: isChord } = press;
         endPress();
-        if (!held && !gameOver) (flagMode ? handleRightClick : handleClick)(r, c);
+        if (held || gameOver) return;
+        if (isChord) chord(r, c);
+        else (flagMode ? handleRightClick : handleClick)(r, c);
     });
     boardElement.addEventListener('lostpointercapture', (event) => {
         if (press?.id === event.pointerId) endPress();
@@ -305,25 +360,176 @@ document.addEventListener('DOMContentLoaded', () => {
             handleRightClick(+cell.dataset.r, +cell.dataset.c);
         }
     });
-    boardElement.addEventListener('dblclick', (event) => {
-        const cell = event.target.closest('.cell');
-        if (cell) chord(+cell.dataset.r, +cell.dataset.c);
-    });
+    // Duplo clique num número já é tratado pelo clique simples (acorde).
 
-    function placeMines(excludeR, excludeC) {
-        let minesPlaced = 0;
-        while (minesPlaced < MINES) {
+    /* --- Gerador sem chute ----------------------------------------------
+       Tudo em arrays planos (índice = r·COLS + c) para o resolvedor rodar
+       dezenas de vezes por segundo sem alocar objetos. */
+    let neighbourCache = null;
+
+    function neighbourList() {
+        if (neighbourCache && neighbourCache.rows === ROWS && neighbourCache.cols === COLS) return neighbourCache.list;
+        const list = [];
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const n = [];
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        if (!dr && !dc) continue;
+                        const nr = r + dr, nc = c + dc;
+                        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) n.push(nr * COLS + nc);
+                    }
+                }
+                list.push(n);
+            }
+        }
+        neighbourCache = { rows: ROWS, cols: COLS, list };
+        return list;
+    }
+
+    /* Sorteio clássico por rejeição: linha e coluna aleatórias, descartando
+       a zona segura 3x3 do primeiro toque e casas já minadas. */
+    function randomMines(excludeR, excludeC) {
+        const total = ROWS * COLS;
+        const mines = new Uint8Array(total);
+        let free = 0;
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (Math.abs(r - excludeR) > 1 || Math.abs(c - excludeC) > 1) free++;
+            }
+        }
+        const count = Math.min(MINES, free);
+        let placed = 0;
+        while (placed < count) {
             const r = Math.floor(Math.random() * ROWS);
             const c = Math.floor(Math.random() * COLS);
             // Zona segura 3x3 em volta do primeiro toque.
-            const nearFirst = Math.abs(r - excludeR) <= 1 && Math.abs(c - excludeC) <= 1;
+            if (Math.abs(r - excludeR) <= 1 && Math.abs(c - excludeC) <= 1) continue;
+            const i = r * COLS + c;
+            if (mines[i]) continue;
+            mines[i] = 1;
+            placed++;
+        }
+        return mines;
+    }
 
-            if (!board[r][c].isMine && !nearFirst) {
-                board[r][c].isMine = true;
-                minesPlaced++;
+    /* Resolvedor lógico (regras 1–4 do topo). Devolve true se abre tudo. */
+    function solvable(mines, startIdx) {
+        const total = ROWS * COLS;
+        const nb = neighbourList();
+        const counts = new Uint8Array(total);
+        for (let i = 0; i < total; i++) {
+            if (mines[i]) continue;
+            let n = 0;
+            for (const j of nb[i]) n += mines[j];
+            counts[i] = n;
+        }
+        const state = new Uint8Array(total); // 0 fechada · 1 aberta · 2 mina deduzida
+        let opened = 0;
+        let flagged = 0;
+        const stack = [];
+
+        const open = (i) => {
+            stack.push(i);
+            while (stack.length) {
+                const k = stack.pop();
+                if (state[k] !== 0) continue;
+                if (mines[k]) return false; // dedução errada: nunca deve ocorrer
+                state[k] = 1;
+                opened++;
+                if (counts[k] === 0) for (const j of nb[k]) if (state[j] === 0) stack.push(j);
+            }
+            return true;
+        };
+
+        open(startIdx);
+        const goal = total - MINES;
+        const unknownOf = (i) => nb[i].filter(j => state[j] === 0);
+        const flagsOf = (i) => nb[i].reduce((t, j) => t + (state[j] === 2 ? 1 : 0), 0);
+
+        let progress = true;
+        while (progress && opened < goal) {
+            progress = false;
+
+            // Regras 1 e 2.
+            for (let i = 0; i < total; i++) {
+                if (state[i] !== 1 || counts[i] === 0) continue;
+                const unknown = unknownOf(i);
+                if (!unknown.length) continue;
+                const rest = counts[i] - flagsOf(i);
+                if (rest === 0) {
+                    for (const j of unknown) if (!open(j)) return false;
+                    progress = true;
+                } else if (rest === unknown.length) {
+                    for (const j of unknown) { state[j] = 2; flagged++; }
+                    progress = true;
+                }
+            }
+            if (progress) continue;
+
+            // Regra 3: pares de números a até 2 casas de distância.
+            for (let a = 0; a < total && !progress; a++) {
+                if (state[a] !== 1 || counts[a] === 0) continue;
+                const ua = unknownOf(a);
+                if (!ua.length) continue;
+                const restA = counts[a] - flagsOf(a);
+                const ar = (a / COLS) | 0, ac = a % COLS;
+                for (let br = Math.max(0, ar - 2); br <= Math.min(ROWS - 1, ar + 2) && !progress; br++) {
+                    for (let bc = Math.max(0, ac - 2); bc <= Math.min(COLS - 1, ac + 2); bc++) {
+                        const b = br * COLS + bc;
+                        if (b === a || state[b] !== 1 || counts[b] === 0) continue;
+                        const ub = unknownOf(b);
+                        if (ub.length <= ua.length) continue;
+                        if (!ua.every(x => ub.includes(x))) continue;
+                        const diff = ub.filter(x => !ua.includes(x));
+                        const restDiff = counts[b] - flagsOf(b) - restA;
+                        if (restDiff === 0) {
+                            for (const j of diff) if (!open(j)) return false;
+                            progress = true;
+                            break;
+                        }
+                        if (restDiff === diff.length) {
+                            for (const j of diff) { state[j] = 2; flagged++; }
+                            progress = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (progress) continue;
+
+            // Regra 4: contagem global de minas.
+            const left = MINES - flagged;
+            let closed = 0;
+            for (let i = 0; i < total; i++) if (state[i] === 0) closed++;
+            if (left === 0 && closed) {
+                for (let i = 0; i < total; i++) if (state[i] === 0 && !open(i)) return false;
+                progress = true;
+            } else if (left === closed && closed) {
+                for (let i = 0; i < total; i++) if (state[i] === 0) { state[i] = 2; flagged++; }
+                progress = true;
             }
         }
+        return opened >= goal;
     }
+
+    function placeMines(excludeR, excludeC) {
+        const startIdx = excludeR * COLS + excludeC;
+        let mines = randomMines(excludeR, excludeC);
+        if (noGuess) {
+            const deadline = performance.now() + 350;
+            let tries = 1;
+            while (!solvable(mines, startIdx) && performance.now() < deadline) {
+                mines = randomMines(excludeR, excludeC);
+                tries++;
+            }
+            lastGenTries = tries;
+        }
+        for (let i = 0; i < mines.length; i++) {
+            if (mines[i]) board[(i / COLS) | 0][i % COLS].isMine = true;
+        }
+    }
+    let lastGenTries = 0;
 
     function calculateNumbers() {
         for (let r = 0; r < ROWS; r++) {
@@ -362,7 +568,6 @@ document.addEventListener('DOMContentLoaded', () => {
             revealAllMines();
             const cellElement = getCellElement(r, c);
             cellElement.classList.add('revealed', 'mine');
-            cellElement.style.backgroundColor = 'red';
             resetBtn.innerText = '😵';
             stopTimer();
             sfx('boom');
@@ -418,38 +623,46 @@ document.addEventListener('DOMContentLoaded', () => {
             flags--;
             sfx('unflag');
         } else {
-            if (flags < MINES) {
-                cellData.isFlagged = true;
-                cellElement.innerText = '🚩';
-                flags++;
-                sfx('flag');
-                buzz(18);
-            }
+            cellData.isFlagged = true;
+            cellElement.innerText = '🚩';
+            flags++;
+            sfx('flag');
+            buzz(18);
         }
+        cellElement.classList.toggle('flagged', cellData.isFlagged);
         labelCell(cellElement, cellData.isFlagged ? 'bandeira' : 'fechada');
         mineCountElement.innerText = formatNumber(MINES - flags);
         announce(`${MINES - flags} minas restantes.`);
     }
 
+    /* Abre a célula e, se for zero, espalha em largura (BFS) — sem recursão,
+       então nem o Especialista estoura a pilha. Cada célula ganha um atraso
+       de animação proporcional à distância do toque: a "onda" de abertura. */
     function revealCell(r, c) {
-        if (r < 0 || r >= ROWS || c < 0 || c >= COLS || board[r][c].isRevealed || board[r][c].isFlagged) return;
+        const queue = [[r, c, 0]];
+        let head = 0;
+        while (head < queue.length) {
+            const [cr, cc, dist] = queue[head++];
+            if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) continue;
+            const cellData = board[cr][cc];
+            if (cellData.isRevealed || cellData.isFlagged) continue;
 
-        const cellData = board[r][c];
-        cellData.isRevealed = true;
-        revealedCount++;
+            cellData.isRevealed = true;
+            revealedCount++;
 
-        const cellElement = getCellElement(r, c);
-        cellElement.classList.add('revealed');
-        labelCell(cellElement, cellData.neighborMines ? `minas vizinhas: ${cellData.neighborMines}` : 'vazia');
+            const cellElement = getCellElement(cr, cc);
+            cellElement.style.setProperty('--d', `${Math.min(dist, 14) * 18}ms`);
+            cellElement.classList.add('revealed');
+            labelCell(cellElement, cellData.neighborMines ? `minas vizinhas: ${cellData.neighborMines}` : 'vazia');
 
-        if (cellData.neighborMines > 0) {
-            cellElement.innerText = cellData.neighborMines;
-            cellElement.dataset.num = cellData.neighborMines;
-        } else {
-            // Flood fill
-            for (let dr = -1; dr <= 1; dr++) {
-                for (let dc = -1; dc <= 1; dc++) {
-                    revealCell(r + dr, c + dc);
+            if (cellData.neighborMines > 0) {
+                cellElement.innerText = cellData.neighborMines;
+                cellElement.dataset.num = cellData.neighborMines;
+            } else {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        if (dr || dc) queue.push([cr + dr, cc + dc, dist + 1]);
+                    }
                 }
             }
         }
@@ -494,27 +707,44 @@ document.addEventListener('DOMContentLoaded', () => {
             mineCountElement.innerText = '000';
             sfx('win');
             buzz([25, 40, 25, 40, 60]);
-            recordBest();
-            announce(`Campo limpo em ${timer} segundos.`);
-            showResult(true);
+            const seconds = preciseSeconds();
+            recordBest(seconds);
+            announce(`Campo limpo em ${seconds.toLocaleString('pt-BR')} segundos.`);
+            showResult(true, seconds);
         }
     }
 
+    /* Relógio por performance.now(): setInterval atrasa em aba lenta e
+       acumulava erro; aqui o tempo é sempre "agora − início". O display
+       mostra segundos inteiros (como o original); o recorde guarda décimos. */
+    function tickTimer() {
+        const ms = timerElapsed + (timerInterval ? performance.now() - timerStart : 0);
+        timer = Math.min(999, Math.floor(ms / 1000));
+        timerElement.innerText = formatNumber(timer);
+        return ms;
+    }
+
     function startTimer() {
-        timerInterval = setInterval(() => {
-            timer++;
-            if (timer > 999) timer = 999;
-            timerElement.innerText = formatNumber(timer);
-        }, 1000);
+        if (timerInterval) return;
+        timerStart = performance.now();
+        timerInterval = setInterval(tickTimer, 250);
+        tickTimer();
     }
 
     function stopTimer() {
+        if (timerInterval) timerElapsed += performance.now() - timerStart;
         clearInterval(timerInterval);
         timerInterval = null;
+        tickTimer();
+    }
+
+    function preciseSeconds() {
+        return Math.round(tickTimer() / 100) / 10;
     }
 
     function formatNumber(num) {
-        return num.toString().padStart(3, '0');
+        const sign = num < 0 ? '-' : '';
+        return sign + Math.abs(num).toString().padStart(sign ? 2 : 3, '0');
     }
 
     function getCellElement(r, c) {
@@ -551,6 +781,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     flagToggle?.addEventListener('click', () => setFlagMode(!flagMode));
+
+    if (noGuessToggle) {
+        noGuessToggle.checked = noGuess;
+        noGuessToggle.addEventListener('change', () => {
+            noGuess = noGuessToggle.checked;
+            try {
+                localStorage.setItem(NOGUESS_KEY, noGuess ? '1' : '0');
+            } catch (err) {
+                /* Sem storage a escolha vale só nesta visita. */
+            }
+            // Vale a partir do próximo campo; se ainda não houve toque, já vale neste.
+            announce(noGuess ? 'Sem chute ativado: os campos se resolvem só com lógica.' : 'Sem chute desativado.');
+        });
+    }
 
     /* F alterna o modo pelo teclado — o equivalente do botão direito para quem
        joga no notebook sem mouse. */

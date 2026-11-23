@@ -1,9 +1,12 @@
 /**
  * Teclado, mouse (pointer lock) e toque para o jipe.
+ *   W/↑ acelera · S/↓ freia e, parado, dá ré · A/D/←/→ esterça · Espaço freio de mão
+ *   Perder o pointer lock no meio do turno (Esc) emite 'unlock' → main.js pausa.
+ *   Janela sem foco: o teclado compartilhado limpa as teclas presas (onReset).
  */
 
 import { bindGameKeyboard } from '../../shared/game-keyboard.js';
-import { clamp } from './utils.js';
+import { clamp } from './utils.js?v=23';
 
 const MOVE = {
     KeyW: 'forward',
@@ -16,6 +19,7 @@ const MOVE = {
     ArrowRight: 'right',
     ShiftLeft: 'sprint',
     ShiftRight: 'sprint',
+    Space: 'handbrake',
     KeyE: 'observe',
     KeyF: 'observe'
 };
@@ -46,6 +50,9 @@ export class Input {
         this.touchLook = { x: 0, y: 0 };
         this.observeHeld = false;
         this.observePressed = false;
+        this.touchHandbrake = false;
+        this._move = { x: 0, z: 0, sprint: false, handbrake: false };
+        this._look = { x: 0, y: 0 };
         this._bind();
     }
 
@@ -60,11 +67,12 @@ export class Input {
     }
 
     consumeLook() {
-        const x = this.lookX + this.touchLook.x * 12;
-        const y = this.lookY + this.touchLook.y * 12;
+        const l = this._look;
+        l.x = this.lookX + this.touchLook.x * 12;
+        l.y = this.lookY + this.touchLook.y * 12;
         this.lookX = 0;
         this.lookY = 0;
-        return { x, y };
+        return l;
     }
 
     consumeZoom() {
@@ -84,11 +92,12 @@ export class Input {
         const b = this.keys.has('back') ? 1 : 0;
         const r = this.keys.has('right') ? 1 : 0;
         const l = this.keys.has('left') ? 1 : 0;
-        return {
-            x: clamp(r - l + this.touchMove.x, -1, 1),
-            z: clamp(f - b + this.touchMove.y, -1, 1),
-            sprint: this.keys.has('sprint')
-        };
+        const m = this._move;
+        m.x = clamp(r - l + this.touchMove.x, -1, 1);
+        m.z = clamp(f - b + this.touchMove.y, -1, 1);
+        m.sprint = this.keys.has('sprint');
+        m.handbrake = this.keys.has('handbrake') || this.touchHandbrake;
+        return m;
     }
 
     requestLock() {
@@ -121,6 +130,8 @@ export class Input {
                 this.touchMove.x = this.touchMove.y = 0;
                 this.lookX = this.lookY = this.zoomDelta = 0;
                 this.touchLook.x = this.touchLook.y = 0;
+                this.touchHandbrake = false;
+                this.emit('reset');
             }
         });
 
@@ -152,7 +163,9 @@ export class Input {
         };
 
         this._onLock = () => {
+            const was = this.locked;
             this.locked = document.pointerLockElement === this.canvas;
+            if (was && !this.locked) this.emit('unlock');
         };
 
         this._onContext = (e) => e.preventDefault();

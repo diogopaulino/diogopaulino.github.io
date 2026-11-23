@@ -1,12 +1,15 @@
 /**
  * Input: teclado, mouse, pointer lock e um stick virtual para toque.
+ * `move.jump` é o toque (pulso) e `move.jumpHeld` o estado segurado — o controlador usa o
+ * pulso para o jump buffer e o segurado para o pulo variável.
+ * Zona morta do stick: 12 % do raio; a resposta é reescalada para 0…1 fora dela.
  */
 
 export class InputManager {
     constructor(dom) {
         this.dom = dom;
         this.keys = Object.create(null);
-        this.move = { x: 0, z: 0, sprint: false, crouch: false, jump: false };
+        this.move = { x: 0, z: 0, sprint: false, crouch: false, jump: false, jumpHeld: false };
         this.look = { x: 0, y: 0 };
         this.zoom = 0;
         this.locked = false;
@@ -17,11 +20,12 @@ export class InputManager {
         this.tab = false;
         this.advance = false;
         this._lookBuffer = { x: 0, y: 0 };
+        this._lookOut = { x: 0, y: 0 };
         this._drag = null;
         this._rmb = false;
         this.enabled = true;
         /* Estado alimentado pelos controles de toque (ver setupTouch). */
-        this.touch = { x: 0, z: 0, sprint: false, crouch: false, block: false, active: false };
+        this.touch = { x: 0, z: 0, sprint: false, crouch: false, block: false, jump: false, active: false };
         this._touchCleanup = [];
         this._onKeyDown = this.onKeyDown.bind(this);
         this._onKeyUp = this.onKeyUp.bind(this);
@@ -36,11 +40,7 @@ export class InputManager {
         this._onContext = (e) => e.preventDefault();
         /* Janela perdeu o foco (alt-tab, notificação): solta as teclas, senão Dico
            continua andando sozinho porque o keyup nunca chega. */
-        this._onBlur = () => {
-            for (const k in this.keys) this.keys[k] = false;
-            this._rmb = false;
-            this._drag = null;
-        };
+        this._onBlur = () => this.release();
         this.lockLost = false;
         window.addEventListener('keydown', this._onKeyDown);
         window.addEventListener('keyup', this._onKeyUp);
@@ -107,8 +107,12 @@ export class InputManager {
                 dx = (dx / len) * STICK_RADIUS;
                 dy = (dy / len) * STICK_RADIUS;
             }
-            this.touch.x = dx / STICK_RADIUS;
-            this.touch.z = dy / STICK_RADIUS;
+            /* zona morta de 12 % e resposta reescalada: o boneco não anda sozinho com o
+               dedo apoiado, e meia inclinação = andar devagar */
+            const r = Math.hypot(dx, dy) / STICK_RADIUS;
+            const k = r < 0.12 ? 0 : (r - 0.12) / 0.88 / (r || 1);
+            this.touch.x = (dx / STICK_RADIUS) * k;
+            this.touch.z = (dy / STICK_RADIUS) * k;
             if (knob) knob.style.transform = `translate(${dx}px, ${dy}px)`;
         });
 
@@ -173,6 +177,7 @@ export class InputManager {
 
     applyTouchAction(action, down) {
         if (action === 'jump') {
+            this.touch.jump = down;
             if (down) {
                 this.move.jump = true;
                 this.advance = true;
@@ -225,6 +230,9 @@ export class InputManager {
 
     onKeyDown(e) {
         if (e.repeat) return;
+        /* Teclado navegando num menu (pausa, configurações): Espaço/Enter acionam o botão
+           focado, não pulam nem avançam fala. Só o Esc segue para o jogo. */
+        if (e.code !== 'Escape' && e.target instanceof Element && e.target.closest('.overlay')) return;
         if (e.code === 'Tab') e.preventDefault();
         this.keys[e.code] = true;
         if (e.code === 'KeyE') this.interact = true;
@@ -294,12 +302,49 @@ export class InputManager {
         this.zoom += Math.sign(e.deltaY);
     }
 
+    /** Delta de olhar acumulado desde o último quadro (objeto reaproveitado). */
     consumeLook() {
-        const x = this._lookBuffer.x;
-        const y = this._lookBuffer.y;
+        this._lookOut.x = this._lookBuffer.x;
+        this._lookOut.y = this._lookBuffer.y;
         this._lookBuffer.x = 0;
         this._lookBuffer.y = 0;
-        return { x, y };
+        return this._lookOut;
+    }
+
+    /**
+     * Solta tudo: teclas, botões de toque, pulsos pendentes e olhar acumulado.
+     * Chamado ao perder o foco e ao pausar — nada fica "preso" na volta.
+     */
+    release() {
+        for (const k in this.keys) this.keys[k] = false;
+        this._rmb = false;
+        this._drag = null;
+        this.move.x = 0;
+        this.move.z = 0;
+        this.move.jump = false;
+        this.move.jumpHeld = false;
+        this.move.sprint = false;
+        this.move.crouch = false;
+        this.attack = false;
+        this.interact = false;
+        this.block = false;
+        this.pause = false;
+        this.advance = false;
+        this.tab = false;
+        this.lockLost = false;
+        this.touch.x = 0;
+        this.touch.z = 0;
+        this.touch.block = false;
+        this.touch.jump = false;
+        this._lookBuffer.x = 0;
+        this._lookBuffer.y = 0;
+        this.zoom = 0;
+        const layer = typeof document !== 'undefined' && document.getElementById('touchControls');
+        if (layer) {
+            const knob = layer.querySelector('.touch-stick-knob');
+            if (knob) knob.style.transform = '';
+            layer.querySelectorAll('.is-active').forEach((el) => el.classList.remove('is-active'));
+        }
     }
 
     consumeZoom() {
@@ -320,6 +365,7 @@ export class InputManager {
             this.move.z = 0;
             this.move.sprint = false;
             this.move.crouch = false;
+            this.move.jumpHeld = false;
             return;
         }
         let x = 0;
@@ -339,6 +385,7 @@ export class InputManager {
         this.move.z = z;
         this.move.sprint = Boolean(this.keys.ShiftLeft || this.keys.ShiftRight || this.touch.sprint);
         this.move.crouch = Boolean(this.keys.KeyC || this.touch.crouch);
+        this.move.jumpHeld = Boolean(this.keys.Space || this.touch.jump);
         this.block = Boolean(this.keys.KeyQ || this.touch.block || this._rmb);
     }
 

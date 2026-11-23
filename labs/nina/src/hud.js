@@ -2,7 +2,7 @@
  * HUD: amoras, filhotes, objetivo e overlays.
  */
 
-import { TOTAL_FRIENDS } from './config.js?v=20';
+import { TOTAL_FRIENDS } from './config.js?v=23';
 
 export class Hud {
     constructor() {
@@ -46,25 +46,42 @@ export class Hud {
         }
     }
 
-    setStatus({ home, berries, following, hint }) {
-        this.el.friendCount.textContent = `${home} / ${TOTAL_FRIENDS}`;
-        this.el.berryCount.textContent = String(berries);
-        this.el.followCount.textContent = String(following);
-        [...this.el.friendPips.children].forEach((pip, i) => {
-            pip.classList.toggle('on', i < home);
-        });
-        if (home === 0 && following === 0) {
-            this.el.questTag.textContent = 'O vale acordou';
-            this.el.objective.textContent = berries < 1 ? 'Pegue uma amora 🫐 (siga a seta).' : `Leve a amora para ${hint}.`;
-        } else if (home < TOTAL_FRIENDS) {
-            this.el.questTag.textContent = following ? 'Fila fofa' : 'Filhotes perdidos';
-            this.el.objective.textContent = following
-                ? `Leve ${following === 1 ? 'o amigo' : 'os amigos'} ao ninho do piquenique.`
-                : berries < 1 ? 'Pegue uma amora 🫐 (siga a seta).' : `Encontre ${hint}.`;
+    /**
+     * Contadores + objetivo curto. O texto segue o mesmo alvo da bússola e do marcador 3D
+     * (target.kind: 'berry' | 'friend' | 'home' | 'done'). Só toca no DOM quando muda.
+     */
+    setStatus({ home, berries, following, target }) {
+        this._text(this.el.friendCount, `${home} / ${TOTAL_FRIENDS}`);
+        this._text(this.el.berryCount, String(berries));
+        this._text(this.el.followCount, String(following));
+        const pips = this.el.friendPips.children;
+        for (let i = 0; i < pips.length; i++) pips[i].classList.toggle('on', i < home);
+
+        let tag;
+        let text;
+        const kind = target?.kind;
+        if (home >= TOTAL_FRIENDS || kind === 'done') {
+            tag = 'Piquenique!';
+            text = 'Todos chegaram. A festa é no ninho.';
+        } else if (kind === 'home') {
+            tag = 'Fila fofa';
+            text = following === 1 ? 'Leve seu amigo ao ninho do piquenique.' : `Leve os ${following} amigos ao ninho do piquenique.`;
+        } else if (kind === 'berry') {
+            tag = home === 0 && following === 0 ? 'O vale acordou' : 'Falta amora';
+            text = 'Pegue uma amora 🫐 — siga a seta.';
+        } else if (kind === 'friend') {
+            tag = following ? 'Mais um aqui perto!' : 'Filhote perdido';
+            text = `Encoste n${target.ref.hint.startsWith('a ') ? 'a' : 'o'}${target.ref.hint.slice(1)}.`;
         } else {
-            this.el.questTag.textContent = 'Piquenique!';
-            this.el.objective.textContent = 'Todos chegaram. A festa é no ninho.';
+            tag = 'Filhotes perdidos';
+            text = 'Siga a seta dourada.';
         }
+        this._text(this.el.questTag, tag);
+        this._text(this.el.objective, text);
+    }
+
+    _text(el, value) {
+        if (el.textContent !== value) el.textContent = value;
     }
 
     /**
@@ -131,7 +148,7 @@ export class Hud {
         const m = Math.floor(seconds / 60);
         const s = String(Math.floor(seconds % 60)).padStart(2, '0');
         this.el.victoryStats.innerHTML = `
-            <div><dt>Filhotes</dt><dd>${home}/7</dd></div>
+            <div><dt>Filhotes</dt><dd>${home}/${TOTAL_FRIENDS}</dd></div>
             <div><dt>Amoras</dt><dd>${berries}</dd></div>
             <div><dt>Tempo</dt><dd>${m}:${s}</dd></div>
             <div><dt>Festa</dt><dd>100%</dd></div>`;

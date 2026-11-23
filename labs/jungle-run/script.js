@@ -6,6 +6,19 @@
      alto (soltar cedo corta a subida: vy *= 0.84 enquanto vy < -5).
    • Física em "frames de 60 Hz": delta = ticker.deltaTime limitado a 2, então
      um quadro longo (aba lenta, GC) nunca teleporta o jogador através de nada.
+     Tudo que é "por quadro" escala com delta, para a física ser a mesma em
+     tela de 60, 90, 120 ou 144 Hz:
+       – somas: x += v·delta; timers (coyote, buffer) −= delta
+       – amortecimentos/aproximações: fator^delta (ex.: vy *= 0.84^delta;
+         v += (alvo − v)·(1 − 0.78^delta)), não fator fixo por quadro.
+     Antes, num iPhone/Mac de 120 Hz o coyote time e o buffer de pulo duravam
+     metade e o corte do pulo variável era duas vezes mais forte.
+   • Cipó = pêndulo de verdade: α = −(g / L)·sen θ, com a MESMA gravidade do
+     jogador (0,72 px/quadro²) e L = distância até a mão do explorador (ou
+     ⅔ do cipó vazio, pêndulo físico de corda). Período ≈ 2π·√(L/g) ≈ 2 s.
+     Ao soltar, o explorador sai com a velocidade tangencial do balanço
+     (v = ω·L, perpendicular à corda) + o impulso das pernas (2 px →, 6,5 px ↑):
+     soltar na subida da frente lança mais longe, como num balanço real.
      autoSpeed = min(maxSpeed, baseSpeed + distância/500) × speedMul(dificuldade)
      Pulo: vy = JUMP_FORCE (-14.2), gravidade 0.72/frame → altura máx ≈ 140 px.
    • Perigos: tronco rolando, jacaré e ruína tiram 1 vida ao encostar. Cair do
@@ -266,7 +279,12 @@ class JungleRun {
             });
 
             // Load all textures (Realistic Assets + Dedicated Climbing Sprites & Tree Trunk)
-            const textures = await Promise.all([
+            // Teto de 20 s: rede travada vira mensagem de erro, nunca loading infinito.
+            const withTimeout = (promise) => Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo esgotado ao carregar as imagens')), 20000))
+            ]);
+            const textures = await withTimeout(Promise.all([
                 PIXI.Assets.load('./assets/explorer-run.webp'),
                 PIXI.Assets.load('./assets/explorer-jump.webp'),
                 PIXI.Assets.load('./assets/explorer-run-contact.webp'),
@@ -285,7 +303,7 @@ class JungleRun {
                 PIXI.Assets.load('./assets/explorer-climb-1.webp'),
                 PIXI.Assets.load('./assets/explorer-climb-2.webp'),
                 PIXI.Assets.load('./assets/tree-trunk.png')
-            ]);
+            ]));
 
             this.playerTexture = textures[0];
             this.playerJumpTexture = textures[1];
@@ -1206,6 +1224,7 @@ class JungleRun {
 
     gameLoop(ticker) {
         const delta = Math.min(ticker.deltaTime, 2);
+        this.frameDelta = delta;
         this.updateAmbient(delta);
         if (this.state !== 'playing') return;
 
@@ -1264,8 +1283,10 @@ class JungleRun {
                 this.player.climbProgress = Math.min(0.96, this.player.climbProgress + CONFIG.CLIMB_SPEED * delta);
             }
 
-            if (left) vine.angularVelocity -= 0.0006 * delta;
-            if (right) vine.angularVelocity += 0.0006 * delta;
+            // "Pedalar" o balanço: o corpo empurra o pêndulo (mais forte que a
+            // antiga gravidade fraca, para continuar dando controle com g real).
+            if (left) vine.angularVelocity -= 0.0011 * delta;
+            if (right) vine.angularVelocity += 0.0011 * delta;
             
             if (this.jumpBufferFrames > 0) {
                 this.gripIdle = 0;
@@ -1297,13 +1318,13 @@ class JungleRun {
         if (right) inputVelocity += CONFIG.MOVE_SPEED;
         if (!this.player.onGround && !left && !right) inputVelocity = this.diff.airAssist;
         
-        this.player.vx += (inputVelocity - this.player.vx) * 0.22;
+        this.player.vx += (inputVelocity - this.player.vx) * (1 - Math.pow(0.78, delta));
         if (left || right) this.player.facing = Math.sign(inputVelocity) || this.player.facing;
         
         if (this.player.onGround) this.coyoteFrames = CONFIG.COYOTE_FRAMES;
-        else this.coyoteFrames = Math.max(0, this.coyoteFrames - 1);
+        else this.coyoteFrames = Math.max(0, this.coyoteFrames - delta);
 
-        if (this.jumpBufferFrames > 0) this.jumpBufferFrames--;
+        if (this.jumpBufferFrames > 0) this.jumpBufferFrames = Math.max(0, this.jumpBufferFrames - delta);
         
         if (this.jumpBufferFrames > 0 && this.coyoteFrames > 0) {
             this.player.vy = CONFIG.JUMP_FORCE;
@@ -1315,7 +1336,7 @@ class JungleRun {
         }
 
         if (!jump && this.player.vy < -5.0) {
-            this.player.vy *= 0.84;
+            this.player.vy *= Math.pow(0.84, delta);
         }
     }
 
@@ -1406,9 +1427,10 @@ class JungleRun {
             this.player.onGround = false;
         }
 
-        this.player.rotation += (0 - this.player.rotation) * 0.20;
+        const settle = 1 - Math.pow(0.8, delta);
+        this.player.rotation += (0 - this.player.rotation) * settle;
         this.player.scale.x = this.player.facing;
-        this.player.scale.y += (1 - this.player.scale.y) * 0.2;
+        this.player.scale.y += (1 - this.player.scale.y) * settle;
 
         this.playerShadow.x = this.player.x;
         this.playerShadow.y = CONFIG.GROUND_Y + 7;
@@ -1537,9 +1559,16 @@ class JungleRun {
     }
 
     updateVines(delta) {
+        const drag = Math.pow(0.997, delta);
         for (const vine of this.vines) {
-            vine.angularVelocity += -Math.sin(vine.angle) * 0.0006 * delta;
-            vine.angularVelocity *= 0.997;
+            // Pêndulo: α = −(g/L)·sen θ. Com o explorador pendurado, L é a
+            // distância até ele; vazio, a corda oscila como pêndulo físico (⅔ L).
+            const hanging = this.player.onVine === vine;
+            const length = hanging
+                ? Math.max(60, vine.ropeLength * this.player.climbProgress)
+                : vine.ropeLength * 0.67;
+            vine.angularVelocity += -(CONFIG.GRAVITY / length) * Math.sin(vine.angle) * delta;
+            vine.angularVelocity *= drag;
             vine.angle += vine.angularVelocity * delta;
             if (Math.abs((vine.baseX ?? vine.x) - this.player.x) > 1200) continue;
             this.drawVine(vine);
@@ -1548,7 +1577,7 @@ class JungleRun {
 
     updateCamera() {
         const target = Math.max(0, this.player.x - CONFIG.WIDTH * 0.3);
-        this.cameraX += (target - this.cameraX) * 0.085;
+        this.cameraX += (target - this.cameraX) * (1 - Math.pow(0.915, this.frameDelta || 1));
         this.world.x = -this.cameraX;
 
         if (this.ground) {
@@ -1676,8 +1705,11 @@ class JungleRun {
         this.jumpBufferFrames = 0;
         this.player.onVine = null;
         const climbDist = vine.ropeLength * this.player.climbProgress;
-        this.player.vx = Math.cos(vine.angle) * vine.angularVelocity * climbDist * 3.1;
-        this.player.vy = -8.0 + Math.sin(vine.angle) * 2;
+        // Velocidade tangencial do balanço (v = ω·L, perpendicular à corda)
+        // + impulso das pernas ao soltar.
+        const swing = vine.angularVelocity * climbDist;
+        this.player.vx = Math.cos(vine.angle) * swing + 2.0;
+        this.player.vy = Math.max(-14, -Math.sin(vine.angle) * swing - 6.5);
         
         this.player.jumpHeld = false;
         this.audio.play('jump');

@@ -6,7 +6,7 @@
 // - Uses Hyper Combos & Stage Finishers when opponent enters FINISH HIM dizzy state
 // ==========================================================================
 
-import { AI_CONFIG, EX_COST, HYPER_COST, PUSHBLOCK_COST, GROUND, BODY_WIDTH } from './constants.js';
+import { AI_CONFIG, EX_COST, HYPER_COST, PUSHBLOCK_COST, GROUND, BODY_WIDTH } from './constants.js?v=23';
 import { random } from './utils.js';
 import { moveFor } from './fighter.js';
 
@@ -108,18 +108,35 @@ export function updateCpu(match, difficulty, cpuInput) {
     return;
   }
 
-  // 5. Threat detection & defense
+  // 5. Threat detection & defense — with human reaction time. The CPU only "sees" a
+  //    player attack after `config.react` frames (fast jabs land before that, as they
+  //    would against a person); up close it may also guard on a guess (`anticipate`).
+  const react = config.react ?? 12;
   const incoming = player.move
+    && player.moveFrame >= react
     && player.moveFrame <= player.move.startup + player.move.active + 4
     && distance < (player.move.reach || 240) + 115;
+  const guess = !player.move && distance < 190 && player.grounded()
+    && Math.random() < (config.anticipate ?? 0.1);
 
   const projectileThreat = match.projectiles.some(p =>
     p.owner === player && Math.abs(p.x - cpu.x) < 300 && Math.sign(p.vx) === Math.sign(cpu.x - p.x)
   );
 
+  if (guess) {
+    cpuInput.down(away);
+    match.cpuHold = [away];
+    if (Math.random() < 0.5) {
+      cpuInput.down('down');
+      match.cpuHold.push('down');
+    }
+    return;
+  }
+
   if ((incoming || projectileThreat) && Math.random() < config.guard) {
     cpuInput.down(away);
     match.cpuHold = [away];
+    // Low only once the move is readable (it already showed `react` frames); otherwise a guess.
     if ((player.move && player.move.level === 'low') || Math.random() < 0.3) {
       cpuInput.down('down');
       match.cpuHold.push('down');

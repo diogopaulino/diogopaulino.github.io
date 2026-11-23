@@ -161,6 +161,18 @@ export class World {
         return out;
     }
 
+    /**
+     * Tudo que o visitante não atravessa: marcos/quiosques/postos + troncos de árvores
+     * (r = 0,3 m) + carros estacionados e andando (retângulos atualizados pelo trânsito).
+     * A câmera usa só blockers() — troncos e carros fariam o braço "piscar".
+     */
+    playerSolids() {
+        const out = this.blockers();
+        for (const t of this.parts.garden?.trees || []) out.push({ x: t.x, z: t.z, r: 0.3 });
+        for (const f of this.parts.traffic?.footprints || []) out.push(f);
+        return out;
+    }
+
     cycleDay() {
         return this.setDay((this.dayIndex + 1) % DAY_STOPS.length);
     }

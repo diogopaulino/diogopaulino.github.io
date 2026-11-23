@@ -753,3 +753,51 @@ footer[data-lab-footer] a {
         display: none;
     }
 }
+
+/* ---- Desfazer e falha de carregamento ---- */
+.chip-btn:disabled {
+    opacity: 0.38;
+    cursor: default;
+    transform: none;
+    border-color: var(--line-soft, var(--line));
+}
+
+.loading .btn {
+    justify-self: center;
+    min-height: var(--touch-target, 44px);
+    padding-inline: 1.2rem;
+}
+
+.loading.is-failed .loading-orb {
+    animation: none;
+    filter: grayscale(0.7) brightness(0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-orb {
+        animation: none;
+    }
+
+    .chip-btn,
+    .btn,
+    .step,
+    .loading,
+    .toast {
+        transition: none;
+    }
+}
+
+.loading .btn[hidden] {
+    display: none;
+}
+
+/* Desfazer é só ícone (o title/aria-label dizem o que faz): Foto · Link · ↶ cabem numa linha */
+.chip-icon {
+    width: var(--touch-target, 44px);
+    padding: 0;
+    justify-content: center;
+}
+
+.chip-icon .chip-label {
+    display: none;
+}

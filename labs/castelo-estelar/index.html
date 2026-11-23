@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#050814">
     <title>Castelo Estelar — abertura cinematográfica | Diogo Paulino</title>
     <meta name="description"
-        content="Castelo 3D hiper-realista em three.js no espírito da abertura dos filmes: lua, lago, fanfarra, fada de faíscas e fogos. Um lab de Diogo Paulino.">
+        content="Castelo 3D hiper-realista em three.js: abertura cinematográfica com lua, lago, fanfarra e fogos, e um passeio em terceira pessoa para recolher as estrelas caídas. Um lab de Diogo Paulino.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/castelo-estelar/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -23,16 +23,16 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/castelo-estelar/">
     <meta property="og:title" content="Castelo Estelar — abertura cinematográfica | Diogo Paulino">
     <meta property="og:description"
-        content="A câmera voa sobre o lago sob a lua. O castelo acende, a fada desenha o arco e os fogos estouram.">
+        content="A câmera voa sobre o lago sob a lua, o castelo acende e os fogos estouram. Depois, passeie pelo reino e devolva as estrelas caídas.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Castelo Estelar — abertura cinematográfica | Diogo Paulino">
     <meta name="twitter:description"
-        content="A câmera voa sobre o lago sob a lua. O castelo acende, a fada desenha o arco e os fogos estouram.">
+        content="A câmera voa sobre o lago sob a lua, o castelo acende e os fogos estouram. Depois, passeie pelo reino e devolva as estrelas caídas.">
 
     <link rel="stylesheet" href="/assets/fonts/cinzel/font.css">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 
     <script type="importmap">
     {
@@ -50,8 +50,8 @@
           "@type": "WebApplication",
           "name": "Castelo Estelar",
           "url": "https://diogopaulino.com.br/labs/castelo-estelar/",
-          "description": "Castelo 3D hiper-realista em three.js no espírito da abertura dos filmes: lua, lago, fanfarra, fada de faíscas e fogos.",
-          "applicationCategory": "MultimediaApplication",
+          "description": "Castelo 3D hiper-realista em three.js: abertura cinematográfica com lua, lago, fanfarra e fogos, e um passeio em terceira pessoa para recolher as estrelas caídas.",
+          "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
           "isAccessibleForFree": true,
@@ -101,7 +101,7 @@
             </template>
         </header>
 
-        <section class="stage" aria-label="Abertura cinematográfica em 3D">
+        <section class="stage" aria-label="Castelo Estelar em 3D: abertura cinematográfica e passeio">
             <canvas id="scene" aria-label="Castelo iluminado à beira do lago, sob a lua"></canvas>
             <div class="letterbox letterbox--top" aria-hidden="true"></div>
             <div class="letterbox letterbox--bottom" aria-hidden="true"></div>
@@ -114,13 +114,36 @@
         </div>
 
         <div id="hud" class="hud" hidden>
+            <div id="quest" class="quest" hidden>
+                <div class="quest-chip" role="status" aria-live="polite">
+                    <span id="questPips" class="quest-pips" aria-hidden="true"></span>
+                    <span class="quest-text"><b id="questCount">0/6</b> <span id="questGoal">estrelas caídas</span></span>
+                </div>
+                <div id="guide" class="guide" hidden aria-hidden="true">
+                    <i data-guide-arrow></i>
+                    <span><b data-guide-name></b><small data-guide-dist>0 m</small></span>
+                </div>
+            </div>
+            <p id="toast" class="toast" role="status" aria-live="polite"></p>
+            <div id="stickZone" class="stick-zone" aria-hidden="true">
+                <div id="stickBase" class="stick-base"><i id="stickKnob"></i></div>
+            </div>
             <p id="hint" class="hint">Arraste para orbitar · rolagem aproxima · R reproduz a abertura</p>
-            <div class="dock" role="toolbar" aria-label="Controles da abertura">
-                <button id="replayButton" class="dock-btn accent" type="button" title="Reproduzir abertura (R)">
+            <div class="dock" role="toolbar" aria-label="Controles">
+                <button id="exploreButton" class="dock-btn accent" type="button" title="Passear pelo reino (E)" hidden>
+                    Recolher estrelas
+                </button>
+                <button id="replayButton" class="dock-btn" type="button" title="Reproduzir abertura (R)" hidden>
                     Abertura
                 </button>
                 <button id="skipButton" class="dock-btn" type="button" title="Pular (Espaço)" hidden>
                     Pular
+                </button>
+                <button id="runButton" class="dock-btn only-touch" type="button" aria-pressed="false" hidden>
+                    Correr
+                </button>
+                <button id="pauseButton" class="dock-btn" type="button" title="Pausa (Esc)" aria-label="Pausa" hidden>
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="3" y="2.5" width="3.4" height="11" rx="1" fill="currentColor"/><rect x="9.6" y="2.5" width="3.4" height="11" rx="1" fill="currentColor"/></svg>
                 </button>
                 <button id="muteBtn" class="dock-btn" type="button" title="Som (M)" aria-pressed="false">
                     Som
@@ -133,7 +156,11 @@
                 <p class="eyebrow"><i></i> three.js · PBR · noite</p>
                 <h2>Acendendo<br>as torres.</h2>
                 <p class="lede" id="loadText">A lua sobe sobre o lago. Um instante.</p>
-                <div class="load-track" role="progressbar" aria-label="Carregando"><i id="loadBar"></i></div>
+                <div class="load-track" role="progressbar" aria-label="Carregando" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4"><i id="loadBar"></i></div>
+                <div id="loadRetry" class="card-actions retry-row" hidden>
+                    <button id="retryLoad" class="ghost-button" type="button">Tentar de novo</button>
+                    <button id="lowLoad" class="ghost-button" type="button">Abrir versão leve</button>
+                </div>
             </div>
         </div>
 
@@ -141,13 +168,12 @@
             <div class="overlay-card intro-card">
                 <p class="eyebrow"><i></i> Abertura cinematográfica</p>
                 <h2>Castelo Estelar</h2>
-                <p class="lede">A câmera voa sobre a água sob a lua. O calcário acende, uma fada de
-                    faíscas sobe em espiral até a estrela da torre e os fogos estouram no céu — o prólogo dos
-                    grandes filmes, reconstruído em three.js.</p>
+                <p class="lede">A câmera voa sobre a água sob a lua, o calcário acende e os fogos estouram.
+                    Depois, desça à margem: seis estrelas caíram pelo reino e o castelo apagou.</p>
                 <ul class="feature-list">
-                    <li>Castelo original: muralha ameada, torre de menagem, capela e vitrais acesos</li>
-                    <li>Lago com reflexo do castelo, floresta, aldeia e fanfarra original</li>
-                    <li>Depois da abertura, orbite o reino à vontade</li>
+                    <li><b>Abertura</b> — plano-sequência de 38 s com fanfarra original, fada de faíscas e fogos</li>
+                    <li><b>Passeio</b> — recolha as estrelas seguindo a bússola e leve a última ao portão</li>
+                    <li>WASD/setas + Shift, ou o polegar na tela · arraste para olhar · Esc pausa</li>
                 </ul>
                 <div class="settings-row">
                     <label class="field">
@@ -164,12 +190,42 @@
                         <input id="volumeSlider" type="range" min="0" max="100" step="1" value="72">
                     </label>
                 </div>
-                <footer class="card-actions">
+                <div class="card-actions">
                     <button id="startButton" class="primary-button" type="button">
-                        <span>Assistir a abertura</span>
+                        <span>Assistir à abertura</span>
                         <i aria-hidden="true">→</i>
                     </button>
-                </footer>
+                    <button id="exploreStart" class="ghost-button" type="button">Ir direto ao passeio</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay" hidden>
+            <div class="overlay-card compact-card" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+                <p class="eyebrow"><i></i> Passeio pausado</p>
+                <h2 id="pauseTitle">Pausa</h2>
+                <p class="lede" id="pauseStats">0/6 estrelas · 0:00</p>
+                <div class="menu-stack">
+                    <button id="resumeButton" class="primary-button" type="button"><span>Continuar</span><i aria-hidden="true">→</i></button>
+                    <button id="respawnButton" class="ghost-button" type="button">Voltar à trilha <kbd>T</kbd></button>
+                    <button id="restartButton" class="ghost-button" type="button">Recomeçar o passeio</button>
+                    <button id="orbitButton" class="ghost-button" type="button">Contemplar o castelo</button>
+                    <button id="introButton" class="ghost-button" type="button">Ver a abertura</button>
+                </div>
+                <p class="keys-help">Andar <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · correr <kbd>Shift</kbd> · olhar: arrastar · zoom: rolagem · som <kbd>M</kbd></p>
+            </div>
+        </div>
+
+        <div id="doneOverlay" class="overlay overlay--soft" hidden>
+            <div class="overlay-card compact-card" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+                <p class="eyebrow"><i></i> Passeio concluído</p>
+                <h2 id="doneTitle">O reino acendeu.</h2>
+                <p class="lede" id="doneText">Você devolveu as estrelas.</p>
+                <div class="menu-stack">
+                    <button id="freeWalkButton" class="primary-button" type="button"><span>Passear livre</span><i aria-hidden="true">→</i></button>
+                    <button id="doneRestart" class="ghost-button" type="button">Jogar de novo</button>
+                    <button id="doneOrbit" class="ghost-button" type="button">Contemplar o castelo</button>
+                </div>
             </div>
         </div>
 
@@ -187,7 +243,7 @@
 
     <script src="/labs/shared.js?v=16" defer></script>
     <script type="module" src="../shared/gfx/check-webgl.js"></script>
-    <script type="module" src="src/main.js?v=7"></script>
+    <script type="module" src="src/main.js?v=8"></script>
 </body>
 
 </html>

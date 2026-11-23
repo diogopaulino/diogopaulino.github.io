@@ -216,7 +216,7 @@ const LESSONS = {
             translation: 'família',
             sentence: 'My family is very important to me.',
             sentenceTranslation: 'Minha família é muito importante para mim.',
-            sentenceWords: ['My', 'family', 'is', 'very', 'important'],
+            sentenceWords: ['My', 'family', 'is', 'very', 'important', 'to', 'me'],
             fill: 'My family is very ___ to me.',
             fillAnswer: 'important',
             fillOptions: ['important', 'big', 'small', 'old']
@@ -2134,22 +2134,177 @@ function registerDailyActivity(xpEarned) {
     saveData();
 }
 
+/**
+ * Revisão espaçada (SRS) — caixas de Leitner com prazo.
+ *   caixa 0 = nunca vista; 1…6 = aprendendo → dominada.
+ *   Acerto: caixa + 1 e próxima revisão em INTERVAL_MS[caixa]
+ *           (0 · 4 h · 1 d · 3 d · 7 d · 16 d · 35 d — curva do esquecimento).
+ *   Erro (lapso): volta para a caixa 1 e fica devida agora.
+ *   Só a 1ª resposta de cada palavra numa lição mexe na caixa — repetir a
+ *   mesma palavra 3× na mesma sessão não vale por 3 dias de memória.
+ * Lição: revisões vencidas primeiro (caixa mais baixa, mais atrasada), de 1 a
+ * 4 palavras novas (ordem do currículo; menos quando há muita revisão) e,
+ * se faltar, as palavras vistas mais fracas. Palavra nova é apresentada (sem custo de vida) e testada de novo
+ * dois itens depois. Errou? O item volta para o fim da fila (até 2×): a
+ * lição termina quando tudo foi acertado, como nos apps de idioma.
+ */
+const HOUR_MS = 3600e3;
+const DAY_MS = 24 * HOUR_MS;
+const INTERVAL_MS = [0, 4 * HOUR_MS, DAY_MS, 3 * DAY_MS, 7 * DAY_MS, 16 * DAY_MS, 35 * DAY_MS];
+const MAX_BOX = 6;
+const LESSON_SIZE = 10; // vagas por lição (palavra nova ocupa 2)
+const MAX_RETRIES = 2;
+const MAX_HEARTS = 5;
+const CJK = new Set(['ja', 'ko', 'zh']);
+
 function getWordState(langCode, word) {
     const lang = getLangData(langCode);
-    if (!lang.words[word]) lang.words[word] = { box: 0, seen: 0, correct: 0 };
-    return lang.words[word];
+    if (!lang.words[word]) lang.words[word] = { box: 0, seen: 0, correct: 0, lapses: 0, due: 0 };
+    const w = lang.words[word];
+    // Migração do formato antigo (caixa 0–4, sem prazo): fica revisável já.
+    if (typeof w.due !== 'number') w.due = 0;
+    if (typeof w.lapses !== 'number') w.lapses = 0;
+    if (w.seen > 0 && w.box < 1) w.box = 1;
+    return w;
 }
 
 function recordWordResult(langCode, word, isCorrect) {
+    if (gameState.recorded.has(word)) return;
+    gameState.recorded.add(word);
     const w = getWordState(langCode, word);
+    const now = Date.now();
     w.seen++;
+    w.last = now;
     if (isCorrect) {
         w.correct++;
-        w.box = Math.min(4, w.box + 1);
+        w.box = Math.min(MAX_BOX, Math.max(1, w.box + 1));
+        w.due = now + INTERVAL_MS[w.box];
     } else {
-        w.box = 0;
+        w.lapses++;
+        w.box = 1;
+        w.due = now;
     }
     saveData();
+}
+
+function wordInfo(langCode, word) {
+    return appData.languages[langCode]?.words?.[word] || null;
+}
+
+/** Palavras já vistas cuja revisão venceu. */
+function dueLessons(langCode, now = Date.now()) {
+    return (LESSONS[langCode] || []).filter((l) => {
+        const w = wordInfo(langCode, l.word);
+        return w && w.seen > 0 && (w.due || 0) <= now;
+    });
+}
+
+function buildLessonQueue(langCode) {
+    const lessons = LESSONS[langCode] || LESSONS.en;
+    const now = Date.now();
+    const info = (l) => wordInfo(langCode, l.word);
+    const weakFirst = (a, b) => ((info(a)?.box || 0) - (info(b)?.box || 0)) || ((info(a)?.due || 0) - (info(b)?.due || 0));
+    const due = lessons.filter((l) => info(l)?.seen > 0 && (info(l).due || 0) <= now).sort(weakFirst);
+    const fresh = lessons.filter((l) => !(info(l)?.seen > 0));
+    const notDue = lessons.filter((l) => info(l)?.seen > 0 && !due.includes(l)).sort(weakFirst);
+
+    // Cada palavra nova ocupa 2 vagas (apresentação + teste). Muitas
+    // revisões vencidas → menos novidade; nenhuma → até 4 novas.
+    const newCount = Math.min(fresh.length, due.length >= 10 ? 1 : due.length >= 6 ? 2 : due.length >= 3 ? 3 : 4);
+    const reviewSlots = Math.max(0, LESSON_SIZE - 2 * newCount);
+    let reviews = due.slice(0, reviewSlots);
+    if (reviews.length < reviewSlots) reviews = reviews.concat(notDue.slice(0, reviewSlots - reviews.length));
+    const news = fresh.slice(0, newCount);
+
+    // Revisões embaralhadas; novas entram espalhadas (posições 0, 2, 4…).
+    const rq = shuffleArray(reviews);
+    const nq = news.slice();
+    const queue = [];
+    while (rq.length || nq.length) {
+        if (nq.length && (queue.length % 2 === 0 || !rq.length)) queue.push({ lesson: nq.shift(), isNew: true, retries: 0 });
+        else queue.push({ lesson: rq.shift(), isNew: false, retries: 0 });
+    }
+    gameState.lessonStats = { reviews: reviews.length, news: news.length, first: 0, firstOk: 0 };
+    return queue;
+}
+
+function shuffleArray(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+/** Tipo de exercício pela força da palavra: reconhecer → produzir → ouvir. */
+function pickExerciseType(item) {
+    const lang = gameState.currentLang;
+    if (item.isNew) return 'introduce';
+    if (item.retryType) return item.retryType;
+    const box = wordInfo(lang, item.lesson.word)?.box || 0;
+    const cjk = CJK.has(lang);
+    const listen = canListen() ? (cjk ? 'listenChoose' : 'listenWrite') : 'orderWords';
+    const write = cjk ? 'reverse' : 'writeWord';
+    let pool;
+    if (box <= 1) pool = ['translate', 'reverse', 'fillBlank', 'matchPairs'];
+    else if (box <= 3) pool = ['fillBlank', 'orderWords', write, listen, 'matchPairs', 'reverse'];
+    else pool = ['orderWords', write, listen, 'fillBlank'];
+    const seenCount = Object.values(getLangData(lang).words).filter((w) => w.seen > 0).length;
+    if (seenCount < 4) pool = pool.filter((t) => t !== 'matchPairs');
+    const varied = pool.filter((t) => t !== gameState.lastType);
+    const list = varied.length ? varied : pool;
+    return list[Math.floor(Math.random() * list.length)];
+}
+
+function canListen() {
+    const lang = LANGUAGES[gameState.currentLang];
+    return !!lang && !gameState.listenOff && speech.canSpeak(lang.voice);
+}
+
+/**
+ * Corrige respostas digitadas como os apps de idioma: ignora maiúsculas,
+ * pontuação e espaços extras; acento faltando passa com aviso; um erro de
+ * digitação a cada ~12 letras passa como "quase" (distância de Levenshtein).
+ */
+function normalizeAnswer(s, stripAccents = false) {
+    let t = String(s || '').normalize('NFC').toLowerCase()
+        .replace(/[’‘`´]/g, "'")
+        .replace(/[.,!?¿¡。、！？，；;:"“”«»()\-–—]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (stripAccents) t = t.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').normalize('NFC');
+    return t;
+}
+
+function levenshtein(a, b) {
+    if (a === b) return 0;
+    const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+        let prev = row[0];
+        row[0] = i;
+        for (let j = 1; j <= b.length; j++) {
+            const tmp = row[j];
+            row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+            prev = tmp;
+        }
+    }
+    return row[b.length];
+}
+
+function judgeAnswer(input, expected, perChars = 12) {
+    const a = normalizeAnswer(input);
+    const b = normalizeAnswer(expected);
+    if (!a) return { ok: false };
+    if (a === b) return { ok: true };
+    if (normalizeAnswer(input, true) === normalizeAnswer(expected, true)) {
+        return { ok: true, note: `Atenção aos acentos: ${expected}` };
+    }
+    const allowed = Math.floor(b.length / perChars);
+    if (allowed >= 1 && levenshtein(normalizeAnswer(input, true), normalizeAnswer(expected, true)) <= allowed) {
+        return { ok: true, note: `Quase perfeito! O certo é: ${expected}` };
+    }
+    return { ok: false };
 }
 
 function addXp(amount) {
@@ -2200,7 +2355,7 @@ class AudioManager {
     constructor() {
         this.audioContext = null;
         this.initialized = false;
-        this.enabled = localStorage.getItem('talk-sound') !== 'off';
+        try { this.enabled = localStorage.getItem('talk-sound') !== 'off'; } catch { this.enabled = true; }
         this.updateUI();
     }
 
@@ -2209,6 +2364,7 @@ class AudioManager {
         try {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             this.initialized = true;
+            this.audioContext.resume?.()?.catch?.(() => {});
         } catch (e) {
             console.warn('Web Audio API not supported');
         }
@@ -2216,7 +2372,8 @@ class AudioManager {
 
     toggle() {
         this.enabled = !this.enabled;
-        localStorage.setItem('talk-sound', this.enabled ? 'on' : 'off');
+        try { localStorage.setItem('talk-sound', this.enabled ? 'on' : 'off'); } catch { /* modo privado */ }
+        if (!this.enabled) speech.stop();
         this.updateUI();
     }
 
@@ -2242,6 +2399,7 @@ class AudioManager {
 
     playTone(frequency, duration, type = 'sine') {
         if (!this.enabled || !this.audioContext) return;
+        if (this.audioContext.state === 'suspended') this.audioContext.resume?.()?.catch?.(() => {});
         
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
@@ -2290,10 +2448,52 @@ class AudioManager {
     }
 }
 
+/**
+ * Voz (Web Speech API) com plano B:
+ *  - escolhe a melhor voz do idioma (local > remota; mesmo país > só idioma);
+ *  - canSpeak(lang) é falso se não há síntese ou, com a lista de vozes já
+ *    carregada, nenhuma voz do idioma — aí os exercícios de escuta saem;
+ *  - vigia: se o áudio não começar em 2,5 s, marca falha e limpa o estado
+ *    "falando" (Chrome às vezes engole a fala sem erro).
+ */
 class SpeechManager {
     constructor() {
-        this.synth = window.speechSynthesis;
+        this.synth = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined' ? window.speechSynthesis : null;
         this.speaking = false;
+        this.failed = false;
+        this.voices = [];
+        this.voicesLoaded = false;
+        if (this.synth) {
+            const load = () => {
+                try { this.voices = this.synth.getVoices() || []; } catch { this.voices = []; }
+                if (this.voices.length) this.voicesLoaded = true;
+            };
+            load();
+            try { this.synth.addEventListener('voiceschanged', () => { load(); this.voicesLoaded = true; }); } catch { /* navegador antigo */ }
+            // Sem evento em alguns navegadores: depois de 2 s, a lista vale como carregada.
+            setTimeout(() => { load(); this.voicesLoaded = true; }, 2000);
+        }
+    }
+
+    voiceFor(lang) {
+        const want = lang.toLowerCase();
+        const base = want.slice(0, 2);
+        const norm = (v) => (v.lang || '').toLowerCase().replace('_', '-');
+        const same = this.voices.filter((v) => norm(v) === want);
+        const near = this.voices.filter((v) => norm(v).startsWith(base));
+        const pool = same.length ? same : near;
+        return pool.find((v) => v.localService) || pool[0] || null;
+    }
+
+    canSpeak(lang = 'en-US') {
+        if (!this.synth) return false;
+        if (!this.voicesLoaded || !this.voices.length) return true; // ainda não sabemos: tenta
+        return !!this.voiceFor(lang);
+    }
+
+    _setSpeaking(on) {
+        this.speaking = on;
+        document.querySelectorAll('.btn-speak, .btn-listen-large').forEach((b) => b.classList.toggle('speaking', on));
     }
 
     speak(text, lang = 'en-US') {
@@ -2302,49 +2502,52 @@ class SpeechManager {
         this._token = (this._token || 0) + 1;
         const token = this._token;
         if (this._timer) window.clearTimeout(this._timer);
-        this.synth.cancel();
-        this.speaking = false;
-        document.querySelector('.btn-speak')?.classList.remove('speaking');
+        if (this._watch) window.clearTimeout(this._watch);
+        try { this.synth.cancel(); } catch { /* ignora */ }
+        this._setSpeaking(false);
 
         // Chrome descarta speak() no mesmo turno de cancel().
         this._timer = window.setTimeout(() => {
             this._timer = null;
             if (token !== this._token || !this.synth) return;
+            let started = false;
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = lang;
-            utterance.rate = 0.85;
+            const voice = this.voiceFor(lang);
+            if (voice) utterance.voice = voice;
+            utterance.rate = 0.88;
             utterance.pitch = 1;
 
             utterance.onstart = () => {
-                if (token !== this._token) return;
-                this.speaking = true;
-                document.querySelector('.btn-speak')?.classList.add('speaking');
+                started = true;
+                this.failed = false;
+                if (token === this._token) this._setSpeaking(true);
+            };
+            const done = () => { if (token === this._token) this._setSpeaking(false); };
+            utterance.onend = done;
+            utterance.onerror = (ev) => {
+                if (ev && ev.error && ev.error !== 'interrupted' && ev.error !== 'canceled') this.failed = true;
+                done();
             };
 
-            utterance.onend = () => {
+            try { this.synth.speak(utterance); } catch { this.failed = true; return; }
+            // Vigia: não começou → falha; começou → limpa ao fim estimado.
+            this._watch = window.setTimeout(() => {
                 if (token !== this._token) return;
-                this.speaking = false;
-                document.querySelector('.btn-speak')?.classList.remove('speaking');
-            };
-
-            utterance.onerror = () => {
-                if (token !== this._token) return;
-                this.speaking = false;
-                document.querySelector('.btn-speak')?.classList.remove('speaking');
-            };
-
-            this.synth.speak(utterance);
+                if (!started) { this.failed = true; done(); }
+                else window.setTimeout(done, Math.max(1500, text.length * 110));
+            }, 2500);
         }, 60);
     }
 
     stop() {
         this._token = (this._token || 0) + 1;
         if (this._timer) window.clearTimeout(this._timer);
+        if (this._watch) window.clearTimeout(this._watch);
         this._timer = null;
         if (!this.synth) return;
-        this.synth.cancel();
-        this.speaking = false;
-        document.querySelector('.btn-speak')?.classList.remove('speaking');
+        try { this.synth.cancel(); } catch { /* ignora */ }
+        this._setSpeaking(false);
     }
 }
 
@@ -2354,13 +2557,18 @@ const gameState = {
     sessionBestStreak: 0,
     hearts: 5,
     xp: 0,
-    progress: 0,
     questionsAnswered: 0,
     totalQuestions: 10,
     currentExercise: null,
-    usedLessons: new Set(),
     isProcessing: false,
-    matchedPairs: new Set()
+    matchedPairs: new Set(),
+    // Lição atual: fila de itens, palavras já pontuadas no SRS e estatísticas.
+    queue: [],
+    recorded: new Set(),
+    lessonStats: { reviews: 0, news: 0, first: 0, firstOk: 0 },
+    mistakes: 0,
+    lastType: null,
+    listenOff: false
 };
 
 let appData = loadData();
@@ -2434,21 +2642,26 @@ function goBackToLanguageSelect() {
 }
 
 function initGame() {
+    speech.stop();
     gameState.streak = 0;
     gameState.sessionBestStreak = 0;
-    gameState.hearts = 5;
+    gameState.hearts = MAX_HEARTS;
     gameState.xp = 0;
-    gameState.progress = 0;
     gameState.questionsAnswered = 0;
-    gameState.usedLessons.clear();
     gameState.isProcessing = false;
     gameState.matchedPairs.clear();
+    gameState.recorded = new Set();
+    gameState.lastType = null;
+    gameState.queue = buildLessonQueue(gameState.currentLang);
+    gameState.totalQuestions = gameState.queue.length;
+    gameState.mistakes = 0;
 
     updateStats();
 
     DOM.gameOver.classList.add('hidden');
     DOM.levelComplete.classList.add('hidden');
     DOM.gameArea.classList.remove('hidden');
+    DOM.btnSpeak.hidden = !speech.canSpeak(LANGUAGES[gameState.currentLang].voice);
 
     loadNextExercise();
 }
@@ -2457,55 +2670,20 @@ function updateStats() {
     DOM.streakCount.textContent = gameState.streak;
     DOM.heartsCount.textContent = gameState.hearts;
     DOM.xpCount.textContent = gameState.xp;
-    
-    const progressPercent = (gameState.questionsAnswered / gameState.totalQuestions) * 100;
+
+    // Progresso = itens concluídos / (concluídos + fila). Erro devolve o
+    // item à fila, então a barra não anda — mas também nunca volta.
+    // Palavra nova vale 2 (apresentação + teste que volta depois), assim a
+    // barra não encolhe quando o teste entra na fila.
+    const weight = (it) => (it?.isNew ? 2 : 1);
+    const cur = gameState.currentExercise;
+    let pending = (gameState.queue || []).reduce((n, it) => n + weight(it), 0);
+    if (cur?.item && !gameState.isProcessing) pending += weight(cur.item);
+    const total = Math.max(1, gameState.questionsAnswered + pending);
+    gameState.totalQuestions = total;
+    const progressPercent = Math.min(100, (gameState.questionsAnswered / total) * 100);
     DOM.progressBar.style.width = `${progressPercent}%`;
-    DOM.progressText.textContent = `${gameState.questionsAnswered}/${gameState.totalQuestions}`;
-}
-
-function lessonWeight(lesson) {
-    const lang = getLangData(gameState.currentLang);
-    const w = lang.words[lesson.word];
-    if (!w) return 5;
-    return Math.max(1, 6 - w.box);
-}
-
-function pickWeighted(pool) {
-    const weights = pool.map(lessonWeight);
-    const total = weights.reduce((a, b) => a + b, 0);
-    let r = Math.random() * total;
-    for (let i = 0; i < pool.length; i++) {
-        r -= weights[i];
-        if (r <= 0) return pool[i];
-    }
-    return pool[pool.length - 1];
-}
-
-function getRandomLesson() {
-    const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
-    const availableLessons = lessons.filter((_, i) => !gameState.usedLessons.has(i));
-
-    if (availableLessons.length === 0) {
-        gameState.usedLessons.clear();
-        const picked = pickWeighted(lessons);
-        gameState.usedLessons.add(lessons.indexOf(picked));
-        return picked;
-    }
-
-    const picked = pickWeighted(availableLessons);
-    const originalIdx = lessons.indexOf(picked);
-    gameState.usedLessons.add(originalIdx);
-    return picked;
-}
-
-function getRandomExerciseType() {
-    const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
-    
-    if (lessons.length < 4) {
-        return EXERCISE_TYPES.filter(t => t !== 'matchPairs')[Math.floor(Math.random() * 5)];
-    }
-    
-    return EXERCISE_TYPES[Math.floor(Math.random() * EXERCISE_TYPES.length)];
+    DOM.progressText.textContent = `${gameState.questionsAnswered}/${total}`;
 }
 
 function loadNextExercise() {
@@ -2513,90 +2691,162 @@ function loadNextExercise() {
     DOM.feedbackArea.classList.remove('correct', 'wrong');
     gameState.isProcessing = false;
     gameState.matchedPairs.clear();
-    
-    if (gameState.questionsAnswered >= gameState.totalQuestions) {
+    speech.stop();
+
+    const item = gameState.queue.shift();
+    if (!item) {
+        gameState.currentExercise = null;
         showLevelComplete();
         return;
     }
-    
-    const lesson = getRandomLesson();
-    const exerciseType = getRandomExerciseType();
-    
-    gameState.currentExercise = { lesson, type: exerciseType };
-    
-    switch (exerciseType) {
-        case 'translate':
-            renderTranslateExercise(lesson);
-            break;
-        case 'fillBlank':
-            renderFillBlankExercise(lesson);
-            break;
-        case 'writeWord':
-            renderWriteWordExercise(lesson);
-            break;
-        case 'orderWords':
-            renderOrderWordsExercise(lesson);
-            break;
-        case 'listenWrite':
-            renderListenWriteExercise(lesson);
-            break;
-        case 'matchPairs':
-            renderMatchPairsExercise();
-            break;
+
+    const type = pickExerciseType(item);
+    gameState.lastType = type;
+    gameState.currentExercise = { lesson: item.lesson, type, item };
+    DOM.gameArea.dataset.type = type;
+    updateStats();
+
+    switch (type) {
+        case 'introduce': renderIntroduceExercise(item.lesson); break;
+        case 'translate': renderTranslateExercise(item.lesson); break;
+        case 'reverse': renderReverseExercise(item.lesson); break;
+        case 'fillBlank': renderFillBlankExercise(item.lesson); break;
+        case 'writeWord': renderWriteWordExercise(item.lesson); break;
+        case 'orderWords': renderOrderWordsExercise(item.lesson); break;
+        case 'listenWrite': renderListenWriteExercise(item.lesson); break;
+        case 'listenChoose': renderListenChooseExercise(item.lesson); break;
+        case 'matchPairs': renderMatchPairsExercise(item.lesson); break;
+        default: renderTranslateExercise(item.lesson);
     }
+}
+
+/** Botões de múltipla escolha (1–4 no teclado). */
+function renderOptions(options, correct, onPick) {
+    DOM.optionsContainer.innerHTML = '';
+    DOM.optionsContainer.className = 'options-grid';
+    options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'option-card';
+        btn.innerHTML = `<span class="key-hint">${i + 1}</span><span class="option-text"></span>`;
+        btn.querySelector('.option-text').textContent = opt;
+        btn.onclick = () => onPick(opt, correct, btn);
+        DOM.optionsContainer.appendChild(btn);
+    });
+    setupKeyboardShortcuts(options.length, (i) => {
+        const btns = DOM.optionsContainer.querySelectorAll('.option-card');
+        if (btns[i]) btns[i].click();
+    });
+}
+
+function distractors(lesson, key, n = 3) {
+    const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
+    const seen = new Set([lesson[key]]);
+    const out = [];
+    for (const l of shuffleArray(lessons)) {
+        if (out.length >= n) break;
+        if (seen.has(l[key])) continue;
+        seen.add(l[key]);
+        out.push(l[key]);
+    }
+    return out;
+}
+
+/** Palavra nova: apresenta (com áudio) e pede para reconhecê-la. Sem custo de vida. */
+function renderIntroduceExercise(lesson) {
+    const lang = LANGUAGES[gameState.currentLang];
+    DOM.questionType.innerHTML = '<span class="new-badge">Nova palavra</span>';
+    DOM.questionText.innerHTML = '';
+    const big = document.createElement('span');
+    big.className = 'intro-word';
+    big.textContent = lesson.word;
+    const mean = document.createElement('span');
+    mean.className = 'intro-meaning';
+    mean.textContent = `= ${lesson.translation}. Toque em “${lesson.word}”:`;
+    DOM.questionText.append(big, mean);
+    const options = shuffleArray([lesson.word, ...distractors(lesson, 'word')]);
+    renderOptions(options, lesson.word, checkTranslateAnswer);
+    if (audio.enabled) setTimeout(() => {
+        if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.word, lang.voice);
+    }, 350);
+}
+
+function renderListenChooseExercise(lesson) {
+    const lang = LANGUAGES[gameState.currentLang];
+    DOM.questionType.textContent = 'Ouça e escolha';
+    DOM.questionText.textContent = 'Qual frase você ouviu?';
+    const options = shuffleArray([lesson.sentence, ...distractors(lesson, 'sentence')]);
+    renderOptions(options, lesson.sentence, checkTranslateAnswer);
+    const listenBtn = listenButton(lesson.sentence, lang.voice);
+    DOM.optionsContainer.prepend(listenBtn);
+    DOM.optionsContainer.append(cantListenButton());
+    setTimeout(() => { if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.sentence, lang.voice); }, 450);
+}
+
+function listenButton(text, voice) {
+    const listenBtn = document.createElement('button');
+    listenBtn.type = 'button';
+    listenBtn.className = 'btn-listen-large';
+    listenBtn.innerHTML = `
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+        Ouvir de novo`;
+    listenBtn.onclick = () => { audio.playClick(); speech.speak(text, voice); };
+    return listenBtn;
+}
+
+/**
+ * "Não posso ouvir agora": desliga exercícios de escuta nesta sessão e
+ * troca o exercício atual por outro da mesma palavra — sem perder vida.
+ */
+function cantListenButton() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-cant-listen';
+    btn.textContent = speech.failed ? 'O áudio não tocou — pular escuta' : 'Não posso ouvir agora';
+    btn.onclick = () => {
+        if (gameState.isProcessing) return;
+        gameState.listenOff = true;
+        speech.stop();
+        const ex = gameState.currentExercise;
+        if (ex?.item) gameState.queue.unshift({ ...ex.item, retryType: 'orderWords', isNew: false });
+        showToast('🔇', 'Escuta desligada nesta sessão');
+        loadNextExercise();
+    };
+    return btn;
+}
+
+function renderReverseExercise(lesson) {
+    const lang = LANGUAGES[gameState.currentLang];
+    DOM.questionType.textContent = 'O que significa?';
+    DOM.questionText.textContent = `O que significa “${lesson.word}”?`;
+    const options = shuffleArray([lesson.translation, ...distractors(lesson, 'translation')]);
+    renderOptions(options, lesson.translation, checkTranslateAnswer);
+    if (audio.enabled) setTimeout(() => {
+        if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.word, lang.voice);
+    }, 350);
 }
 
 function renderTranslateExercise(lesson) {
     DOM.questionType.textContent = 'Traduza esta palavra';
-    DOM.questionText.textContent = `Como se diz "${lesson.translation}" em ${LANGUAGES[gameState.currentLang].name}?`;
-    
-    const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
-    const distractors = lessons
-        .filter(l => l.word !== lesson.word)
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 3)
-        .map(l => l.word);
-    
-    const options = [lesson.word, ...distractors].sort(() => Math.random() - 0.5);
-    
-    DOM.optionsContainer.innerHTML = '';
-    DOM.optionsContainer.className = 'options-grid';
-    
-    options.forEach((opt, i) => {
-        const btn = document.createElement('button');
-        btn.className = 'option-card';
-        btn.innerHTML = `<span class="key-hint">${i + 1}</span><span class="option-text">${opt}</span>`;
-        btn.onclick = () => checkTranslateAnswer(opt, lesson.word, btn);
-        DOM.optionsContainer.appendChild(btn);
-    });
-    
-    setupKeyboardShortcuts(options.length, (i) => {
-        const btns = DOM.optionsContainer.querySelectorAll('.option-card');
-        if (btns[i]) btns[i].click();
-    });
+    DOM.questionText.textContent = `Como se diz “${lesson.translation}” em ${LANGUAGES[gameState.currentLang].name}?`;
+    const options = shuffleArray([lesson.word, ...distractors(lesson, 'word')]);
+    renderOptions(options, lesson.word, checkTranslateAnswer);
 }
 
 function renderFillBlankExercise(lesson) {
     DOM.questionType.textContent = 'Complete a frase';
-    DOM.questionText.innerHTML = lesson.fill.replace('___', '<span class="blank-space">______</span>');
-    
-    const options = [...lesson.fillOptions].sort(() => Math.random() - 0.5);
-    
-    DOM.optionsContainer.innerHTML = '';
-    DOM.optionsContainer.className = 'options-grid';
-    
-    options.forEach((opt, i) => {
-        const btn = document.createElement('button');
-        btn.className = 'option-card';
-        btn.innerHTML = `<span class="key-hint">${i + 1}</span><span class="option-text">${opt}</span>`;
-        btn.onclick = () => checkFillBlankAnswer(opt, lesson.fillAnswer, btn);
-        DOM.optionsContainer.appendChild(btn);
-    });
-    
-    setupKeyboardShortcuts(options.length, (i) => {
-        const btns = DOM.optionsContainer.querySelectorAll('.option-card');
-        if (btns[i]) btns[i].click();
-    });
+    DOM.questionText.textContent = '';
+    const [before, after = ''] = lesson.fill.split('___');
+    const blank = document.createElement('span');
+    blank.className = 'blank-space';
+    blank.textContent = '______';
+    DOM.questionText.append(before, blank, after);
+    const options = shuffleArray(lesson.fillOptions);
+    renderOptions(options, lesson.fillAnswer, checkFillBlankAnswer);
 }
 
 function renderWriteWordExercise(lesson) {
@@ -2696,182 +2946,164 @@ function toggleWord(btn) {
 }
 
 function renderListenWriteExercise(lesson) {
+    const lang = LANGUAGES[gameState.currentLang];
     DOM.questionType.textContent = 'Ouça e escreva';
     DOM.questionText.textContent = 'Ouça a frase e escreva o que você ouviu:';
-    
+
     setTimeout(() => {
-        speech.speak(lesson.sentence, LANGUAGES[gameState.currentLang].voice);
+        if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.sentence, lang.voice);
     }, 500);
-    
+
     DOM.optionsContainer.innerHTML = '';
     DOM.optionsContainer.className = 'write-exercise';
-    
-    const listenBtn = document.createElement('button');
-    listenBtn.className = 'btn-listen-large';
-    listenBtn.innerHTML = `
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 5L6 9H2v6h4l5 4V5z"/>
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-        </svg>
-        Ouvir novamente
-    `;
-    listenBtn.onclick = () => {
-        audio.playClick();
-        speech.speak(lesson.sentence, LANGUAGES[gameState.currentLang].voice);
-    };
-    
+
     const inputWrapper = document.createElement('div');
     inputWrapper.className = 'input-wrapper';
-    
+
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'write-input';
     input.placeholder = 'Digite o que você ouviu...';
     input.autocomplete = 'off';
     input.autocapitalize = 'off';
-    
+    input.spellcheck = false;
+    input.setAttribute('aria-label', 'O que você ouviu');
+
     const submitBtn = document.createElement('button');
+    submitBtn.type = 'button';
     submitBtn.className = 'btn-submit';
-    submitBtn.innerHTML = `Verificar <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+    submitBtn.innerHTML = `Verificar <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
     submitBtn.onclick = () => checkListenAnswer(input.value, lesson.sentence);
-    
-    input.onkeydown = (e) => {
-        if (e.key === 'Enter' && !gameState.isProcessing) {
-            submitBtn.click();
-        }
+
+    input.onkeydown = (ev) => {
+        if (ev.key === 'Enter' && !gameState.isProcessing) submitBtn.click();
     };
-    
+
     inputWrapper.appendChild(input);
     inputWrapper.appendChild(submitBtn);
-    
-    DOM.optionsContainer.appendChild(listenBtn);
+
+    DOM.optionsContainer.appendChild(listenButton(lesson.sentence, lang.voice));
     DOM.optionsContainer.appendChild(inputWrapper);
-    
-    setTimeout(() => input.focus(), 100);
-    
+    DOM.optionsContainer.appendChild(cantListenButton());
+
+    setTimeout(() => input.focus({ preventScroll: true }), 100);
     document.onkeydown = null;
 }
 
-function renderMatchPairsExercise() {
+function renderMatchPairsExercise(target) {
     DOM.questionType.textContent = 'Combine os pares';
     DOM.questionText.textContent = 'Conecte cada palavra com sua tradução:';
-    
+
     const lessons = LESSONS[gameState.currentLang] || LESSONS.en;
-    const selectedLessons = [...lessons].sort(() => Math.random() - 0.5).slice(0, 4);
-    
+    // A palavra da vez + 3 já vistas; se faltar, completa com outras.
+    const seen = lessons.filter((l) => l !== target && wordInfo(gameState.currentLang, l.word)?.seen > 0);
+    const others = shuffleArray(seen).slice(0, 3);
+    const fill = shuffleArray(lessons.filter((l) => l !== target && !others.includes(l))).slice(0, 3 - others.length);
+    const selectedLessons = [target, ...others, ...fill];
+
     gameState.matchedPairs.clear();
     gameState.currentExercise.pairs = selectedLessons;
     gameState.currentExercise.selectedPair = null;
-    
-    const words = selectedLessons.map(l => ({ text: l.word, type: 'word', lesson: l }));
-    const translations = selectedLessons.map(l => ({ text: l.translation, type: 'translation', lesson: l }));
-    
-    const shuffledWords = words.sort(() => Math.random() - 0.5);
-    const shuffledTranslations = translations.sort(() => Math.random() - 0.5);
-    
+    gameState.currentExercise.misses = 0;
+
+    const words = shuffleArray(selectedLessons.map((l) => ({ text: l.word, type: 'word', lesson: l })));
+    const translations = shuffleArray(selectedLessons.map((l) => ({ text: l.translation, type: 'translation', lesson: l })));
+
     DOM.optionsContainer.innerHTML = '';
     DOM.optionsContainer.className = 'match-exercise';
-    
+
     const leftCol = document.createElement('div');
     leftCol.className = 'match-column';
-    
     const rightCol = document.createElement('div');
     rightCol.className = 'match-column';
-    
-    shuffledWords.forEach(item => {
+
+    const card = (item, col) => {
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.className = 'match-card';
         btn.textContent = item.text;
         btn.dataset.word = item.lesson.word;
-        btn.dataset.type = 'word';
+        btn.dataset.type = item.type;
         btn.onclick = () => selectMatchCard(btn, item);
-        leftCol.appendChild(btn);
-    });
-    
-    shuffledTranslations.forEach(item => {
-        const btn = document.createElement('button');
-        btn.className = 'match-card';
-        btn.textContent = item.text;
-        btn.dataset.word = item.lesson.word;
-        btn.dataset.type = 'translation';
-        btn.onclick = () => selectMatchCard(btn, item);
-        rightCol.appendChild(btn);
-    });
-    
+        col.appendChild(btn);
+    };
+    words.forEach((item) => card(item, leftCol));
+    translations.forEach((item) => card(item, rightCol));
+
     DOM.optionsContainer.appendChild(leftCol);
     DOM.optionsContainer.appendChild(rightCol);
-    
     document.onkeydown = null;
 }
 
 function selectMatchCard(btn, item) {
     if (gameState.isProcessing || btn.classList.contains('matched')) return;
     audio.playClick();
-    
+
     const exercise = gameState.currentExercise;
-    
+    const voice = LANGUAGES[gameState.currentLang]?.voice;
+    const say = (it) => { if (it.type === 'word' && audio.enabled && !gameState.listenOff) speech.speak(it.text, voice); };
+
     if (!exercise.selectedPair) {
-        document.querySelectorAll('.match-card').forEach(c => c.classList.remove('selected'));
+        document.querySelectorAll('.match-card').forEach((c) => c.classList.remove('selected'));
         btn.classList.add('selected');
         exercise.selectedPair = { btn, item };
-    } else {
-        const first = exercise.selectedPair;
-        
-        if (first.btn === btn) {
-            btn.classList.remove('selected');
-            exercise.selectedPair = null;
-            return;
-        }
-        
-        if (first.item.type === item.type) {
-            first.btn.classList.remove('selected');
-            btn.classList.add('selected');
-            exercise.selectedPair = { btn, item };
-            return;
-        }
-        
-        if (first.item.lesson.word === item.lesson.word) {
-            first.btn.classList.add('matched', 'correct');
-            btn.classList.add('matched', 'correct');
-            first.btn.classList.remove('selected');
-            gameState.matchedPairs.add(first.item.lesson.word);
-            exercise.selectedPair = null;
-            
-            if (gameState.matchedPairs.size === exercise.pairs.length) {
-                gameState.isProcessing = true;
-                setTimeout(() => {
-                    if (gameState.currentExercise !== exercise) return;
-                    gameState.streak++;
-                    gameState.questionsAnswered++;
-                    addXp(15 + (gameState.streak * 2));
-                    exercise.pairs.forEach(l => recordWordResult(gameState.currentLang, l.word, true));
-                    audio.playCorrect();
-                    updateStats();
-                    checkAchievements();
-                    showFeedback(true, 'Todos os pares combinados!');
-                }, 300);
-            }
-        } else {
-            first.btn.classList.add('wrong');
-            btn.classList.add('wrong');
-            first.btn.classList.remove('selected');
-            
+        say(item);
+        return;
+    }
+
+    const first = exercise.selectedPair;
+    if (first.btn === btn) {
+        btn.classList.remove('selected');
+        exercise.selectedPair = null;
+        return;
+    }
+    if (first.item.type === item.type) {
+        first.btn.classList.remove('selected');
+        btn.classList.add('selected');
+        exercise.selectedPair = { btn, item };
+        say(item);
+        return;
+    }
+
+    if (first.item.lesson.word === item.lesson.word) {
+        first.btn.classList.add('matched', 'correct');
+        btn.classList.add('matched', 'correct');
+        first.btn.classList.remove('selected');
+        first.btn.disabled = true;
+        btn.disabled = true;
+        gameState.matchedPairs.add(first.item.lesson.word);
+        exercise.selectedPair = null;
+
+        if (gameState.matchedPairs.size === exercise.pairs.length) {
+            gameState.isProcessing = true;
             setTimeout(() => {
-                first.btn.classList.remove('wrong');
-                btn.classList.remove('wrong');
-            }, 500);
-            
-            exercise.selectedPair = null;
+                if (gameState.currentExercise !== exercise) return;
+                // Os pares de apoio também contam como revisão (acerto).
+                exercise.pairs.forEach((l) => {
+                    if (l !== exercise.lesson) recordWordResult(gameState.currentLang, l.word, true);
+                });
+                const clean = exercise.misses < 3;
+                processAnswer(true, '', clean ? 'Todos os pares combinados!' : 'Pares combinados — vale revisar estas palavras.');
+            }, 300);
         }
+    } else {
+        // Tropeço no par não custa vida (como nos apps): só sacode e conta.
+        exercise.misses++;
+        first.btn.classList.add('wrong');
+        btn.classList.add('wrong');
+        first.btn.classList.remove('selected');
+        setTimeout(() => {
+            first.btn.classList.remove('wrong');
+            btn.classList.remove('wrong');
+        }, 500);
+        exercise.selectedPair = null;
     }
 }
 
 function checkTranslateAnswer(selected, correct, btn) {
     if (gameState.isProcessing) return;
     gameState.isProcessing = true;
-    
-    const isCorrect = selected.toLowerCase() === correct.toLowerCase();
+    const isCorrect = normalizeAnswer(selected) === normalizeAnswer(correct);
     markOptionCards(correct, btn, isCorrect);
     processAnswer(isCorrect, correct);
 }
@@ -2879,94 +3111,64 @@ function checkTranslateAnswer(selected, correct, btn) {
 function checkFillBlankAnswer(selected, correct, btn) {
     if (gameState.isProcessing) return;
     gameState.isProcessing = true;
-    
-    const isCorrect = selected.toLowerCase() === correct.toLowerCase();
+    const isCorrect = normalizeAnswer(selected) === normalizeAnswer(correct);
     markOptionCards(correct, btn, isCorrect);
     processAnswer(isCorrect, correct);
 }
 
 function checkWriteAnswer(input, correct) {
-    if (gameState.isProcessing || !input.trim()) return;
+    if (gameState.isProcessing || !String(input).trim()) {
+        document.querySelector('.write-input')?.focus();
+        return;
+    }
     gameState.isProcessing = true;
-    
-    const normalizedInput = input.trim().toLowerCase();
-    const normalizedCorrect = correct.toLowerCase();
-    const isCorrect = normalizedInput === normalizedCorrect;
-    
+    const verdict = judgeAnswer(input, correct, 12);
     const inputEl = document.querySelector('.write-input');
     if (inputEl) {
-        inputEl.classList.add(isCorrect ? 'correct' : 'wrong');
+        inputEl.classList.add(verdict.ok ? 'correct' : 'wrong');
         inputEl.disabled = true;
     }
-    
-    processAnswer(isCorrect, correct);
+    processAnswer(verdict.ok, correct, verdict.note);
 }
 
 function checkOrderAnswer(correctOrder) {
     if (gameState.isProcessing) return;
-    gameState.isProcessing = true;
-    
     const selectedArea = document.getElementById('selected-words');
-    const words = Array.from(selectedArea.children, chip => chip.dataset.word);
-    const isCorrect = words.join(' ') === correctOrder.join(' ');
-    if (selectedArea) {
-        selectedArea.classList.add(isCorrect ? 'correct' : 'wrong');
+    const words = Array.from(selectedArea?.children || [], (chip) => chip.dataset.word);
+    // Nada montado ainda: não é erro, só um aviso.
+    if (!words.length) {
+        selectedArea?.classList.add('nudge');
+        setTimeout(() => selectedArea?.classList.remove('nudge'), 450);
+        return;
     }
-    
+    gameState.isProcessing = true;
+    const isCorrect = normalizeAnswer(words.join(' ')) === normalizeAnswer(correctOrder.join(' '));
+    selectedArea?.classList.add(isCorrect ? 'correct' : 'wrong');
+    DOM.optionsContainer.querySelectorAll('.word-chip').forEach((c) => { c.disabled = true; });
     processAnswer(isCorrect, correctOrder.join(' '));
 }
 
 function checkListenAnswer(input, correct) {
-    if (gameState.isProcessing || !input.trim()) return;
+    if (gameState.isProcessing || !String(input).trim()) {
+        document.querySelector('.write-input')?.focus();
+        return;
+    }
     gameState.isProcessing = true;
-    
-    const normalizedInput = input.trim().toLowerCase().replace(/[.,!?]/g, '');
-    const normalizedCorrect = correct.toLowerCase().replace(/[.,!?¿¡]/g, '');
-    
-    const similarity = calculateSimilarity(normalizedInput, normalizedCorrect);
-    const isCorrect = similarity > 0.8;
-    
+    // Frase inteira: um deslize a cada ~7 letras ainda conta (ditado).
+    const verdict = judgeAnswer(input, correct, 7);
     const inputEl = document.querySelector('.write-input');
     if (inputEl) {
-        inputEl.classList.add(isCorrect ? 'correct' : 'wrong');
+        inputEl.classList.add(verdict.ok ? 'correct' : 'wrong');
         inputEl.disabled = true;
     }
-    
-    processAnswer(isCorrect, correct);
-}
-
-function calculateSimilarity(str1, str2) {
-    const longer = str1.length > str2.length ? str1 : str2;
-    const shorter = str1.length > str2.length ? str2 : str1;
-    
-    if (longer.length === 0) return 1.0;
-    
-    const costs = [];
-    for (let i = 0; i <= longer.length; i++) {
-        let lastValue = i;
-        for (let j = 0; j <= shorter.length; j++) {
-            if (i === 0) {
-                costs[j] = j;
-            } else if (j > 0) {
-                let newValue = costs[j - 1];
-                if (longer[i - 1] !== shorter[j - 1]) {
-                    newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
-                }
-                costs[j - 1] = lastValue;
-                lastValue = newValue;
-            }
-        }
-        if (i > 0) costs[shorter.length] = lastValue;
-    }
-    
-    return (longer.length - costs[shorter.length]) / longer.length;
+    processAnswer(verdict.ok, correct, verdict.note);
 }
 
 function markOptionCards(correct, clickedBtn, isCorrect) {
     const buttons = DOM.optionsContainer.querySelectorAll('.option-card');
     buttons.forEach(b => {
         const text = b.querySelector('.option-text')?.textContent;
-        if (text?.toLowerCase() === correct.toLowerCase()) {
+        if (normalizeAnswer(text) === normalizeAnswer(correct)) {
             b.classList.add('correct');
         } else if (b === clickedBtn && !isCorrect) {
             b.classList.add('wrong');
@@ -2975,73 +3177,122 @@ function markOptionCards(correct, clickedBtn, isCorrect) {
     });
 }
 
-function processAnswer(isCorrect, correctAnswer) {
-    const word = gameState.currentExercise?.lesson?.word;
-    if (word) recordWordResult(gameState.currentLang, word, isCorrect);
+function processAnswer(isCorrect, correctAnswer, note = '') {
+    const ex = gameState.currentExercise;
+    const item = ex?.item;
+    const word = ex?.lesson?.word;
+    // Apresentação de palavra nova não custa vida nem conta para o SRS.
+    const free = ex?.type === 'introduce';
+    if (word && !free) recordWordResult(gameState.currentLang, word, isCorrect);
+    if (!free && item && !item.retryType && !item.counted) {
+        item.counted = true;
+        gameState.lessonStats.first++;
+        if (isCorrect) gameState.lessonStats.firstOk++;
+    }
 
+    if (free && item) {
+        // A palavra nova volta testada dois itens depois.
+        gameState.queue.splice(Math.min(2, gameState.queue.length), 0, { lesson: item.lesson, isNew: false, retries: 0 });
+    }
+
+    let gained = 0;
     if (isCorrect) {
         gameState.streak++;
         gameState.questionsAnswered++;
-        addXp(10 + (gameState.streak * 2));
+        // XP: 10 + bônus de sequência (teto de +10) — sequência longa não explode a conta.
+        gained = 10 + Math.min(5, gameState.streak) * 2;
+        addXp(gained);
 
         const miniAvatar = document.querySelector('.mini-avatar');
         if (miniAvatar) {
             miniAvatar.style.animation = 'none';
-            miniAvatar.offsetHeight;
+            void miniAvatar.offsetHeight;
             miniAvatar.style.animation = 'celebrate 0.5s ease';
         }
-
         audio.playCorrect();
-        showFeedback(true);
+        haptic(12);
     } else {
         gameState.streak = 0;
-        gameState.hearts--;
-        gameState.questionsAnswered++;
+        gameState.mistakes++;
+        if (!free) gameState.hearts = Math.max(0, gameState.hearts - 1);
+        if (item && !free && item.retries < MAX_RETRIES) {
+            // Volta para o fim da fila, no mesmo tipo (match vira tradução).
+            gameState.queue.push({ ...item, retries: item.retries + 1, retryType: ex.type === 'matchPairs' ? 'translate' : ex.type, counted: true });
+        } else {
+            // Apresentação, ou já errou 3×: segue em frente — a lição nunca prende.
+            gameState.questionsAnswered++;
+        }
         audio.playWrong();
-        showFeedback(false, `Resposta correta: ${correctAnswer}`);
+        haptic([30, 40, 30]);
     }
 
     updateStats();
     checkAchievements();
+    showFeedback(isCorrect, isCorrect ? (note || `+${gained} XP`) : `Resposta correta: ${correctAnswer}`, isCorrect ? '' : correctAnswer);
 
     if (gameState.hearts <= 0) {
-        setTimeout(showGameOver, 1500);
+        DOM.nextBtn.querySelector('.next-label') && (DOM.nextBtn.querySelector('.next-label').textContent = 'Ver resultado');
     }
 }
 
-function showFeedback(isCorrect, message = '') {
+function haptic(pattern) {
+    try { if (audio.enabled && navigator.vibrate) navigator.vibrate(pattern); } catch { /* sem vibração */ }
+}
+
+function showFeedback(isCorrect, message = '', correctText = '') {
     DOM.feedbackArea.classList.remove('hidden', 'correct', 'wrong');
     DOM.feedbackArea.classList.add(isCorrect ? 'correct' : 'wrong');
-    
-    DOM.feedbackTitle.textContent = isCorrect ? 'Correto!' : 'Incorreto';
-    
-    if (isCorrect) {
-        DOM.feedbackMessage.textContent = message || `+${10 + (gameState.streak * 2)} XP`;
-    } else {
-        DOM.feedbackMessage.textContent = message;
-    }
-    
-    DOM.nextBtn.focus();
+    DOM.feedbackTitle.textContent = isCorrect
+        ? (gameState.streak >= 3 ? `Correto! ${gameState.streak} seguidas` : 'Correto!')
+        : 'Ainda não';
+    DOM.feedbackMessage.textContent = message;
+    const label = DOM.nextBtn.querySelector('.next-label');
+    if (label) label.textContent = gameState.hearts <= 0 ? 'Ver resultado' : 'Continuar';
+
+    // Ouve a forma certa depois de responder (como nos apps de idioma).
+    const ex = gameState.currentExercise;
+    const lang = LANGUAGES[gameState.currentLang];
+    const target = ex?.type === 'orderWords' || ex?.type === 'listenWrite' || ex?.type === 'listenChoose' || ex?.type === 'fillBlank'
+        ? ex.lesson.sentence
+        : ex?.type === 'matchPairs' ? '' : ex?.lesson?.word;
+    if (audio.enabled && target && lang && !gameState.listenOff) speech.speak(target, lang.voice);
+
+    DOM.nextBtn.focus({ preventScroll: true });
 }
 
 function showGameOver() {
+    speech.stop();
     DOM.gameArea.classList.add('hidden');
     DOM.feedbackArea.classList.add('hidden');
     DOM.gameOver.classList.remove('hidden');
-    DOM.finalStreak.textContent = gameState.streak;
+    DOM.finalStreak.textContent = gameState.sessionBestStreak;
     DOM.finalXp.textContent = gameState.xp;
     saveData();
+    DOM.restartBtn.focus({ preventScroll: true });
 }
 
 function showLevelComplete() {
+    speech.stop();
     DOM.gameArea.classList.add('hidden');
     DOM.feedbackArea.classList.add('hidden');
     DOM.levelComplete.classList.remove('hidden');
 
-    const perfect = gameState.hearts === 5;
-    const bonusXp = 50 + (gameState.hearts * 10);
+    const perfect = gameState.mistakes === 0;
+    const bonusXp = 20 + gameState.hearts * 5;
     addXp(bonusXp);
     DOM.rewardXp.textContent = `+${bonusXp} XP`;
+
+    const st = gameState.lessonStats || { first: 0, firstOk: 0, news: 0, reviews: 0 };
+    const acc = st.first ? Math.round((st.firstOk / st.first) * 100) : 100;
+    const due = dueLessons(gameState.currentLang).length;
+    const summary = document.getElementById('lesson-summary');
+    if (summary) {
+        const parts = [`${acc}% de acerto de primeira`];
+        if (st.news) parts.push(`${st.news} palavra${st.news === 1 ? '' : 's'} nova${st.news === 1 ? '' : 's'}`);
+        if (st.reviews) parts.push(`${st.reviews} revis${st.reviews === 1 ? 'ão' : 'ões'}`);
+        parts.push(due ? `${due} para revisar agora` : 'revisões em dia');
+        summary.textContent = parts.join(' · ');
+    }
 
     const lang = getLangData(gameState.currentLang);
     lang.lessonsCompleted = (lang.lessonsCompleted || 0) + 1;
@@ -3051,6 +3302,7 @@ function showLevelComplete() {
 
     audio.playLevelUp();
     createConfetti();
+    DOM.continueBtn.focus({ preventScroll: true });
 }
 
 function createConfetti() {
@@ -3096,7 +3348,7 @@ function speakCurrentWord() {
     
     const langCode = LANGUAGES[gameState.currentLang].voice;
     
-    if (exercise.type === 'listenWrite') {
+    if (exercise.type === 'listenWrite' || exercise.type === 'listenChoose' || exercise.type === 'orderWords' || exercise.type === 'fillBlank') {
         speech.speak(exercise.lesson.sentence, langCode);
     } else {
         speech.speak(exercise.lesson.word, langCode);
@@ -3118,9 +3370,13 @@ function renderLanguageCards() {
         if (lang && lang.xp > 0) {
             const level = Math.floor(lang.xp / XP_PER_LEVEL) + 1;
             const pct = lang.xp % XP_PER_LEVEL;
+            const due = dueLessons(code).length;
+            const total = (LESSONS[code] || []).length;
+            const learned = Object.values(lang.words || {}).filter((w) => w.seen > 0).length;
             progressEl.innerHTML = `
-                <span class="lang-level">Nv. ${level}</span>
+                <span class="lang-level">Nv. ${level} · ${learned}/${total} palavras</span>
                 <div class="lang-bar"><div class="lang-bar-fill" style="width:${pct}%"></div></div>
+                ${due ? `<span class="lang-due">🧠 ${due} para revisar</span>` : ''}
             `;
         } else {
             progressEl.innerHTML = '';
@@ -3214,11 +3470,19 @@ DOM.btnSpeak.addEventListener('click', () => {
 });
 
 DOM.nextBtn.addEventListener('click', () => {
+    if (DOM.feedbackArea.classList.contains('hidden')) return;
     if (gameState.hearts > 0) {
         loadNextExercise();
     } else {
         showGameOver();
     }
+});
+
+// Aba oculta: a voz para (não fala sozinha em segundo plano).
+document.addEventListener('visibilitychange', () => { if (document.hidden) speech.stop(); });
+// Esc fecha o modal de conquistas.
+document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && !DOM.achievementsModal.classList.contains('hidden')) DOM.achievementsModal.classList.add('hidden');
 });
 
 DOM.restartBtn.addEventListener('click', () => {

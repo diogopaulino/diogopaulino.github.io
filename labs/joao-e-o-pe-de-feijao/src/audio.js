@@ -9,7 +9,7 @@
  * escape — perseguição, tempo alto
  */
 
-import { clamp } from './utils.js';
+import { clamp } from './utils.js?v=12';
 
 const THEMES = {
     cottage: { base: 196, mode: [0, 2, 4, 7, 9], tempo: 0.85, filter: 1100, drone: 98, wave: 'triangle' },

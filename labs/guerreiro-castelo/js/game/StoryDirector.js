@@ -1,6 +1,19 @@
 /**
  * Encadeia os 12 capítulos. Níveis não ficam isolados — o diretor avança sozinho.
+ *
+ * Convés (capítulo 2): quatro tarefas em qualquer ordem — falar com a tripulação, olhar o
+ * horizonte, verificar o leme e chamar Teco. O objetivo mostrado é sempre a PRIMEIRA que
+ * falta (e o marcador aponta para ela); com as quatro feitas, cai a noite. Antes o
+ * objetivo pulava para "Liberte o leme" sem a tarefa de Teco e o jogo travava no convés.
  */
+
+/** Ordem sugerida das tarefas do convés: [flag, objetivo]. */
+const SHIP_TASKS = [
+    ['talkedFriends', 'talk_crew'],
+    ['horizon', 'horizon'],
+    ['helm', 'check_helm'],
+    ['tecoPlay', 'teco_play']
+];
 
 export class StoryDirector {
     constructor(game) {
@@ -48,12 +61,12 @@ export class StoryDirector {
                 break;
             case 'horizon':
                 this.flags.horizon = true;
-                g.quests.complete('horizon');
+                g.quests.completed.add('horizon');
                 this._checkShipExplore();
                 break;
             case 'helm':
                 this.flags.helm = true;
-                g.quests.complete('check_helm');
+                g.quests.completed.add('check_helm');
                 this._checkShipExplore();
                 break;
             case 'teco_play':
@@ -180,14 +193,13 @@ export class StoryDirector {
 
     _checkShipExplore() {
         const f = this.flags;
-        const n = [f.talkedFriends, f.horizon, f.helm, f.tecoPlay].filter(Boolean).length;
-        if (n >= 1 && this.game.quests.current.id === 'explore_ship') {
-            this.game.quests.set('talk_crew');
+        const q = this.game.quests;
+        const next = SHIP_TASKS.find(([flag]) => !f[flag]);
+        if (next) {
+            if (q.current.id !== next[1]) q.set(next[1]);
+            return;
         }
-        if (f.talkedFriends && this.game.quests.current.id === 'talk_crew') this.game.quests.set('horizon');
-        if (f.talkedFriends && f.horizon && f.helm && f.tecoPlay) {
-            this.game.level?.beginNight?.();
-        }
+        this.game.level?.beginNight?.();
     }
 
     _saveBlob() {

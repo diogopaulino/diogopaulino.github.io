@@ -105,10 +105,13 @@ varying vec3 vN;
 
 ${NOISE_GLSL}
 
+// Mapa equiretangular → esfera. +Y local = polo norte, +X = longitude 0 e o
+// leste cresce no sentido anti-horário visto do norte (−Z), como no globo real.
+// O CanvasTexture sobe com flipY, então a linha 0 do canvas (norte) fica em v = 1.
 vec2 sphereUv(vec3 dir) {
     return vec2(
-        atan(dir.z, dir.x) * 0.15915494 + 0.5,
-        0.5 - asin(clamp(dir.y, -1.0, 1.0)) * 0.31830989
+        atan(-dir.z, dir.x) * 0.15915494 + 0.5,
+        0.5 + asin(clamp(dir.y, -1.0, 1.0)) * 0.31830989
     );
 }
 
@@ -336,6 +339,7 @@ uniform vec3 uSunPos;
 uniform vec3 uPlanetPos;
 uniform float uPlanetRadius;
 uniform float uSeed;
+uniform vec2 uGap;
 
 varying vec3 vPos;
 varying vec3 vWorld;
@@ -350,7 +354,9 @@ void main() {
     float edge = smoothstep(0.0, 0.03, u) * smoothstep(1.0, 0.97, u);
     float bands = 0.55 + 0.45 * sin(u * 48.0 + uSeed);
     bands *= 0.6 + 0.4 * sin(u * 17.0 - uSeed * 2.0);
-    float cassini = 1.0 - smoothstep(0.46, 0.49, u) * smoothstep(0.56, 0.53, u);
+    // uGap = início/fim da divisão principal (Cassini em Saturno), em fração da largura.
+    float gw = (uGap.y - uGap.x) * 0.3;
+    float cassini = 1.0 - smoothstep(uGap.x, uGap.x + gw, u) * smoothstep(uGap.y, uGap.y - gw, u);
     float n = 0.65 + 0.35 * noise(vec3(vPos.xy * 6.0, uSeed));
     float alpha = edge * bands * cassini * n * uOpacity;
     if (alpha < 0.02) discard;
@@ -510,8 +516,8 @@ ${NOISE_GLSL}
 void main() {
     vec3 p = normalize(vObj);
     vec2 uv = vec2(
-        atan(p.z, p.x) * 0.15915494 + 0.5,
-        0.5 - asin(clamp(p.y, -1.0, 1.0)) * 0.31830989
+        atan(-p.z, p.x) * 0.15915494 + 0.5,
+        0.5 + asin(clamp(p.y, -1.0, 1.0)) * 0.31830989
     );
     vec3 col = texture2D(uMap, uv).rgb * uColor;
     float lum = dot(col, vec3(0.3, 0.59, 0.11));

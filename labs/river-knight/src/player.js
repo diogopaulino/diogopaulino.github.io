@@ -4,25 +4,50 @@
  * Guarda a física da navegação (velocidade, deriva lateral, limites do rio),
  * a animação do casco sobre as ondas, os remos, os canhões de bordo e os
  * poderes temporários (escudo e fúria).
+ *
+ * Navegação por proa + leme (não mais "strafe"): o barco só muda de rumo
+ * virando a proa, com inércia, e a velocidade vem das marchas de remo.
+ * Fórmulas e constantes documentadas em `config.js` (BOAT).
+ *
+ * Convenção de ângulos: `heading` (ψ) = 0 aponta rio abaixo (−Z);
+ * frente no mundo = (sin ψ, −cos ψ), boreste (direita) = (cos ψ, sin ψ).
+ * O grupo raiz usa ordem 'YXZ' (rumo → arfagem → adernamento) com rotation.y = −ψ.
  */
 
 import * as THREE from 'three';
 import { createHero } from '../../shared/gfx/hero.js';
-import { buildLongship } from './ships.js?v=50';
-import { fireLights } from './lights.js?v=50';
-import { waterHeight, waterSlope } from './water.js?v=51';
-import { centerX, halfWidth } from './river.js?v=51';
-import { BOAT, CANNON } from './config.js?v=51';
-import { clamp, damp } from './utils.js?v=50';
+import { buildLongship } from './ships.js?v=60';
+import { fireLights } from './lights.js?v=60';
+import { waterHeight, waterSlope } from './water.js?v=60';
+import { centerX, centerSlope, halfWidth } from './river.js?v=60';
+import { BOAT, CANNON } from './config.js?v=60';
+import { clamp, damp } from './utils.js?v=60';
 
 const tmpSlope = { dx: 0, dz: 0 };
 const tmpMuzzle = new THREE.Vector3();
 const tmpMuzzleWorld = new THREE.Vector3();
 const ANIM = { rowRate: 3, speedRatio: 0, steer: 0, wind: 1 };
+/** Passo fixo da integração (s): estável mesmo com quadros longos. */
+const PHYS_STEP = 1 / 120;
+const TAU = Math.PI * 2;
+
+/** Diferença angular normalizada em (−π, π]. */
+function angleDiff(a, b) {
+    let d = (a - b) % TAU;
+    if (d > Math.PI) d -= TAU;
+    if (d < -Math.PI) d += TAU;
+    return d;
+}
+
+/** Rumo do rio (ψ) na posição z: tan ψ = dx/d(−z) = −centerX'(z). */
+export function riverHeading(z) {
+    return Math.atan(-centerSlope(z));
+}
 
 export class Player {
     constructor(scene, quality = null) {
         this.root = new THREE.Group();
+        this.root.rotation.order = 'YXZ';
         scene.add(this.root);
         const low = quality?.id === 'low';
 
@@ -73,12 +98,33 @@ export class Player {
 
     reset(difficulty) {
         this.maxHull = difficulty?.hull ?? BOAT.maxHull;
+        this.helmAssist = difficulty?.helmAssist ?? 0.45;
         this.hull = this.maxHull;
         this.x = centerX(0);
         this.z = 0;
+        // Estado físico (ver config.js): u avanço e v deriva sobre a água (m/s),
+        // heading ψ (rad), r taxa de guinada (rad/s), δ ângulo do leme (rad).
+        this.gear = BOAT.startGear;
+        this.u = 6.8;
+        this.v = 0;
+        this.heading = riverHeading(0);
+        this.r = 0;
+        this.rudder = 0;
+        this.stamina = 1;
+        this.vx = 0;
+        this.vz = 0;
+        this.accel = 0;
+        this.heave = 0;
+        this.heaveVel = 0;
+        this.rollVel = 0;
+        this.pitch = 0;
+        this.pitchVel = 0;
+        this.bankContact = 0;
+        this.exhausted = false;
+        /** Velocidade sobre o fundo no sentido do castelo (m/s) — HUD, placar e IA. */
         this.speed = BOAT.baseSpeed;
         this.lateral = 0;
-        this.yaw = 0;
+        this.yaw = this.heading;
         this.roll = 0;
         this.throwTimer = 0;
         this.invuln = 0;
@@ -89,12 +135,35 @@ export class Player {
         this.distance = 0;
         this.docking = false;
         this.dockZ = 0;
+        this._acc = 0;
 
         this.root.position.set(this.x, 0, 0);
-        this.root.rotation.set(0, 0, 0);
+        this.root.rotation.set(0, -this.heading, 0);
         this.shieldBubble.visible = false;
         this.ship.visible = true;
         this.orderT = 1;
+    }
+
+    /** Sobe/desce uma marcha do telégrafo. Devolve a marcha efetiva (ou null se recusou). */
+    shiftGear(delta) {
+        if (!delta || this.docking) return null;
+        const max = BOAT.gears.length - 1;
+        let next = clamp(this.gear + delta, 0, max);
+        if (next === max && this.stamina < BOAT.staminaMinRam) next = max - 1;
+        if (next === this.gear) return delta > 0 && this.gear === max - 1 && this.stamina < BOAT.staminaMinRam ? null : this.gear;
+        this.gear = next;
+        if (next !== max) this.exhausted = false;
+        return next;
+    }
+
+    /** Empurrão de colisão: (nx, nz) aponta para longe do obstáculo, `j` em m/s. */
+    bump(nx, nz, j, surgeLoss = 0.45) {
+        // projeta o impulso no referencial do casco
+        const fx = Math.sin(this.heading);
+        const fz = -Math.cos(this.heading);
+        this.u = this.u * (1 - surgeLoss) + (nx * fx + nz * fz) * j;
+        this.v += nx * Math.cos(this.heading) + nz * Math.sin(this.heading) > 0 ? j : -j;
+        this.r += (Math.random() - 0.5) * 0.4;
     }
 
     get position() {
@@ -114,68 +183,49 @@ export class Player {
     update(dt, ctx) {
         const { input, time, effects } = ctx;
 
-        // --- velocidade longitudinal ---
-        let targetSpeed = BOAT.baseSpeed;
-        if (this.docking) {
-            // Aproximação final: desacelera até parar em frente à torre.
-            targetSpeed = clamp((this.z - this.dockZ) * 0.75, 0, 11);
-        } else if (input.boost) targetSpeed = BOAT.boostSpeed;
-        else if (input.brake) targetSpeed = BOAT.brakeSpeed;
-        targetSpeed *= ctx.speedScale ?? 1;
-
-        this.speed = damp(this.speed, targetSpeed, BOAT.accel / 6, dt);
-        this.z -= this.speed * dt;
-        this.distance = -this.z;
-
-        // --- deriva lateral ---
-        const steer = this.docking ? 0 : input.steer;
-        const targetLateral = steer * BOAT.strafeSpeed;
-        this.lateral = damp(this.lateral, targetLateral, BOAT.strafeAccel / 8, dt);
-        this.x += this.lateral * dt;
-
-        // Correnteza empurra suavemente para o centro nas curvas.
-        const cx = centerX(this.z);
-        const hw = halfWidth(this.z);
-        this.x += (cx - this.x) * 0.22 * dt;
-
-        // Puxão dos redemoinhos.
-        if (ctx.pull) {
-            this.x += ctx.pull.x * dt;
-            this.speed *= 1 - clamp(ctx.pull.drag * dt, 0, 0.6);
+        // --- física da navegação em passo fixo ---
+        const steer = this.docking ? this._dockSteer() : input.steer;
+        this._acc = Math.min(this._acc + dt, 0.25);
+        let steps = 0;
+        while (this._acc >= PHYS_STEP && steps < 30) {
+            this._step(PHYS_STEP, steer, ctx);
+            this._acc -= PHYS_STEP;
+            steps++;
         }
-
-        // Limite das margens: raspar na margem custa velocidade.
-        const limit = hw - BOAT.bankLimitPadding;
-        const offset = this.x - cx;
-        if (Math.abs(offset) > limit) {
-            this.x = cx + Math.sign(offset) * limit;
-            this.lateral *= -0.25;
-            this.speed = damp(this.speed, BOAT.brakeSpeed, 6, dt);
-            if (Math.random() < 0.5) {
-                effects.splash(this.x, 0.2, this.z - 2, 3, 0.7);
-            }
+        this.distance = -this.z;
+        if (this.bankContact) {
+            if (Math.random() < 0.35) effects.splash(this.x + this.bankContact * 2, 0.2, this.z, 3, 0.6);
             ctx.onScrape?.();
         }
 
-        // --- assentamento sobre as ondas ---
+        // --- assentamento sobre as ondas: arfagem, cabeceio e adernamento ---
         const wy = waterHeight(this.x, this.z, time);
         waterSlope(this.x, this.z, time, tmpSlope);
+        const fx = Math.sin(this.heading);
+        const fz = -Math.cos(this.heading);
+        const slopeFwd = tmpSlope.dx * fx + tmpSlope.dz * fz;
+        const slopeRight = tmpSlope.dx * Math.cos(this.heading) + tmpSlope.dz * Math.sin(this.heading);
 
-        this.root.position.set(this.x, wy + 0.95, this.z);
+        // Molas amortecidas (ω, ζ): o casco não "cola" na onda, ele responde a ela.
+        const w = BOAT.rollOmega;
+        const z2 = 2 * BOAT.rollZeta * w;
+        const heelTarget = clamp(BOAT.heelGain * this.u * this.r, -0.12, 0.12);
+        const rollTarget = clamp(heelTarget + Math.atan(slopeRight) * 0.7 + (this.bankContact ? Math.sin(time * 31) * 0.01 : 0), -0.22, 0.22);
+        this.rollVel += (w * w * (rollTarget - this.roll) - z2 * this.rollVel) * dt;
+        this.roll += this.rollVel * dt;
+        const pitchTarget = clamp(Math.atan(slopeFwd) * 0.75 + this.accel * 0.012, -0.12, 0.12);
+        this.pitchVel += (w * w * 1.4 * (pitchTarget - this.pitch) - z2 * 1.2 * this.pitchVel) * dt;
+        this.pitch += this.pitchVel * dt;
+        const hw2 = w * 1.4;
+        this.heaveVel += (hw2 * hw2 * (wy - this.heave) - 2 * 0.35 * hw2 * this.heaveVel) * dt;
+        this.heave += this.heaveVel * dt;
+        if (!Number.isFinite(this.heave)) this.heave = wy;
 
-        const steerYaw = clamp(-this.lateral / BOAT.strafeSpeed, -1, 1) * 0.26;
-        this.yaw = damp(this.yaw, steerYaw, 6, dt);
-        this.roll = damp(this.roll, clamp(steerYaw * 1.5 - tmpSlope.dx * 1.4, -0.22, 0.22), 5, dt);
+        this.root.position.set(this.x, this.heave + 0.95, this.z);
+        this.root.rotation.set(this.pitch, -this.heading, this.roll);
+        this.yaw = this.heading;
 
-        this.root.rotation.y = this.yaw;
-        this.root.rotation.z = this.roll;
-        this.root.rotation.x = clamp(
-            tmpSlope.dz * 1.1 + Math.sin(time * 1.3) * 0.012,
-            -0.14,
-            0.14
-        );
-
-        const speedRatio = this.speed / BOAT.boostSpeed;
+        const speedRatio = clamp(this.u / 12, 0, 1);
 
         // --- remos, remadores, vela, recuo dos canhões (ships.js) ---
         // cadência da remada cresce com a velocidade: 2,2 rad/s parado → 5,4 rad/s no impulso
@@ -183,7 +233,7 @@ export class Player {
         ANIM.speedRatio = speedRatio;
         ANIM.steer = steer;
         this.parts.animate(dt, time, ANIM);
-        if (this.parts.rudder) this.parts.rudder.rotation.y = -this.yaw * 1.8;
+        if (this.parts.rudder) this.parts.rudder.rotation.y = this.rudder;
         this._animateKnight(dt);
         if (this.parts.lanternFlame) {
             this.parts.lanternFlame.getWorldPosition(tmpMuzzle);
@@ -191,18 +241,22 @@ export class Player {
         }
 
         // --- espuma da proa e esteira (fora do casco, nunca sobre o convés) ---
-        const sternZ = this.z + 9.2;
-        effects.wake.push(this.x - 1.15, sternZ, 1.55 + speedRatio * 1.35, 0.7 + speedRatio * 0.5);
-        effects.wake.push(this.x + 1.15, sternZ, 1.55 + speedRatio * 1.35, 0.7 + speedRatio * 0.5);
+        // A esteira nasce na popa real (segue o rumo) e cresce com a velocidade sobre a água.
+        const rx = Math.cos(this.heading);
+        const rz = Math.sin(this.heading);
+        const sternX = this.x - fx * 8.6;
+        const sternZ = this.z - fz * 8.6;
+        const wakeW = 1.2 + speedRatio * 1.5;
+        const wakeA = 0.35 + speedRatio * 0.75;
+        effects.wake.push(sternX - rx * 1.15, sternZ - rz * 1.15, wakeW, wakeA);
+        effects.wake.push(sternX + rx * 1.15, sternZ + rz * 1.15, wakeW, wakeA);
 
-        if (Math.random() < 0.28 + speedRatio * 0.28) {
-            const bowX = this.x + Math.sin(this.yaw) * 7.2;
-            const bowZ = this.z - 7.6;
-            effects.splash(bowX, wy + 0.05, bowZ, 2, 0.28 + speedRatio * 0.28);
+        if (Math.random() < speedRatio * 0.55) {
+            effects.splash(this.x + fx * 7.4, wy + 0.05, this.z + fz * 7.4, 2, 0.16 + speedRatio * 0.3);
         }
-        if (Math.random() < 0.14 + speedRatio * 0.16) {
+        if (Math.random() < 0.06 + speedRatio * 0.16) {
             const side = Math.random() < 0.5 ? -1 : 1;
-            effects.splash(this.x + side * 3.4, wy + 0.02, this.z + 8.6, 1, 0.18 + speedRatio * 0.16);
+            effects.splash(this.x + rx * side * 2.2, wy + 0.02, this.z + rz * side * 2.2, 1, 0.12 + speedRatio * 0.16);
         }
 
         // --- temporizadores ---
@@ -235,6 +289,128 @@ export class Player {
         }
     }
 
+    /**
+     * Um passo de integração (Euler semi-implícito, h = 1/120 s).
+     * Ordem: telégrafo/fôlego → avanço → leme/guinada → deriva → correnteza → margens.
+     */
+    _step(h, steer, ctx) {
+        const maxGear = BOAT.gears.length - 1;
+        const psiR = riverHeading(this.z);
+
+        // --- avanço (surge) ---
+        let du;
+        if (this.docking) {
+            // Atracação: o timoneiro reduz até parar diante da doca.
+            const want = clamp((this.z - this.dockZ) * 0.3, 0, 5.5);
+            du = (want - this.u) * 0.9;
+        } else {
+            const g = BOAT.gears[this.gear];
+            if (this.gear === maxGear) {
+                this.stamina -= BOAT.staminaDrain * h;
+                if (this.stamina <= 0) {
+                    this.stamina = 0;
+                    this.gear = maxGear - 1;
+                    this.exhausted = true;
+                }
+            } else {
+                this.stamina = Math.min(1, this.stamina + BOAT.staminaRegen[this.gear] * h);
+            }
+            const u = this.u;
+            du = g.thrust * (ctx.speedScale ?? 1)
+                - (g.brake || 0) * u
+                - BOAT.dragLinear * u
+                - BOAT.dragQuadratic * u * Math.abs(u);
+            // Redemoinho rouba seguimento (arrasto extra proporcional à velocidade).
+            if (ctx.pull) du -= ctx.pull.drag * 0.5 * u;
+        }
+        this.accel = du;
+        this.u += du * h;
+
+        // --- leme: cana com velocidade limitada; volta ao centro mais rápido ---
+        const cmd = clamp(steer, -1, 1) * BOAT.rudderMax;
+        const opening = Math.abs(cmd) > Math.abs(this.rudder) && cmd * this.rudder >= 0;
+        const rate = (opening ? BOAT.rudderRate : BOAT.rudderReturn) * h;
+        this.rudder += clamp(cmd - this.rudder, -rate, rate);
+
+        // --- guinada (Nomoto 1ª ordem) + correnteza alinhando a proa ---
+        const off = angleDiff(psiR, this.heading);
+        const uEff = Math.max(Math.abs(this.u), BOAT.uSteerMin);
+        let rTarget = BOAT.yawGain * uEff * this.rudder;
+        const idle = Math.abs(steer) < 0.05;
+        rTarget += off * (0.1 + this.helmAssist * 0.55) * (idle ? 1 : 0.3);
+        const edge = Math.abs(off) - BOAT.maxDrift * 0.7;
+        if (edge > 0) rTarget += Math.sign(off) * edge * 2.5;
+        rTarget = clamp(rTarget, -BOAT.maxYawRate, BOAT.maxYawRate);
+        this.r += (rTarget - this.r) * Math.min(1, h / BOAT.yawTime);
+        this.heading += this.r * h;
+        const drift = angleDiff(this.heading, psiR);
+        if (Math.abs(drift) > BOAT.maxDrift) {
+            this.heading = psiR + Math.sign(drift) * BOAT.maxDrift;
+            this.r *= 0.5;
+        }
+
+        // --- deriva lateral: a quilha amortece, a curva escorrega para fora ---
+        const vTarget = -BOAT.slip * this.u * this.r;
+        this.v += (vTarget - this.v) * Math.min(1, BOAT.swayDamping * h);
+
+        // --- velocidade sobre o fundo = casco sobre a água + correnteza (+ redemoinho) ---
+        const fx = Math.sin(this.heading);
+        const fz = -Math.cos(this.heading);
+        const rx = Math.cos(this.heading);
+        const rz = Math.sin(this.heading);
+        const cx = centerX(this.z);
+        const hw = halfWidth(this.z);
+        const offN = clamp((this.x - cx) / hw, -1, 1);
+        let cur = BOAT.current * (1 - (1 - BOAT.currentAtBank) * offN * offN);
+        if (this.docking) cur *= clamp((this.z - this.dockZ) / 24, 0, 1);
+        let vx = this.u * fx + this.v * rx + cur * Math.sin(psiR);
+        const vz = this.u * fz + this.v * rz - cur * Math.cos(psiR);
+        if (ctx.pull) vx += ctx.pull.x;
+
+        // --- margens: o casco ocupa mais largura quando atravessado no rio ---
+        const nz = this.z + vz * h;
+        let nx = this.x + vx * h;
+        const alpha = angleDiff(this.heading, psiR);
+        const extent = BOAT.halfLength * Math.abs(Math.sin(alpha)) + BOAT.halfBeam * Math.cos(alpha) + BOAT.bankMargin;
+        const ncx = centerX(nz);
+        const limit = Math.max(2, halfWidth(nz) - extent);
+        const offset = nx - ncx;
+        this.bankContact = 0;
+        if (Math.abs(offset) > limit) {
+            const side = Math.sign(offset);
+            nx = ncx + side * limit;
+            if (vx * side > 0) vx *= -0.15;
+            this.u *= 1 - 0.9 * h;
+            this.v *= 0.5;
+            // A margem empurra a proa de volta para o rio.
+            if (alpha * side > 0) this.r -= side * 0.6 * h;
+            this.bankContact = side;
+        }
+
+        if (!Number.isFinite(nx) || !Number.isFinite(nz) || !Number.isFinite(this.heading)) {
+            // Rede de segurança: nunca deixar o barco "sumir" por um NaN.
+            nx = centerX(this.z);
+            this.heading = psiR;
+            this.u = 6;
+            this.v = this.r = 0;
+            vx = 0;
+        }
+        this.x = nx;
+        this.z = Number.isFinite(nz) ? nz : this.z;
+        this.vx = vx;
+        this.vz = vz;
+        this.speed = -vz;
+        this.lateral = vx;
+    }
+
+    /** Piloto automático da atracação: aponta a proa para o centro do vão do portão. */
+    _dockSteer() {
+        const ahead = 30;
+        const tx = centerX(this.z - ahead);
+        const want = Math.atan2(tx - this.x, ahead);
+        return clamp(angleDiff(want, this.heading) * 3 - this.r * 0.8, -1, 1);
+    }
+
     /** Cavaleiro: parado ao leme, golpe de espada ao ordenar fogo, comemora ao atracar. */
     _animateKnight(dt) {
         const st = this.knightState;
@@ -262,7 +438,10 @@ export class Player {
 
     /** Frente do navio no plano XZ (mundo). */
     forwardXZ() {
-        return { x: Math.sin(this.yaw), z: -Math.cos(this.yaw) };
+        const f = this._fwd || (this._fwd = { x: 0, z: 0 });
+        f.x = Math.sin(this.heading);
+        f.z = -Math.cos(this.heading);
+        return f;
     }
 
     /** Alvo atual sob a mira automática (cone largo à frente). Na luta, o chefe tem prioridade. */
@@ -425,6 +604,9 @@ export class Player {
 
     grantFury(seconds = 9) {
         this.furyTime = seconds;
+        // A fúria reanima os remadores: fôlego cheio para o Ataque.
+        this.stamina = 1;
+        this.exhausted = false;
     }
 
     /** Sequência final: o barco encosta na doca do castelo. */

@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/cinzel/font.css">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="css/style.css?v=9">
+    <link rel="stylesheet" href="css/style.css?v=10">
 
     <script type="application/ld+json">
     {
@@ -96,6 +96,7 @@
         <canvas id="scene" aria-label="Mundo 3D da aventura"></canvas>
         <div id="fade" class="fade" aria-hidden="true"></div>
         <div class="vignette" aria-hidden="true"></div>
+        <div id="hurtFlash" class="hurt-flash" aria-hidden="true"></div>
 
         <div id="chapterCard" class="chapter-card" hidden>
             <h2 id="chapterTitle"></h2>
@@ -138,6 +139,10 @@
                 <span id="fpsCounter" class="fps">—</span>
             </div>
 
+            <button id="btnPause" type="button" class="hud-pause" aria-label="Pausar (Esc)" title="Pausar (Esc)">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+            </button>
+
             <!-- Controles de toque para celular e tablet -->
             <div id="touchControls" class="touch-controls" aria-label="Controles de toque">
                 <div class="touch-look" data-touch-look aria-hidden="true"></div>
@@ -163,7 +168,6 @@
                         aria-label="Agachar">Agachar</button>
                 </div>
 
-                <button type="button" class="touch-pause" data-touch="pause" aria-label="Pausar">II</button>
             </div>
         </div>
 
@@ -187,6 +191,7 @@
                     <ul class="howto" aria-label="Como jogar">
                         <li><b>Andar</b> <span class="k-desk"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou setas</span><span class="k-touch">analógico à esquerda</span></li>
                         <li><b>Falar e usar</b> <span class="k-desk"><kbd>E</kbd></span><span class="k-touch">botão E</span></li>
+                        <li><b>Lutar</b> <span class="k-desk"><kbd>F</kbd> ou clique ataca · <kbd>Q</kbd> defende</span><span class="k-touch">⚔ ataca · 🛡 defende</span></li>
                         <li><b>Siga o losango</b> <i class="howto-gem" aria-hidden="true"></i> ele mostra aonde ir</li>
                     </ul>
                 </div>
@@ -205,8 +210,8 @@
                 <div class="keys">
                     <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover</span>
                     <span><kbd>Mouse</kbd> arraste para olhar · clique ataca</span>
-                    <span><kbd>Shift</kbd> correr · <kbd>C</kbd> agachar · <kbd>Espaço</kbd> pular</span>
-                    <span><kbd>E</kbd> interagir · <kbd>F</kbd> ou clique atacar · <kbd>Q</kbd> ou botão direito defender</span>
+                    <span><kbd>Shift</kbd> correr · <kbd>C</kbd> agachar · <kbd>Espaço</kbd> pular (segure para ir mais alto)</span>
+                    <span><kbd>E</kbd> interagir · <kbd>F</kbd> ou clique atacar (3 golpes = combo) · <kbd>Q</kbd> ou botão direito defender</span>
                     <span><kbd>Tab</kbd> objetivo · <kbd>Esc</kbd> pausa</span>
                 </div>
                 <p class="keys-touch">No celular: analógico à esquerda para andar, arraste na tela para girar a
@@ -236,11 +241,13 @@
         </div>
 
         <div id="pauseOverlay" class="overlay" hidden>
-            <div class="overlay-card">
-                <h2>Pausa</h2>
+            <div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+                <h2 id="pauseTitle">Pausa</h2>
+                <p id="pauseObjective" class="pause-objective"></p>
                 <div class="menu-actions">
                     <button id="btnResume" class="primary-button" type="button">Continuar</button>
                     <button id="btnRestartCp" class="ghost-button" type="button">Reiniciar checkpoint</button>
+                    <button id="btnPauseControls" class="ghost-button" type="button">Controles</button>
                     <button id="btnPauseSettings" class="ghost-button" type="button">Configurações</button>
                     <button id="btnQuitMenu" class="ghost-button" type="button">Sair para o menu</button>
                 </div>
@@ -291,7 +298,7 @@
         }
     }
     </script>
-    <script type="module" src="js/main.js?v=49" onerror="guerreiroLoadError()"></script>
+    <script type="module" src="js/main.js?v=50" onerror="guerreiroLoadError()"></script>
 </body>
 
 </html>

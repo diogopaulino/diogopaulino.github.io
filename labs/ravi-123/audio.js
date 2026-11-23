@@ -54,7 +54,8 @@ function ensure() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
-    ctx = new AC();
+    // Som é enfeite: se o navegador recusar o contexto, o jogo segue mudo.
+    try { ctx = new AC(); } catch (_) { ctx = null; return null; }
 
     const lowpass = ctx.createBiquadFilter();
     lowpass.type = 'lowpass';
@@ -84,7 +85,7 @@ function ensure() {
     const data = noiseBuf.getChannelData(0);
     for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
   }
-  if (ctx.state === 'suspended') ctx.resume();
+  if (ctx.state === 'suspended') ctx.resume()?.catch?.(() => {});
   return ctx;
 }
 
@@ -461,12 +462,12 @@ export const Audio = {
   },
 
   suspend() {
-    if (ctx && ctx.state === 'running') ctx.suspend();
+    if (ctx && ctx.state === 'running') ctx.suspend()?.catch?.(() => {});
     this.stopSpeech();
   },
 
   resume() {
-    if (ctx && ctx.state === 'suspended') ctx.resume();
+    if (ctx && ctx.state === 'suspended') ctx.resume()?.catch?.(() => {});
     if (ctx) nextNoteTime = ctx.currentTime + 0.1;
   }
 };

@@ -4,7 +4,7 @@
  */
 
 import { bindGameKeyboard } from '../../shared/game-keyboard.js';
-import { clamp } from './utils.js';
+import { clamp } from './utils.js?v=12';
 
 const MOVE = {
     KeyW: 'forward',
@@ -45,6 +45,9 @@ export class Input {
         this.interactPressed = false;
         this.jumpPressed = false;
         this.jumpHeld = false;
+        // objetos reaproveitados (lidos a cada quadro: nada de alocação no laço)
+        this._move = { x: 0, z: 0, sprint: false };
+        this._look = { x: 0, y: 0 };
         this._bind();
     }
 
@@ -59,11 +62,28 @@ export class Input {
     }
 
     consumeLook() {
-        const x = this.lookX;
-        const y = this.lookY;
+        this._look.x = this.lookX;
+        this._look.y = this.lookY;
         this.lookX = 0;
         this.lookY = 0;
-        return { x, y };
+        return this._look;
+    }
+
+    /** Descarta toques pendentes de pulo/usar (sem soltar o direcional que ainda está apertado). */
+    consumeTaps() {
+        this.interactPressed = false;
+        this.jumpPressed = false;
+    }
+
+    /** Solta tudo (pausa, troca de aba, fim de capítulo): nenhuma tecla fica presa. */
+    release() {
+        this.keys.clear();
+        this.touchMove.x = this.touchMove.y = 0;
+        this.touchSprint = false;
+        this.interactPressed = false;
+        this.jumpPressed = false;
+        this.jumpHeld = false;
+        this.lookX = this.lookY = this.zoomDelta = 0;
     }
 
     consumeZoom() {
@@ -89,11 +109,11 @@ export class Input {
         const b = this.keys.has('back') ? 1 : 0;
         const r = this.keys.has('right') ? 1 : 0;
         const l = this.keys.has('left') ? 1 : 0;
-        return {
-            x: clamp(r - l + this.touchMove.x, -1, 1),
-            z: clamp(f - b + this.touchMove.y, -1, 1),
-            sprint: this.keys.has('sprint') || this.touchSprint
-        };
+        const m = this._move;
+        m.x = clamp(r - l + this.touchMove.x, -1, 1);
+        m.z = clamp(f - b + this.touchMove.y, -1, 1);
+        m.sprint = this.keys.has('sprint') || this.touchSprint;
+        return m;
     }
 
     requestLock() {

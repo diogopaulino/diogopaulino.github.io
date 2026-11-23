@@ -3,9 +3,9 @@
  */
 
 import * as THREE from 'three';
-import { Level } from './Level.js?v=40';
-import { buildShip, updateShip, SHIP_MARKS, deckY } from '../world/Ship.js?v=40';
-import { makeFriend } from '../characters/cast.js?v=40';
+import { Level } from './Level.js?v=50';
+import { buildShip, updateShip, SHIP_MARKS, deckY } from '../world/Ship.js?v=50';
+import { makeFriend } from '../characters/cast.js?v=50';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 

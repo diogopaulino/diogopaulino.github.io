@@ -4,13 +4,22 @@
  * Posição desejada a partir do alvo T (cabeça do jogador), guinada ψ e inclinação θ:
  *   trás = (sin ψ·cos θ, sin θ, cos ψ·cos θ)      direita = (cos ψ, 0, −sin ψ)
  *   C = T + trás·d + direita·ombro
- * Colisão: um raio T → C contra as caixas/terreno do nível (CollisionWorld.rayHit, no
- * referencial local do nível); se bater, d = max(1,1; batida − 0,3). Para não enxergar
- * através das paredes, a aproximação é imediata e o afastamento é amortecido.
+ * Colisão: três raios T → C (centro e ±0,25 m de lado, um "tubo" grosso como a lente)
+ * contra as caixas/terreno do nível (CollisionWorld.rayHit, no referencial local do nível);
+ * vale o mais curto, d = max(1,1; batida − 0,3). Para não enxergar através das paredes a
+ * aproximação é imediata e o afastamento é amortecido (clip ← clip + 1,8·dt, ~0,5 s).
+ *
+ * Suavização exponencial (independente do fps): x ← x + (alvo − x)·(1 − e^(−λ·dt)),
+ * λ = 14/s na posição, 16/s no olhar.
+ * Auto-recentralizar: com Dico andando e sem mexer na câmera por 1,2 s, a guinada vai
+ * aos poucos para trás dele (λ = 0,9/s × fração da velocidade) — como em A Short Hike.
+ * Tremor: amplitude cai linearmente; com prefers-reduced-motion vale 35 %.
  */
 
 import * as THREE from 'three';
-import { clamp, damp } from '../utils/math.js';
+import { clamp, damp, angleDamp } from '../utils/math.js?v=50';
+
+const REDUCED = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 const _t = new THREE.Vector3();
 const _d = new THREE.Vector3();
@@ -47,6 +56,8 @@ export class ThirdPersonCamera {
         this.clip = 99;
         /* enquadramento alternativo (leme do navio): { distance, height, pitch } */
         this.override = null;
+        this.idleLook = 0;
+        this._dt = 1 / 60;
     }
 
     /** Liga a colisão da câmera ao mundo do nível. `space` = objeto cujo referencial local é o da colisão. */
@@ -59,7 +70,12 @@ export class ThirdPersonCamera {
 
     addShake(amp = 0.12, time = 0.25) {
         this.shake = Math.max(this.shake, time);
-        this.shakeAmp = Math.max(this.shakeAmp, amp);
+        this.shakeAmp = Math.max(this.shakeAmp, REDUCED ? amp * 0.35 : amp);
+    }
+
+    /** Raio do alvo até a câmera (local): distância livre. */
+    _ray(ox, oy, oz, dx, dy, dz, len) {
+        return this.world.rayHit(ox, oy, oz, dx, dy, dz, len);
     }
 
     /** Calcula a posição desejada (out) e o alvo de olhar (look), já com a colisão aplicada. */
@@ -89,10 +105,17 @@ export class ThirdPersonCamera {
         const len = _c.length();
         if (len < 0.01) return;
         _c.multiplyScalar(1 / len);
-        const hit = this.world.rayHit(_t.x, _t.y, _t.z, _c.x, _c.y, _c.z, len + 0.3);
-        const k = hit < len + 0.3 ? Math.max(1.1, hit - 0.3) / len : 1;
+        const reach = len + 0.3;
+        let hit = this._ray(_t.x, _t.y, _t.z, _c.x, _c.y, _c.z, reach);
+        /* raios laterais: perpendicular horizontal à direção (−dz, dx) · 0,25 m */
+        const hl = Math.hypot(_c.x, _c.z) || 1;
+        const sx = (-_c.z / hl) * 0.25;
+        const sz = (_c.x / hl) * 0.25;
+        hit = Math.min(hit, this._ray(_t.x + sx, _t.y, _t.z + sz, _c.x, _c.y, _c.z, reach));
+        hit = Math.min(hit, this._ray(_t.x - sx, _t.y, _t.z - sz, _c.x, _c.y, _c.z, reach));
+        const k = hit < reach ? Math.max(1.1, hit - 0.3) / len : 1;
         // aproxima na hora, afasta aos poucos
-        this.clip = k < this.clip ? k : Math.min(1, this.clip + 0.03);
+        this.clip = k < this.clip ? k : Math.min(1, k, this.clip + 1.8 * this._dt);
         if (this.clip < 1) out.sub(look).multiplyScalar(this.clip).add(look);
     }
 
@@ -107,9 +130,22 @@ export class ThirdPersonCamera {
 
     update(dt, player, lookDelta, zoomDelta, sprinting) {
         if (this.cutscene) return;
+        this._dt = dt;
 
+        const looking = Math.abs(lookDelta.x) + Math.abs(lookDelta.y) > 0.01;
         this.yaw -= lookDelta.x * 0.0036;
         this.pitch = clamp(this.pitch - lookDelta.y * 0.003, this.pitchMin, this.pitchMax);
+        this.idleLook = looking ? 0 : this.idleLook + dt;
+        /* recentraliza atrás de Dico quando ele anda e ninguém mexe na câmera */
+        if (!this.override && this.idleLook > 1.2 && player.speed > 1 && player.controller?.mode === 'walk') {
+            const behind = player.facing + Math.PI;
+            const off = Math.abs(Math.atan2(Math.sin(behind - this.yaw), Math.cos(behind - this.yaw)));
+            /* andando em direção à câmera (off > 100°) não gira: evita o "chicote" de 180° */
+            if (off < 1.75) {
+                const k = Math.min(1, player.speed / 4.6);
+                this.yaw = angleDamp(this.yaw, behind, 0.9 * k, dt);
+            }
+        }
         this.targetDistance = clamp(this.targetDistance + zoomDelta * 0.45, this.minDistance, this.maxDistance);
         this.distance = damp(this.distance, this.targetDistance, 8, dt);
 
@@ -135,7 +171,7 @@ export class ThirdPersonCamera {
         this.camera.position.copy(this.currentPos);
         if (this.shake > 0) {
             this.shake -= dt;
-            const a = this.shakeAmp * Math.max(0, this.shake / 0.25);
+            const a = this.shakeAmp * Math.min(1, Math.max(0, this.shake / 0.25));
             this.camera.position.x += (Math.random() - 0.5) * a;
             this.camera.position.y += (Math.random() - 0.5) * a * 0.6;
             if (this.shake <= 0) this.shakeAmp = 0;

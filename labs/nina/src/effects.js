@@ -9,7 +9,7 @@
  */
 
 import * as THREE from 'three';
-import { heartGeometry } from './builds.js?v=20';
+import { heartGeometry } from './builds.js?v=23';
 
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();

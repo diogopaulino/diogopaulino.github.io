@@ -11,6 +11,12 @@
  * original): colliders, interactables, platforms, climbs, heightAt, bounds,
  * spawn, flags, cow, giant, chop… A lógica de fases em main.js não sabe de malhas.
  *
+ * Pé de feijão como fase vertical:
+ *   platforms  folhas com a superfície curva da malha (leaves.js) — pouso justo
+ *   climbs[0]  o caule: eixo serpenteante axis(y), raio de agarre hold(y), yMin…yMax
+ *   stalkCam   cilindro que a câmera não atravessa (raio da casca + folga)
+ *   pods       4 vagens douradas em folhas a ~15, 29, 43 e 57 m (opcionais, +glória)
+ *
  * Relevo do solo (metros; o quintal fica em y ≈ 0):
  *   h = (fbm(p·0,012) − ½)·15 + 9·smoothstep(70, 160, |p − c|) + (fbm(p·0,06) − ½)·1,4
  *   quintal e praça da feira achatam h para a cota local (smoothstep no raio)
@@ -27,14 +33,15 @@ import { instanceModel, preload } from '../../shared/gfx/assets.js';
 import { createParticles } from '../../shared/gfx/particles.js';
 import { createHero } from '../../shared/gfx/hero.js';
 import { createCreature } from '../../shared/gfx/creature.js';
-import { STALK, GIANT_SCALE } from './config.js';
+import { STALK, GIANT_SCALE } from './config.js?v=12';
 import {
     buildCottage, buildWell, buildGateArch, buildLampPost, buildStall, buildCart, buildFountain,
     buildWoodpile, buildGardenBeds, buildGoldBag, buildNest, buildHarp, buildCastleHall, buildStool,
     prop, HALL, MAT
-} from './models.js?v=9';
-import { createCloudRealm, createCloudCollar } from './clouds.js?v=9';
-import { CowAI, GiantAI, Rope } from './npcs.js?v=9';
+} from './models.js?v=12';
+import { createCloudRealm, createCloudCollar } from './clouds.js?v=12';
+import { CowAI, GiantAI, Rope } from './npcs.js?v=12';
+import { makeLeaf } from './leaves.js?v=12';
 
 const HOME = { x: -2, z: 2 };
 const CABIN = { x: -8, z: -3, ry: 0.5 };
@@ -291,7 +298,60 @@ export async function createWorld(stage, quality, progress = () => {}) {
         return out;
     };
     const stalkHold = (y) => STALK.radius * taper(clamp01((y - stalkBase) / STALK.height)) * 1.02 + 0.3;
-    const leaves = bean.leaves.map((l) => ({ x: l.position.x + STALK.x, z: l.position.z + STALK.z, y: l.position.y + stalkBase, r: Math.max(0.9, l.radius) }));
+    // folhas-plataforma com a superfície da lâmina (leaves.js); ordenadas de baixo para cima
+    const _axL = new THREE.Vector3();
+    const leaves = bean.leaves.map((l) => makeLeaf(l, {
+        ox: STALK.x, oy: stalkBase, oz: STALK.z, height: STALK.height, tmp: _axL,
+        axisLocal: (t, out) => bean.axisAt(clamp01(t), out)
+    })).sort((a, b) => a.y - b.y);
+    /** Raio externo da casca (m) na altura y: feixe de 3 fios ≈ 1,05·raio·afinamento. */
+    const stalkSkin = (y) => STALK.radius * 1.05 * taper(clamp01((y - stalkBase) / STALK.height));
+    const stalkCam = { axis: (y, out) => stalkAxis(y, out), radiusAt: stalkSkin, yMin: stalkBase - 1, yMax: stalkBase + STALK.height };
+
+    /*
+     * Vagens douradas: 4 recompensas opcionais em folhas perto de 15, 29, 43 e 57 m.
+     * Para pegar, o João salta do caule para a folha (o arco é calculado: chega sempre).
+     */
+    const podGeo = new THREE.CapsuleGeometry(0.1, 0.46, 4, 10);
+    podGeo.rotateZ(Math.PI / 2);
+    const podMat = new THREE.MeshStandardMaterial({ color: 0xe8b43a, roughness: 0.32, metalness: 0.55, emissive: 0xffa21a, emissiveIntensity: 1.4 });
+    const haloTex = (() => {
+        const c = document.createElement('canvas');
+        c.width = c.height = 64;
+        const g = c.getContext('2d');
+        const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+        grd.addColorStop(0, 'rgba(255,220,140,0.95)');
+        grd.addColorStop(0.35, 'rgba(255,190,80,0.35)');
+        grd.addColorStop(1, 'rgba(255,170,40,0)');
+        g.fillStyle = grd;
+        g.fillRect(0, 0, 64, 64);
+        const t = new THREE.CanvasTexture(c);
+        t.colorSpace = THREE.SRGBColorSpace;
+        return t;
+    })();
+    const haloMat = new THREE.SpriteMaterial({ map: haloTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+    const podLeaves = [];
+    for (const h of [15, 29, 43, 57]) {
+        let best = null;
+        for (const l of leaves) {
+            if (podLeaves.includes(l)) continue;
+            if (!best || Math.abs(l.y - stalkBase - h) < Math.abs(best.y - stalkBase - h)) best = l;
+        }
+        if (best) podLeaves.push(best);
+    }
+    const pods = podLeaves.map((l, i) => {
+        const g = new THREE.Group();
+        const m = new THREE.Mesh(podGeo, podMat);
+        m.castShadow = true;
+        const halo = new THREE.Sprite(haloMat);
+        halo.scale.setScalar(1.6);
+        g.add(m, halo);
+        g.position.set(l.x, l.y + 0.32, l.z);
+        g.rotation.y = l.ang;
+        g.visible = false;
+        ground.add(g);
+        return { x: l.x, y: l.y + 0.32, z: l.z, leaf: l, mesh: g, taken: false, i };
+    });
     const collar = createCloudCollar({ x: STALK.x, y: STALK.top + 1, z: STALK.z, count: low ? 12 : 26 });
     collar.object.visible = false;
     ground.add(collar.object);
@@ -506,7 +566,7 @@ export async function createWorld(stage, quality, progress = () => {}) {
 
     function baseState(id) {
         return {
-            id, colliders: [], interactables: [], platforms: [], climbs: [], heightAt: hAt,
+            id, colliders: [], interactables: [], platforms: [], climbs: [], pods: [], stalkCam: null, heightAt: hAt,
             bounds: { minX: -46, maxX: 46, minZ: -21, maxZ: 46 }, spawn: { x: 0, z: 0, yaw: 0 },
             overview: { pos: P3(14, 7, 20), look: P3(-3, 1.6, 1), radius: 19 },
             voidY: -30, flags: {}, cow: null, giant: null, stalk: null, chop: 0, chopNeeded: 8, updateFns: [],
@@ -558,6 +618,10 @@ export async function createWorld(stage, quality, progress = () => {}) {
         dust.mesh.visible = false;
         stalkPivot.visible = false;
         stalkPivot.quaternion.identity();
+        for (const p of pods) {
+            p.taken = false;
+            p.mesh.visible = false;
+        }
         collar.object.visible = false;
         mother.object.visible = false;
         cowCreature.object.visible = false;
@@ -613,10 +677,10 @@ export async function createWorld(stage, quality, progress = () => {}) {
             beans.visible = true;
             beanLight.intensity = 5;
             stalkPose(0);
-            const climb = { axis: stalkAxis, hold: stalkHold, r: 3.0, yMin: stalkBase + 0.5, yMax: STALK.top, locked: true };
+            const climb = { axis: stalkAxis, hold: stalkHold, r: 3.0, yMin: stalkBase + 0.5, yMax: STALK.top, locked: true, groundGrab: true };
             w.climbs.push(climb);
             w.stalk = { x: STALK.x, z: STALK.z };
-            w.addInteract({ x: STALK.x, z: STALK.z, r: 2.1, id: 'beans', kind: 'plant', label: 'Olhar os feijões no quintal' });
+            w.addInteract({ x: STALK.x, z: STALK.z, y: hAt(STALK.x, STALK.z), yReach: 2.5, r: 2.1, id: 'beans', kind: 'plant', label: 'Olhar os feijões no quintal' });
             w.addInteract({ x: STALK.x, z: STALK.z, r: 3.4, y: STALK.top, yReach: 10, id: 'clouds', kind: 'goal', label: 'Entrar nas nuvens' });
             w.growStalk = () => {
                 w.flags.growing = true;
@@ -639,6 +703,9 @@ export async function createWorld(stage, quality, progress = () => {}) {
                         climb.locked = false;
                         w.platforms.push(...leaves);
                         w.colliders.push({ x: STALK.x, z: STALK.z, r: 1.25, top: stalkBase + 3 });
+                        w.stalkCam = stalkCam;
+                        w.pods = pods;
+                        for (const p of pods) p.mesh.visible = true;
                     }
                 }
                 if (w.flags.grown && w.flags.growT < 12) {
@@ -653,12 +720,14 @@ export async function createWorld(stage, quality, progress = () => {}) {
             stalkPivot.visible = true;
             stalkPose(1);
             collar.object.visible = true;
-            w.climbs.push({ axis: stalkAxis, hold: stalkHold, r: 3.0, yMin: stalkBase + 0.5, yMax: STALK.top, locked: false });
+            w.climbs.push({ axis: stalkAxis, hold: stalkHold, r: 3.0, yMin: stalkBase + 0.5, yMax: STALK.top, locked: false, groundGrab: false });
             w.platforms.push(...leaves);
+            w.stalkCam = stalkCam;
             w.colliders.push({ x: STALK.x, z: STALK.z, r: 1.25, top: stalkBase + 3 });
             w.stalk = { x: STALK.x, z: STALK.z, axis: stalkAxis };
-            w.addInteract({ x: AXE.x, z: AXE.z, r: 1.9, id: 'axe', kind: 'axe', label: 'Pegar o machado', get mesh() { return axeProp; } });
-            w.addInteract({ x: STALK.x, z: STALK.z, r: 2.7, id: 'chop', kind: 'chop', label: 'Cortar o pé de feijão' });
+            // com altura: lá no alto do caule o aviso de cortar/pegar não aparece
+            w.addInteract({ x: AXE.x, z: AXE.z, y: hAt(AXE.x, AXE.z), yReach: 2.5, r: 1.9, id: 'axe', kind: 'axe', label: 'Pegar o machado', get mesh() { return axeProp; } });
+            w.addInteract({ x: STALK.x, z: STALK.z, y: hAt(STALK.x, STALK.z), yReach: 2.5, r: 2.7, id: 'chop', kind: 'chop', label: 'Cortar o pé de feijão' });
             giant.reset(STALK.x, STALK.z, 78, 0, 'chase');
             w.giant = giant;
             const m = local(CABIN, 2.6, 5.2);
@@ -687,6 +756,11 @@ export async function createWorld(stage, quality, progress = () => {}) {
                     }
                 }
                 stalkPivot.quaternion.setFromAxisAngle(axis, f.th);
+                // caule inclinado/caindo: folhas e casca deixam de valer para pé e câmera
+                if (f.th > 0.02 && w.platforms.length) {
+                    w.platforms.length = 0;
+                    w.stalkCam = null;
+                }
                 if (dust.mesh.visible) dust.uniforms.uOpacity.value = 0.5 * Math.max(0, 1 - (t - dust.t0) / 6);
             });
             w.fallDir = FALL_DIR;
@@ -753,6 +827,11 @@ export async function createWorld(stage, quality, progress = () => {}) {
             }
             if (w.id === 'night') {
                 for (let i = 0; i < 5; i++) beans.children[i].position.y = stalkBase + 0.62 + Math.sin(t * 3 + i) * 0.04;
+                for (const p of w.pods) {
+                    if (!p.mesh.visible) continue;
+                    p.mesh.position.y = p.y + Math.sin(t * 2.2 + p.i) * 0.07;
+                    p.mesh.children[0].rotation.y = t * 1.4 + p.i;
+                }
             }
             // corda: mão esquerda do João → cabeça da Mimosa
             const roped = w.cow && cow.follow && !cow.parked;
@@ -783,7 +862,7 @@ export async function createWorld(stage, quality, progress = () => {}) {
     }
 
     return {
-        enter, update, ground, sky, terrain, grass, forest, giant, cow,
+        enter, update, ground, sky, terrain, grass, forest, giant, cow, leaves, pods,
         setCloudLight(glow, under, kg, ku) {
             realm.material.userData.setLight(glow, under, kg, ku);
             collar.material.userData.setLight(glow, under, kg, ku);

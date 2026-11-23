@@ -1,20 +1,22 @@
 /**
  * Capítulo 10: Fuga do Castelo sob Saraivada de Flechas, ao amanhecer.
  *
- * O trio sai pela gruta e corre pela mata até o píer (z > 68). Os arqueiros do adarve
- * disparam cada um a cada 2,6 s (≈ 1,5 flecha/s no total) enquanto o alvo está a até 75 m; depois disso as flechas caem em
- * arco vindas do castelo (origem 30 m atrás do jogador, 12 m acima).
- * Mira: ponto 0,35 s à frente do jogador + erro de ±3 m; elevação somada para compensar a
- * queda (g = 18 m/s²): Δy ≈ ½·g·(dist/v)².
+ * O trio sai pela gruta e corre pela mata até o píer (z > 68, ~130 m: ~28 s trotando a
+ * 4,6 m/s, ~20 s correndo a 6,6 m/s). Os arqueiros do adarve disparam cada um a cada 2,8 s
+ * enquanto o alvo está a até 75 m; depois disso as flechas caem em arco vindas do castelo
+ * (origem 30 m atrás do jogador, 12 m acima).
+ * Mira: ponto à frente do jogador (velocidade × tempo de voo ≈ dist/v) + erro de ±3,5 m;
+ * ângulo pela balística real (ArrowSystem.aim, g = 9,81 m/s², v = 42–48 m/s).
  */
 
 import * as THREE from 'three';
-import { Level } from './Level.js?v=40';
-import { getIsland, ISLAND_MARKS } from '../world/Island.js?v=40';
-import { makeHero, giveBow } from '../characters/cast.js?v=40';
+import { Level } from './Level.js?v=50';
+import { getIsland, ISLAND_MARKS } from '../world/Island.js?v=50';
+import { makeHero, giveBow } from '../characters/cast.js?v=50';
 
 const _o = new THREE.Vector3();
 const _t = new THREE.Vector3();
+const _d = new THREE.Vector3();
 
 export class EscapeLevel extends Level {
     get id() {
@@ -77,11 +79,12 @@ export class EscapeLevel extends Level {
             if (g.player.hurt(1)) {
                 g.audio.play('hit');
                 g.cameraRig.addShake(0.16, 0.25);
+                g.hud.flashHurt();
                 if (!g.player.alive) g.failCheckpoint('Uma flecha…');
             }
         };
 
-        g.hud.showToast('Corra para o píer! Shift corre, Q defende.', 5);
+        g.hud.showToast(g.hud.isTouch ? 'Corra para o píer! Botão Correr e 🛡 defende.' : 'Corra para o píer! Shift corre, Q defende.', 5);
     }
 
     update(dt) {
@@ -95,7 +98,7 @@ export class EscapeLevel extends Level {
             a.anim.upper = a.t < 0.35 ? 'attack' : undefined;
             a.hero.lookAt(_t.set(p.x, p.y + 1.4, p.z));
             a.hero.update(dt, a.anim);
-            if (a.t > 2.6 && this.time > 3 && !this.done) {
+            if (a.t > 2.8 && this.time > 3 && !this.done) {
                 a.t = 0;
                 a.hero.object.getWorldPosition(_o);
                 _o.y += 1.5;
@@ -106,11 +109,12 @@ export class EscapeLevel extends Level {
                     _o.set(p.x + (_o.x - p.x) * k, p.y + 12, p.z + (_o.z - p.z) * k);
                     dist = 30;
                 }
-                const speed = 30 + Math.random() * 6;
+                const speed = 42 + Math.random() * 6;
                 const c = g.player.controller;
-                _t.set(p.x + c.vx * 0.35 + (Math.random() - 0.5) * 7, p.y + 1, p.z + c.vz * 0.35 + (Math.random() - 0.5) * 7);
-                _t.y += 0.5 * 18 * (dist / speed) ** 2;
-                g.arrows.fire(_o, _t.sub(_o).normalize(), speed);
+                const lead = dist / speed;
+                _t.set(p.x + c.vx * lead + (Math.random() - 0.5) * 7, p.y + 1, p.z + c.vz * lead + (Math.random() - 0.5) * 7);
+                g.arrows.aim(_o, _t, speed, _d);
+                g.arrows.fire(_o, _d, speed);
                 g.audio.play('arrow');
             }
         }

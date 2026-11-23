@@ -157,9 +157,24 @@ export function createRail(ctx, world) {
     const stack = new THREE.Vector3();
 
     /** posição da locomotiva ao longo da via: parada em z = 262 até t = 150, depois acelera. */
+    /* Partida do trem (N04): locomotiva a vapor com vagões arranca devagar —
+       aceleração sobe em rampa de 0 a A = 0,22 m/s² em J = 2 s (sem tranco), e o
+       trem segue até v = 3,5 m/s (12,6 km/h, manobra de pátio).
+       s(u) integrado em forma fechada: rampa u³·A/(6J); depois ½A·u² com ajuste. */
+    const A = 0.22;
+    const J = 2;
+    const V = 3.5;
+    const sJ = (A * J * J) / 6;            // distância no fim da rampa
+    const vJ = (A * J) / 2;                // velocidade no fim da rampa
+    const tV = J + (V - vJ) / A;           // instante em que chega a V
+    const sV = sJ + vJ * (tV - J) + 0.5 * A * (tV - J) * (tV - J);
     const zAt = (t) => {
         const u = Math.max(0, t - 150);
-        return 262 - (u < 8 ? 0.5 * 0.42 * u * u : 0.5 * 0.42 * 64 + 0.42 * 8 * (u - 8));
+        let s;
+        if (u < J) s = (A * u * u * u) / (6 * J);
+        else if (u < tV) s = sJ + vJ * (u - J) + 0.5 * A * (u - J) * (u - J);
+        else s = sV + V * (u - tV);
+        return 262 - s;
     };
 
     void world;

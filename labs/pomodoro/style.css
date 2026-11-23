@@ -326,6 +326,41 @@ select:focus-visible {
     color: var(--text-secondary);
 }
 
+.chip-extend {
+    position: relative;
+    min-height: 30px;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle);
+    background: color-mix(in srgb, var(--bg-card) 80%, transparent);
+    color: var(--text-secondary);
+    font: 600 0.78rem/1 inherit;
+    font-family: inherit;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+/* Área de toque de 44px sem aumentar o chip dentro do anel. */
+.chip-extend::before {
+    content: '';
+    position: absolute;
+    inset: -7px -4px;
+}
+
+.chip-extend:hover {
+    color: var(--mode-color);
+    border-color: var(--mode-color);
+}
+
+.chip-extend:active {
+    transform: scale(0.95);
+}
+
+.chip-extend:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
 /* Tarefa ativa */
 .active-task {
     display: flex;
@@ -975,7 +1010,7 @@ input[type="range"] {
 .toast-region {
     position: fixed;
     left: 50%;
-    bottom: 1.5rem;
+    bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
     transform: translateX(-50%);
     z-index: 1100;
     display: flex;
@@ -998,6 +1033,37 @@ input[type="range"] {
     font-size: 0.88rem;
     color: var(--text-primary);
     animation: toast-in 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+    max-width: 100%;
+}
+
+.toast > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.toast.has-action {
+    pointer-events: auto;
+    padding-right: 0.4rem;
+}
+
+.toast-action {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 0.9rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--mode-soft);
+    color: var(--mode-color);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.toast-action:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
 }
 
 .toast.is-leaving {
@@ -1076,4 +1142,48 @@ input[type="range"] {
 /* agent-responsive-768 */
 @media (max-width: 768px) {
   html, body { overflow-x: clip; }
+}
+
+/* --- remaster: header estreito e paisagem curta --- */
+/* No celular o header tem back + som + ajustes + tema: a tela cheia (pouco útil
+   em telefone) sai para o título "Pomodoro" não quebrar sílaba por sílaba. */
+@media (max-width: 420px) {
+    header .header-actions > .lab-icon-btn {
+        display: none;
+    }
+}
+
+/* Celular deitado: anel à esquerda, abas/tarefa/controles à direita — o
+   cronômetro inteiro cabe na altura sem rolar. */
+@media (max-height: 520px) and (orientation: landscape) {
+    .timer-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas:
+            "ring tabs"
+            "ring task"
+            "ring controls";
+        align-items: center;
+        justify-items: center;
+        column-gap: 1.5rem;
+        row-gap: 0.75rem;
+        padding: 1rem 1.25rem;
+    }
+
+    .timer-card .mode-tabs { grid-area: tabs; }
+    .timer-card .timer-ring {
+        grid-area: ring;
+        width: min(240px, calc(100dvh - 7.5rem), 42vw);
+    }
+    .timer-card .active-task { grid-area: task; padding: 0.25rem 0.5rem; }
+    .timer-card .controls { grid-area: controls; }
+    .timer-card .shortcuts-hint { display: none; }
+
+    .time {
+        font-size: clamp(2.2rem, 9vh, 3rem);
+    }
+
+    .ring-content {
+        gap: 0.35rem;
+    }
 }

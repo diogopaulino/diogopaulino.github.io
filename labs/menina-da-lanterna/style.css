@@ -1166,3 +1166,43 @@ body[data-state="playing"] .lab-foot,
 body[data-state="intro"] .lab-foot,
 body[data-state="cutscene"] .lab-foot,
 body[data-state="dialogue"] .lab-foot { visibility: hidden; pointer-events: none; }
+
+/* ================================================================
+   Remaster: dica na pausa, botão de recarregar no carregamento lento.
+   ================================================================ */
+.pause-lede { margin: 0 auto; font-size: 0.9rem; }
+.ghost-button[hidden], .primary-button[hidden] { display: none; }
+.loading-card .ghost-button { margin-top: 1.1rem; min-height: 44px; }
+@media (max-height: 560px) and (orientation: landscape) {
+    .pause-lede { font-size: 0.8rem; }
+}
+.compact-card .eyebrow { justify-content: center; }
+/* Celular em pé: o "Pular" da abertura sobe acima do "correr" (antes os dois se sobrepunham em 375 px). */
+@media (max-width: 600px) and (orientation: portrait) {
+    .skip-button { bottom: calc(7.4rem + var(--safe-bottom)); }
+}
+/* Tablet largo (iPad deitado 1024×768) também joga no dedo: som/pausa saem de baixo
+   dos pads e sobem para a faixa da direita, como no celular. */
+body[data-touch="true"] .hud-actions {
+    top: calc(4rem + var(--safe-top));
+    right: calc(0.7rem + var(--safe-right));
+    bottom: auto;
+    flex-direction: column;
+    align-items: flex-end;
+}
+body[data-touch="true"] .hud-top { padding-right: 3rem; }
+body[data-touch="true"] .icon-button { width: 44px; height: 44px; }
+body[data-touch="true"] .fps { display: none; }
+body[data-touch="true"] .skip-button {
+    top: auto;
+    right: auto;
+    left: 50%;
+    translate: -50% 0;
+    bottom: calc(3.4rem + var(--safe-bottom));
+}
+@media (max-width: 600px) and (orientation: portrait) {
+    body[data-touch="true"] .skip-button { bottom: calc(7.4rem + var(--safe-bottom)); }
+}
+@media (max-height: 560px) and (orientation: landscape) {
+    body[data-touch="true"] .skip-button { bottom: calc(2.9rem + var(--safe-bottom)); }
+}

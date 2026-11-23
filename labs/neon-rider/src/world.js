@@ -5,11 +5,11 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { CHUNK, ROAD } from './config.js';
-import { hash, mulberry32 } from './utils.js';
+import { CHUNK, ROAD } from './config.js?v=17';
+import { hash, mulberry32 } from './utils.js?v=17';
 import {
     createBuilding, createLamp, createPalm, createBillboard, tintMaterials
-} from './models.js?v=14';
+} from './models.js?v=17';
 
 export function createSky() {
     const uniforms = {

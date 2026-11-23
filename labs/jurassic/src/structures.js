@@ -12,10 +12,10 @@
  */
 
 import * as THREE from 'three';
-import { WORLD } from './config.js';
+import { WORLD } from './config.js?v=23';
 import { applyWorldUV, smoothstep, seeded } from '../../shared/gfx/core.js';
 import { pbrMaterial } from '../../shared/gfx/assets.js';
-import { rbox, loft, column, pipe, lathe, merge, mesh, xf, canvasTexture, ringXZ } from './geo.js';
+import { rbox, loft, column, pipe, lathe, merge, mesh, xf, canvasTexture, ringXZ } from './geo.js?v=23';
 
 const TEAL = '#12403f';
 const CREAM = '#efe6cf';

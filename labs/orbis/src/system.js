@@ -1,6 +1,23 @@
 /**
- * Monta e anima o sistema estelar: estrela, exoplanetas, anéis, luas,
+ * Monta e anima o sistema estelar: estrela, planetas, anéis, luas,
  * cinturão de asteroides, nébula e campo de estrelas.
+ *
+ * Movimento 100% kepleriano (ver kepler.js): cada planeta é posicionado pela
+ * equação de Kepler a partir dos elementos reais J2000, no instante simulado
+ * (dias desde J2000). Nada de `angle += speed·dt`: a posição é função da data,
+ * então pausar, inverter ou saltar para outra data é exato e estável.
+ *
+ * ESCALA VISUAL (documentada também na interface):
+ * - Tempos, períodos e FORMAS das órbitas são reais (e, i, Ω, ω exatos).
+ * - Distâncias "Comprimida": cada órbita é a elipse real multiplicada por um
+ *   fator uniforme s = a_vis / a, com semi-eixo visual a_vis = C₀ + C₁·√a
+ *   (C₀ = 1,2 u, C₁ = 4,55 u/√UA → Mercúrio a 4,0 u, Terra 5,75 u, Netuno 26 u).
+ *   Escala uniforme por órbita preserva a excentricidade e o Sol no foco; só
+ *   "encolhe" o sistema externo. As órbitas não se cruzam (afélio de Mercúrio
+ *   4,86 u < periélio de Vênus 5,04 u; idem para os demais pares).
+ * - Distâncias "Real": linear, K_r = 2,6 u por UA para todos (Netuno a 78 u).
+ * - Raios de planetas, do Sol e das luas, e as distâncias das luas, são
+ *   ampliados (na escala real o Sol teria 0,012 u e a Terra 0,0001 u).
  */
 import * as THREE from 'three';
 import { createPlanetTexture } from './textures.js?v=5';
@@ -13,7 +30,28 @@ import {
     NEBULA_VERT, NEBULA_FRAG,
     STARFIELD_VERT, STARFIELD_FRAG,
     MOON_FRAG
-} from './shaders.js?v=4';
+} from './shaders.js?v=5';
+import {
+    GM_SUN, G, makeOrbit, orbitPosition, orbitPointAtE, orbitSpeed,
+    poleToEcliptic, primeNodeToEcliptic, axialTilt, wrapPi
+} from './kepler.js?v=1';
+
+const DEG = Math.PI / 180;
+
+export const SCALE = {
+    compA: 1.2,    // u — termo fixo do semi-eixo visual comprimido
+    compK: 4.55,   // u·UA^-½ — semi-eixo visual comprimido = 1,2 + 4,55·√a
+    realK: 2.6,    // u/UA — escala linear real
+    realBody: 0.4, // corpos (planetas + luas) na escala real
+    realSun: 0.3   // Sol na escala real
+};
+
+/* Limite de amostragem: a 60 quadros/s, girar mais que ~1,5 volta/s vira
+   estroboscópio (efeito roda-de-carroça). Acima disso o ângulo EXIBIDO avança
+   no limite e, quando o tempo desacelera, reencontra o ângulo real (decai em
+   ~0,5 s). Posições heliocêntricas dos planetas nunca são limitadas. */
+const MAX_SPIN = Math.PI * 2 * 1.5;   // rad/s reais (rotação própria)
+const MAX_MOON = Math.PI * 2 * 0.75;  // rad/s reais (órbita das luas)
 
 function color(rgb) {
     return new THREE.Color(rgb[0], rgb[1], rgb[2]);
@@ -47,6 +85,47 @@ function planetUniforms(p) {
     };
 }
 
+/** Fator visual (cena/UA) de uma órbita de semi-eixo aAU, misturando as escalas. */
+function orbitFactor(aAU, mix) {
+    const comp = (SCALE.compA + SCALE.compK * Math.sqrt(aAU)) / aAU;
+    return comp + (SCALE.realK - comp) * mix;
+}
+
+/** Distância visual de uma lua, em unidades locais do planeta (raio visual R). */
+function moonVisualDistance(R, aKm, planetKm) {
+    // Logarítmica: preserva a ordem real (Fobos < Deimos, Io < Europa…) sem
+    // jogar a Lua a 60 raios terrestres, onde cruzaria a órbita de Vênus.
+    return R * (2.2 + 0.9 * Math.log(aKm / planetKm));
+}
+
+/**
+ * Atraso visual por limite de amostragem (ver MAX_SPIN). `n` em rad/dia,
+ * `dd` dias simulados neste quadro, `dt` segundos reais. Devolve o novo
+ * deslocamento (dias) entre o relógio exibido e o real.
+ */
+function lagOffset(offset, n, dd, dt, max) {
+    const adv = n * dd;
+    const lim = max * dt;
+    if (adv > lim || adv < -lim) {
+        return offset + (adv > 0 ? lim : -lim) / n - dd;
+    }
+    if (offset === 0) return 0;
+    const phase = wrapPi(n * offset) * Math.exp(-6 * dt);
+    return Math.abs(phase) < 1e-4 ? 0 : phase / n;
+}
+
+/** Quaternion do referencial equatorial: X = nodo (origem de W), Y = polo norte. */
+function equatorQuaternion(rot, q) {
+    const pole = poleToEcliptic(rot.ra, rot.dec, {});
+    const node = primeNodeToEcliptic(rot.ra, {});
+    // eclíptica (x, y, z) → cena (x, z, −y)
+    const Y = new THREE.Vector3(pole.x, pole.z, -pole.y).normalize();
+    const X = new THREE.Vector3(node.x, node.z, -node.y).normalize();
+    const Z = new THREE.Vector3().crossVectors(X, Y).normalize();
+    const m = new THREE.Matrix4().makeBasis(X, Y, Z);
+    return { q: q.setFromRotationMatrix(m), pole };
+}
+
 export class StarSystem {
     constructor(scene, quality) {
         this.scene = scene;
@@ -55,10 +134,19 @@ export class StarSystem {
         this.scene.add(this.group);
         this.bodies = [];
         this.time = 0;
+        this.days = 0;
         this.data = null;
+        this.focusIndex = -2;
+
+        this.scaleMix = 0;
+        this.scaleTarget = 0;
+        this._lastMix = -1;
+        this._lastBeltDays = NaN;
 
         this.sunPos = new THREE.Vector3(0, 0, 0);
         this._planetWorld = new THREE.Vector3();
+        this._k = { x: 0, y: 0, z: 0, r: 0, E: 0, M: 0, nu: 0 };
+        this._p = { x: 0, y: 0, z: 0 };
 
         this._buildBackground();
         this.starGroup = new THREE.Group();
@@ -83,6 +171,12 @@ export class StarSystem {
     }
 
     _buildBackground() {
+        // Fundo "no infinito": acompanha a câmera (sem paralaxe) e é desenhado
+        // antes de tudo, sem depth — nenhum planeta distante some atrás dele.
+        this.background = new THREE.Group();
+        this.background.scale.setScalar(1.6); // estrelas a 61–138 u: pontos finos, como no céu real
+        this.scene.add(this.background);
+
         const nebGeo = new THREE.SphereGeometry(90, 32, 20);
         this.nebulaUniforms = {
             uA: { value: new THREE.Color(0.03, 0.05, 0.14) },
@@ -95,13 +189,15 @@ export class StarSystem {
             vertexShader: NEBULA_VERT,
             fragmentShader: NEBULA_FRAG,
             side: THREE.BackSide,
-            transparent: true,
+            transparent: false,
             depthWrite: false,
             depthTest: false,
             blending: THREE.AdditiveBlending
         });
         this.nebula = new THREE.Mesh(nebGeo, nebMat);
-        this.group.add(this.nebula);
+        this.nebula.renderOrder = -20;
+        this.nebula.frustumCulled = false;
+        this.background.add(this.nebula);
 
         const count = this.quality.stars;
         const positions = new Float32Array(count * 3);
@@ -143,12 +239,15 @@ export class StarSystem {
             uniforms: this.starfieldUniforms,
             vertexShader: STARFIELD_VERT,
             fragmentShader: STARFIELD_FRAG,
-            transparent: true,
+            transparent: false,
             depthWrite: false,
+            depthTest: false,
             blending: THREE.AdditiveBlending
         });
         this.starfield = new THREE.Points(starGeo, starMat);
-        this.group.add(this.starfield);
+        this.starfield.renderOrder = -10;
+        this.starfield.frustumCulled = false;
+        this.background.add(this.starfield);
     }
 
     _clearGroup(group) {
@@ -173,14 +272,17 @@ export class StarSystem {
         this._clearGroup(this.planetsGroup);
         this._clearGroup(this.orbitLines);
         this.bodies = [];
+        this.belt = null;
 
         this.nebulaUniforms.uA.value.set(data.star.nebulaA[0], data.star.nebulaA[1], data.star.nebulaA[2]);
         this.nebulaUniforms.uB.value.set(data.star.nebulaB[0], data.star.nebulaB[1], data.star.nebulaB[2]);
         this.nebulaUniforms.uSeed.value = data.seed * 0.001;
 
         this._buildStar(data.star);
-        this._buildBelt(data);
         data.planets.forEach((p, i) => this._buildPlanet(p, i));
+        this._buildBelt(data);
+        this._lastMix = -1;
+        this._lastBeltDays = NaN;
     }
 
     _buildStar(star) {
@@ -198,8 +300,12 @@ export class StarSystem {
             vertexShader: STAR_VERT,
             fragmentShader: STAR_FRAG
         });
+        // Eixo do Sol inclinado 7,25° em relação à eclíptica (polo IAU).
+        this.starAxis = new THREE.Group();
+        equatorQuaternion(star.rot, this.starAxis.quaternion);
+        this.starGroup.add(this.starAxis);
         this.starMesh = new THREE.Mesh(geo, mat);
-        this.starGroup.add(this.starMesh);
+        this.starAxis.add(this.starMesh);
 
         const coronaUniforms = {
             uColor: { value: color(star.corona) },
@@ -233,29 +339,59 @@ export class StarSystem {
         );
         this.starGroup.add(glow);
 
-        this.pointLight = new THREE.PointLight(color(star.color), star.intensity, 48, 1.15);
+        this.pointLight = new THREE.PointLight(color(star.color), star.intensity, 0, 1.15);
         this.starGroup.add(this.pointLight);
 
-        this.starSpin = star.spin;
+        this.star = star;
+        this.starSpinOffset = 0;
     }
 
     _buildBelt(data) {
-        const inner = data.belt.inner;
-        const outer = data.belt.outer;
-        if (!(outer > inner + 0.4)) return;
+        const belt = data.belt;
+        if (!belt || !(belt.outer > belt.inner)) return;
+        const jup = this.bodies.find((b) => b.params.name === 'Júpiter');
 
         const count = this.quality.asteroids;
         const pos = new Float32Array(count * 3);
         const col = new Float32Array(count * 3);
         const sizes = new Float32Array(count);
         const tw = new Float32Array(count);
+        const orbits = new Array(count);
+        const gaps = belt.gaps || [];
+        const trojanCount = jup ? Math.round(count * (belt.trojans || 0)) : 0;
+        const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15;
         for (let i = 0; i < count; i++) {
-            const a = Math.random() * Math.PI * 2;
-            const r = inner + Math.random() * (outer - inner);
-            const y = (Math.random() - 0.5) * 0.18;
-            pos[i * 3] = Math.cos(a) * r;
-            pos[i * 3 + 1] = y;
-            pos[i * 3 + 2] = Math.sin(a) * r;
+            let el;
+            if (i < trojanCount) {
+                // Troianos: mesmo semi-eixo de Júpiter, 60° à frente (L4) ou atrás (L5).
+                const je = jup.params.elements;
+                const side = i % 2 ? 60 : -60;
+                el = {
+                    a: je.a * (1 + gauss() * 0.012),
+                    e: Math.random() * 0.12,
+                    i: Math.abs(gauss()) * 12,
+                    node: Math.random() * 360,
+                    peri: Math.random() * 360,
+                    L: je.L + side + gauss() * 14
+                };
+            } else {
+                // Cinturão principal: rejeita amostras nas lacunas de Kirkwood.
+                let a;
+                let tries = 0;
+                do {
+                    a = belt.inner + Math.random() * (belt.outer - belt.inner);
+                    tries++;
+                } while (tries < 20 && gaps.some((g) => Math.abs(a - g) < (g > 3.2 ? 0.035 : 0.022)));
+                el = {
+                    a,
+                    e: Math.min(0.3, Math.abs(gauss()) * 0.11),
+                    i: Math.abs(gauss()) * 7.5,
+                    node: Math.random() * 360,
+                    peri: Math.random() * 360,
+                    L: Math.random() * 360
+                };
+            }
+            orbits[i] = makeOrbit(el);
             const g = 0.45 + Math.random() * 0.35;
             col[i * 3] = g;
             col[i * 3 + 1] = g * 0.92;
@@ -264,7 +400,9 @@ export class StarSystem {
             tw[i] = 0.2;
         }
         const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const posAttr = new THREE.BufferAttribute(pos, 3);
+        posAttr.setUsage(THREE.DynamicDrawUsage);
+        geo.setAttribute('position', posAttr);
         geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
         geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
         geo.setAttribute('aTwinkle', new THREE.BufferAttribute(tw, 1));
@@ -276,20 +414,28 @@ export class StarSystem {
             depthWrite: false
         });
         this.belt = new THREE.Points(geo, mat);
+        this.belt.frustumCulled = false;
+        this.beltOrbits = orbits;
+        this.beltPos = pos;
         this.planetsGroup.add(this.belt);
     }
 
     _buildPlanet(p, index) {
         const segs = this.quality.planetSeg;
-        const root = new THREE.Group();
-        root.rotation.x = p.inclination;
-        this.planetsGroup.add(root);
+        const mu = GM_SUN + G * ((p.mass || 0) + (p.extraMass || 0));
+        const orbit = makeOrbit(p.elements, { mu });
 
+        // anchor: posição heliocêntrica. holder: equador do planeta (polo IAU).
+        const anchor = new THREE.Group();
+        this.planetsGroup.add(anchor);
         const holder = new THREE.Group();
-        holder.position.x = p.orbit;
-        root.add(holder);
-        holder.rotation.z = p.tilt;
+        const { pole } = equatorQuaternion(p.rot, holder.quaternion);
+        anchor.add(holder);
+        // Referencial eclíptico local (a Lua orbita perto da eclíptica, não do equador).
+        const eclFrame = new THREE.Group();
+        anchor.add(eclFrame);
 
+        const flat = 1 - (p.flattening || 0);
         const uniforms = planetUniforms(p);
         uniforms.uMap.value = this._map(p.texture || 'mercury');
         uniforms.uUseMap.value = 1;
@@ -301,6 +447,7 @@ export class StarSystem {
                 fragmentShader: PLANET_FRAG
             })
         );
+        planet.scale.set(1, flat, 1); // achatamento polar real (Saturno 9,8%)
         planet.userData.planetIndex = index;
         holder.add(planet);
 
@@ -321,6 +468,7 @@ export class StarSystem {
                 depthWrite: false
             })
         );
+        clouds.scale.set(1, flat, 1);
         clouds.userData.planetIndex = index;
         holder.add(clouds);
 
@@ -344,10 +492,13 @@ export class StarSystem {
                 blending: THREE.AdditiveBlending
             })
         );
+        atmos.scale.set(1, flat, 1);
         holder.add(atmos);
 
-        const inner = p.radius * 1.45;
-        const outer = p.radius * 2.35;
+        const span = p.ringSpan || [1.45, 2.35];
+        const gap = p.ringGap || [0.46, 0.56];
+        const inner = p.radius * span[0];
+        const outer = p.radius * span[1];
         const ringUniforms = {
             uInner: { value: inner },
             uOuter: { value: outer },
@@ -356,10 +507,11 @@ export class StarSystem {
             uSunPos: { value: this.sunPos },
             uPlanetPos: { value: new THREE.Vector3() },
             uPlanetRadius: { value: p.radius * 0.98 },
-            uSeed: { value: p.seed }
+            uSeed: { value: p.seed },
+            uGap: { value: new THREE.Vector2(gap[0], gap[1]) }
         };
         const rings = new THREE.Mesh(
-            new THREE.RingGeometry(inner, outer, 96, 4),
+            new THREE.RingGeometry(inner, outer, 128, 4),
             new THREE.ShaderMaterial({
                 uniforms: ringUniforms,
                 vertexShader: RING_VERT,
@@ -369,7 +521,7 @@ export class StarSystem {
                 depthWrite: false
             })
         );
-        rings.rotation.x = -Math.PI / 2;
+        rings.rotation.x = -Math.PI / 2; // plano equatorial
         rings.visible = p.rings > 0.04;
         holder.add(rings);
 
@@ -377,11 +529,9 @@ export class StarSystem {
         const moonDefs = p.moonsNamed || [];
         for (let m = 0; m < moonDefs.length; m++) {
             const def = moonDefs[m];
+            const frame = def.frame === 'ecliptic' ? eclFrame : holder;
             const moonRoot = new THREE.Group();
-            const moonHold = new THREE.Group();
-            const dist = p.radius * (3.1 + m * 1.15);
-            moonHold.position.x = dist;
-            moonRoot.add(moonHold);
+            frame.add(moonRoot);
             const moonR = p.radius * (def.scale || 0.16);
             const tint = def.tint || [1, 1, 1];
             const moon = new THREE.Mesh(
@@ -397,38 +547,83 @@ export class StarSystem {
                     fragmentShader: MOON_FRAG
                 })
             );
-            moonHold.add(moon);
-            holder.add(moonRoot);
+            moonRoot.add(moon);
+
+            // Fase inicial ilustrativa (determinística) para as luas sem efeméride.
+            const seedAng = (p.seed * 47 + m * 131) % 360;
+            const mOrbit = makeOrbit({
+                a: def.aKm,
+                e: def.e ?? 0,
+                i: def.i ?? 0,
+                node: def.node ?? seedAng,
+                peri: def.peri ?? (seedAng + 73),
+                L: def.L ?? ((seedAng * 2.3) % 360),
+                period: def.period,
+                nodeRate: def.nodeRate,
+                periRate: def.periRate
+            }, { unit: 1000 });
+            const visDist = moonVisualDistance(p.radius, def.aKm, p.radiusKm);
+            const factor = visDist / def.aKm;
+
+            // Elipse da órbita da lua (visível só com o planeta em foco).
+            const lineGeo = new THREE.BufferGeometry();
+            const linePos = new Float32Array(97 * 3);
+            lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
+            const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({
+                color: 0xbfd8ff, transparent: true, opacity: 0.22, depthWrite: false
+            }));
+            line.visible = false;
+            frame.add(line);
+
             moons.push({
-                root: moonRoot,
-                speed: 0.45 + m * 0.28,
-                phase: m * 1.7
+                def, root: moonRoot, mesh: moon, orbit: mOrbit, factor,
+                line, linePos, offset: 0, precess: !!(def.nodeRate || def.periRate)
             });
+            this._fillMoonLine(moons[moons.length - 1], 0);
         }
 
-        const orbitGeo = new THREE.BufferGeometry();
-        const pts = [];
-        for (let i = 0; i <= 128; i++) {
-            const a = (i / 128) * Math.PI * 2;
-            pts.push(Math.cos(a) * p.orbit, 0, Math.sin(a) * p.orbit);
+        // Elipse real da órbita (em UA, cena), escalada por objeto.
+        // Trecho acima da eclíptica mais claro, abaixo mais escuro.
+        const N = 256;
+        const pts = new Float32Array((N + 1) * 3);
+        const cols = new Float32Array((N + 1) * 3);
+        const tmp = this._p;
+        for (let i = 0; i <= N; i++) {
+            orbitPointAtE(orbit, (i / N) * Math.PI * 2, tmp);
+            pts[i * 3] = tmp.x;
+            pts[i * 3 + 1] = tmp.z;
+            pts[i * 3 + 2] = -tmp.y;
+            const k = tmp.z >= 0 ? 1 : 0.42;
+            cols[i * 3] = k;
+            cols[i * 3 + 1] = k;
+            cols[i * 3 + 2] = k;
         }
-        orbitGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-        const orbit = new THREE.Line(
+        const orbitGeo = new THREE.BufferGeometry();
+        orbitGeo.setAttribute('position', new THREE.BufferAttribute(pts, 3));
+        orbitGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+        const orbitLine = new THREE.Line(
             orbitGeo,
             new THREE.LineBasicMaterial({
                 color: 0x8ec8ff,
+                vertexColors: true,
                 transparent: true,
-                opacity: 0.14
+                opacity: 0.2,
+                depthWrite: false
             })
         );
-        orbit.rotation.x = p.inclination;
-        this.orbitLines.add(orbit);
+        orbitLine.frustumCulled = false;
+        this.orbitLines.add(orbitLine);
 
         this.bodies.push({
             index,
             params: p,
-            root,
+            orbitData: orbit,
+            pole,
+            tilt: axialTilt(pole, orbit, p.rot.Wd),
+            root: anchor,
+            anchor,
             holder,
+            eclFrame,
             planet,
             clouds,
             atmos,
@@ -438,10 +633,24 @@ export class StarSystem {
             cloudUniforms,
             atmosUniforms,
             ringUniforms,
-            orbit,
-            angle: p.phase,
-            spin: 0
+            orbit: orbitLine,
+            spinOffset: 0,
+            r: orbit.a,
+            ecl: { x: 0, y: 0, z: 0 }
         });
+    }
+
+    _fillMoonLine(m, days) {
+        const o = m.orbit;
+        const tmp = this._p;
+        if (m.precess) orbitPosition(o, days, this._k); // atualiza Ω/ω da Lua
+        for (let i = 0; i <= 96; i++) {
+            orbitPointAtE(o, (i / 96) * Math.PI * 2, tmp);
+            m.linePos[i * 3] = tmp.x * m.factor;
+            m.linePos[i * 3 + 1] = tmp.z * m.factor;
+            m.linePos[i * 3 + 2] = -tmp.y * m.factor;
+        }
+        m.line.geometry.attributes.position.needsUpdate = true;
     }
 
     applyParams(index, params) {
@@ -481,15 +690,31 @@ export class StarSystem {
         });
     }
 
+    /** Posição de cena do corpo (−1 = Sol). Não aloca. */
     getPlanetWorldPos(index, target) {
+        if (index < 0) return target.set(0, 0, 0);
         const body = this.bodies[index];
         if (!body) return target.set(0, 0, 0);
-        body.planet.getWorldPosition(target);
-        return target;
+        return target.copy(body.anchor.position);
     }
 
+    /** Raio visual atual (cena) do corpo (−1 = Sol). */
     getPlanetRadius(index) {
-        return this.bodies[index]?.params.radius ?? 0.25;
+        if (index < 0) return (this.star?.radius ?? 1) * this.starGroup.scale.x;
+        const b = this.bodies[index];
+        return b ? b.params.radius * b.holder.scale.x : 0.25;
+    }
+
+    /** Estado heliocêntrico real: { x, y, z (UA, eclíptica), r (UA), v (km/s) }. */
+    getHelio(index, out) {
+        const b = this.bodies[index];
+        if (!b) return null;
+        out.x = b.ecl.x;
+        out.y = b.ecl.y;
+        out.z = b.ecl.z;
+        out.r = b.r;
+        out.v = orbitSpeed(b.orbitData, b.r) / 1000;
+        return out;
     }
 
     pick(raycaster) {
@@ -502,57 +727,128 @@ export class StarSystem {
         return hits[0].object.userData.planetIndex ?? -1;
     }
 
+    /** Foco: realça a órbita e mostra as órbitas das luas do planeta (−1 = sistema). */
     setSolo(index) {
+        this.focusIndex = index;
         this.bodies.forEach((b, i) => {
-            b.root.visible = index < 0 || i === index;
+            b.root.visible = true;
+            b.moons.forEach((m) => { m.line.visible = i === index; });
         });
-        this.orbitLines.visible = index < 0;
-        if (this.belt) this.belt.visible = index < 0;
+        this.highlight(index);
     }
 
     setOrbitVisible(visible) {
         this.orbitLines.visible = visible;
-        if (this.belt) this.belt.visible = visible;
     }
 
     highlight(index) {
         this.bodies.forEach((b, i) => {
-            b.orbit.material.opacity = i === index ? 0.42 : 0.12;
+            b.orbit.material.opacity = i === index ? 0.55 : index >= 0 ? 0.1 : 0.22;
             b.orbit.material.color.set(i === index ? 0xc9f0ff : 0x8ec8ff);
         });
     }
 
-    update(dt, paused) {
-        this.time += paused ? 0 : dt;
+    /** 0 = distâncias comprimidas, 1 = escala real; `instant` pula a transição. */
+    setScaleMode(real, instant = false) {
+        this.scaleTarget = real ? 1 : 0;
+        if (instant) this.scaleMix = this.scaleTarget;
+    }
+
+    /** Fundo no infinito: segue a câmera. */
+    followCamera(pos) {
+        this.background.position.copy(pos);
+    }
+
+    /**
+     * days: instante simulado (dias desde J2000).
+     * dt:   segundos reais do quadro (animações ambientes e limite de amostragem).
+     * dd:   dias simulados avançados neste quadro (com sinal).
+     */
+    update(days, dt, dd = 0) {
+        this.time += dt;
+        this.days = days;
         const t = this.time;
+
+        // Transição suave entre escalas (~0,6 s), smoothstep exponencial.
+        if (this.scaleMix !== this.scaleTarget) {
+            const diff = this.scaleTarget - this.scaleMix;
+            this.scaleMix = Math.abs(diff) < 1e-3 ? this.scaleTarget : this.scaleMix + diff * (1 - Math.exp(-7 * dt));
+        }
+        const mix = this.scaleMix;
+        const mixChanged = mix !== this._lastMix;
+        const bodyScale = 1 + (SCALE.realBody - 1) * mix;
 
         this.nebulaUniforms.uTime.value = t;
         this.starfieldUniforms.uTime.value = t;
         if (this.starUniforms) {
             this.starUniforms.uTime.value = t;
-            this.starMesh.rotation.y += (paused ? 0 : this.starSpin) * dt;
+            const s = this.star;
+            const n = Math.abs(s.rot.Wd) * DEG;
+            this.starSpinOffset = lagOffset(this.starSpinOffset, n, dd, dt, MAX_SPIN);
+            this.starMesh.rotation.y = wrapPi((s.rot.W0 + s.rot.Wd * (days + this.starSpinOffset)) * DEG);
+            if (mixChanged) this.starGroup.scale.setScalar(1 + (SCALE.realSun - 1) * mix);
         }
-        if (this.belt && !paused) this.belt.rotation.y += dt * 0.012;
 
-        this.bodies.forEach((b) => {
-            if (!paused) {
-                b.angle += b.params.orbitSpeed * dt;
-                b.spin += b.params.spin * dt;
+        const k = this._k;
+        for (let i = 0; i < this.bodies.length; i++) {
+            const b = this.bodies[i];
+            const p = b.params;
+            orbitPosition(b.orbitData, days, k);
+            b.ecl.x = k.x; b.ecl.y = k.y; b.ecl.z = k.z; b.r = k.r;
+            const f = orbitFactor(b.orbitData.a, mix);
+            // eclíptica (x, y, z) → cena (x, z, −y)
+            b.anchor.position.set(k.x * f, k.z * f, -k.y * f);
+            if (mixChanged) {
+                b.orbit.scale.setScalar(f);
+                b.holder.scale.setScalar(bodyScale);
+                b.eclFrame.scale.setScalar(bodyScale);
+                b.ringUniforms.uPlanetRadius.value = p.radius * 0.98 * bodyScale;
             }
-            b.root.rotation.y = b.angle;
-            b.planet.rotation.y = b.spin;
-            b.clouds.rotation.y = b.spin * 1.18 + t * 0.02;
+
+            // Rotação sideral real: W = W0 + Ẇ·d (IAU), com limite de amostragem.
+            const nSpin = Math.abs(p.rot.Wd) * DEG;
+            b.spinOffset = lagOffset(b.spinOffset, nSpin, dd, dt, MAX_SPIN);
+            const W = wrapPi((p.rot.W0 + p.rot.Wd * (days + b.spinOffset)) * DEG);
+            b.planet.rotation.y = W;
+            b.clouds.rotation.y = W + t * 0.004; // nuvens derivam devagar sobre a superfície
             b.uniforms.uTime.value = t;
             b.cloudUniforms.uTime.value = t;
             b.atmosUniforms.uTime.value = t;
-            b.planet.getWorldPosition(this._planetWorld);
-            b.ringUniforms.uPlanetPos.value.copy(this._planetWorld);
-            b.moons.forEach((m) => {
-                if (!paused) m.phase += m.speed * dt;
-                m.root.rotation.y = m.phase;
-                m.root.rotation.x = 0.2;
-            });
-        });
+            b.ringUniforms.uPlanetPos.value.copy(b.anchor.position);
+
+            for (let m = 0; m < b.moons.length; m++) {
+                const moon = b.moons[m];
+                moon.offset = lagOffset(moon.offset, moon.orbit.n, dd, dt, MAX_MOON);
+                orbitPosition(moon.orbit, days + moon.offset, k);
+                const mf = moon.factor;
+                const x = k.x * mf, y = k.z * mf, z = -k.y * mf;
+                moon.mesh.position.set(x, y, z);
+                // Rotação síncrona (travamento de maré): longitude 0 voltada ao planeta.
+                moon.mesh.rotation.y = Math.atan2(z, -x);
+                if (moon.precess && moon.line.visible) this._fillMoonLine(moon, days);
+            }
+        }
+
+        this._updateBelt(days, mix);
+        this._lastMix = mix;
+    }
+
+    _updateBelt(days, mix) {
+        if (!this.belt) return;
+        if (days === this._lastBeltDays && mix === this._lastMix) return;
+        this._lastBeltDays = days;
+        const pos = this.beltPos;
+        const k = this._k;
+        const orbits = this.beltOrbits;
+        for (let i = 0; i < orbits.length; i++) {
+            const o = orbits[i];
+            orbitPosition(o, days, k);
+            const f = orbitFactor(o.a, mix);
+            pos[i * 3] = k.x * f;
+            pos[i * 3 + 1] = k.z * f;
+            pos[i * 3 + 2] = -k.y * f;
+        }
+        this.belt.geometry.attributes.position.needsUpdate = true;
     }
 
     setPixelRatio(pr) {

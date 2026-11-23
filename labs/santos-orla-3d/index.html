@@ -28,14 +28,14 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Santos Orla 3D — explore a orla de Santos em 3D | Diogo Paulino">
     <meta name="twitter:description"
-        content="Reconstrução procedural da orla santista: voo aéreo, walk pelos jardins e hotspots do José Menino à Ponta da Praia.">
+        content="Reconstrução 3D navegável da orla de Santos, com jardins, canais e praias do José Menino à Ponta da Praia.">
     <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
     <meta name="twitter:image:alt" content="Diogo Paulino">
 
     <link rel="stylesheet" href="/assets/fonts/dm-sans/font.css">
     <link rel="stylesheet" href="/assets/fonts/fraunces/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 
     <script type="importmap">
     {
@@ -55,7 +55,7 @@
           "url": "https://diogopaulino.com.br/labs/santos-orla-3d/",
           "description": "Explore uma reconstrução 3D da orla de Santos, com canais 1–7, jardins e praias, do José Menino à Ponta da Praia.",
           "datePublished": "2026-10-01",
-          "dateModified": "2026-11-15",
+          "dateModified": "2026-11-22",
           "applicationCategory": "EntertainmentApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -112,24 +112,48 @@
         <div id="hud" class="hud" hidden>
             <div class="hud-top">
                 <div class="panel place-panel">
-                    <span class="hud-label">Trecho</span>
-                    <strong id="beachName">Gonzaga</strong>
-                    <span id="beachMeta" class="meta">coração da orla</span>
-                </div>
-                <div class="panel spot-panel">
-                    <span class="hud-label">Agora</span>
+                    <span class="hud-label"><span id="beachName">Gonzaga</span> · <span id="beachMeta">coração da orla</span></span>
                     <strong id="placeName">Av. Bartolomeu de Gusmão</strong>
                     <span id="placeBlurb" class="meta">Orla contínua</span>
                 </div>
                 <div class="panel clock-panel">
-                    <span class="hud-label">Camada viva</span>
+                    <span class="hud-label">Hora</span>
                     <strong id="clockValue" class="mono">--:--</strong>
                     <span id="dayLabel" class="meta">Tarde</span>
                 </div>
             </div>
 
-            <p id="introBanner" class="intro-banner" hidden>Visão aérea da orla de Santos</p>
+            <div id="guide" class="guide" hidden>
+                <i data-guide-arrow aria-hidden="true"></i>
+                <span>
+                    <small class="guide-eyebrow">Próximo ponto · <b id="tourCount">0/8</b></small>
+                    <b data-guide-name></b>
+                    <small data-guide-dist class="mono">0 m</small>
+                </span>
+            </div>
+            <p id="toast" class="toast" role="status" aria-live="polite" hidden></p>
+
+            <div id="introBanner" class="intro-banner" hidden>
+                <span id="introText">Visão aérea da orla de Santos</span>
+                <button id="skipIntroButton" class="skip-button" type="button">Pular <kbd>Espaço</kbd></button>
+            </div>
             <p id="hintBar" class="hint-bar" hidden></p>
+
+            <section id="coach" class="coach" hidden aria-labelledby="coachTitle">
+                <p class="eyebrow"><i></i> Roteiro da orla</p>
+                <h2 id="coachTitle">Descubra os 8 pontos de Santos</h2>
+                <ul class="coach-list coach-list--keys">
+                    <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> caminhar · <kbd>Shift</kbd> correr</li>
+                    <li><kbd>B</kbd> pega uma bike compartilhada (no calçadão)</li>
+                    <li>Arraste o mouse para olhar · roda aproxima a câmera</li>
+                </ul>
+                <ul class="coach-list coach-list--touch">
+                    <li>Stick à esquerda: andar · arraste à direita: olhar</li>
+                    <li>Botões <b>Correr</b> e <b>Bike</b> ao lado do pad</li>
+                </ul>
+                <p class="coach-goal">Siga a seta dourada e o farol de luz. No <b>Mapa</b>, toque num ponto para ir direto.</p>
+                <button id="coachButton" class="primary-button" type="button"><span>Bora</span><i aria-hidden="true">→</i></button>
+            </section>
 
             <div class="hud-modes" id="hudModeOptions" role="toolbar" aria-label="Modo de visão">
                 <button type="button" class="chip" data-mode="tourist" aria-pressed="true">Turista</button>
@@ -139,23 +163,35 @@
             </div>
 
             <div class="hud-actions">
-                <button id="dayButton" class="icon-button" type="button" title="Hora do dia (L)"
-                    aria-label="Alternar hora do dia">☀</button>
-                <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
-                    title="Som (M)" aria-label="Alternar som">♪</button>
-                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P)"
-                    aria-label="Pausar">II</button>
-                <span id="fpsCounter" class="fps mono">—</span>
-                <span id="modeLabel" class="mode-pill">Turista</span>
+                <button id="pauseButton" class="icon-button" type="button" title="Pausar (P / Esc)" aria-label="Pausar">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
+                </button>
+                <button id="soundButton" class="icon-button" type="button" aria-pressed="true" title="Som (M)" aria-label="Som">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path class="snd-wave" d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11" /><path class="snd-off" d="M16 9.5l5 5M21 9.5l-5 5" /></svg>
+                </button>
+                <button id="dayButton" class="icon-button" type="button" title="Hora do dia (L)" aria-label="Avançar a hora do dia">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /></svg>
+                </button>
+                <button id="bikeButton" class="icon-button bike-button" type="button" aria-pressed="false" title="Bike compartilhada (B)" aria-label="Pegar ou devolver a bike">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="16" r="3.5" /><circle cx="18.5" cy="16" r="3.5" /><path d="M5.5 16l4-7h6l3 7M9.5 9L12 16h-6.5M14 6h3" /></svg>
+                </button>
+                <span id="speedPill" class="speed-pill mono" aria-live="off">Parado</span>
+                <span id="fpsCounter" class="fps mono" hidden>—</span>
             </div>
 
             <div id="touchControls" class="touch-controls" hidden>
-                <div id="moveStick" class="stick" aria-label="Andar">
+                <div id="moveStick" class="stick" role="application" aria-label="Andar: arraste">
                     <span id="moveKnob" class="stick-knob"></span>
                     <span class="stick-hint">andar</span>
                 </div>
-                <div id="lookPad" class="look-pad" aria-label="Olhar">
-                    <span class="stick-hint">olhar</span>
+                <div class="touch-right">
+                    <div class="touch-actions">
+                        <button id="runButton" class="round-button" type="button" aria-pressed="false" aria-label="Correr">Correr</button>
+                        <button id="bikeTouchButton" class="round-button" type="button" aria-pressed="false" aria-label="Bike">Bike</button>
+                    </div>
+                    <div id="lookPad" class="look-pad" role="application" aria-label="Olhar: arraste">
+                        <span class="stick-hint">olhar</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -174,8 +210,8 @@
                 <div class="menu-head">
                     <p class="eyebrow"><i></i> digital twin · three.js · orla contemporânea</p>
                     <h1>Santos <span>Orla 3D</span></h1>
-                    <p class="lede">Comece no ar, desça até a praia e caminhe pelos jardins, canais e
-                        ciclovia — do José Menino à Ponta da Praia, como a cidade é hoje.</p>
+                    <p class="lede">Comece no ar, desça até a praia e siga a seta pelos jardins, canais e
+                        ciclovia — a pé, correndo ou de bike — do José Menino à Ponta da Praia.</p>
                 </div>
 
                 <div id="factsStrip" class="facts-strip" aria-label="Números da orla"></div>
@@ -188,21 +224,22 @@
                     </section>
 
                     <section class="menu-section">
-                        <h2>Ir para</h2>
+                        <h2>Roteiro · <span id="menuTourCount">0/8</span> pontos</h2>
                         <div id="landmarkList" class="hotspot-list"></div>
                     </section>
 
                     <details class="menu-section menu-disclosure" open>
                         <summary>Comandos</summary>
                         <div class="keys keys--board">
-                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> caminhar</span>
-                            <span><kbd>←</kbd><kbd>→</kbd>, <kbd>Q</kbd><kbd>E</kbd> ou arrastar o mouse: virar</span>
-                            <span><kbd>Shift</kbd> correr · <kbd>T</kbd> modo · <kbd>L</kbd> hora do dia</span>
-                            <span><kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> caminhar (5 km/h) · <kbd>Shift</kbd> correr</span>
+                            <span><kbd>←</kbd><kbd>→</kbd>, <kbd>Q</kbd><kbd>E</kbd> ou arrastar o mouse: virar · roda: zoom</span>
+                            <span><kbd>B</kbd> bike compartilhada (W pedala, S freia, A/D guidão)</span>
+                            <span><kbd>T</kbd> modo · <kbd>L</kbd> hora · <kbd>P</kbd>/<kbd>Esc</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
                         <div class="keys keys--touch">
                             <span>Deslize no controle Andar para caminhar pela orla.</span>
                             <span>Arraste o controle Olhar para virar a câmera.</span>
+                            <span>Correr e Bike ficam ao lado do pad de olhar.</span>
                         </div>
                     </details>
 
@@ -229,7 +266,7 @@
 
                 <footer class="menu-foot">
                     <button id="startButton" class="primary-button" type="button">
-                        <span>Sobrevoar a orla</span>
+                        <span id="startLabel">Sobrevoar a orla</span>
                         <i aria-hidden="true">↓</i>
                     </button>
                 </footer>
@@ -240,21 +277,28 @@
             <div class="overlay-card compact-card">
                 <p class="eyebrow"><i></i> Pausa</p>
                 <h2>A maré espera.</h2>
+                <p class="lede" id="pauseProgress">Roteiro: 0 de 8 pontos.</p>
                 <div class="card-actions">
                     <button id="resumeButton" class="primary-button" type="button">
                         <span>Continuar</span><i aria-hidden="true">→</i>
                     </button>
-                    <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao menu</button>
+                    <button id="respawnButton" class="ghost-button" type="button">Voltar ao Gonzaga</button>
+                    <button id="resetTourButton" class="ghost-button" type="button">Recomeçar roteiro</button>
+                    <button id="pauseMenuButton" class="ghost-button" type="button">Menu</button>
                 </div>
             </div>
         </div>
 
         <div id="errorOverlay" class="overlay" hidden>
             <div class="overlay-card compact-card">
-                <p class="eyebrow eyebrow--danger"><i></i> WebGL indisponível</p>
+                <p class="eyebrow eyebrow--danger"><i></i> Algo travou</p>
                 <h2>Não deu para abrir<br>a orla neste aparelho.</h2>
                 <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
                     atualizado ou reative a aceleração de hardware.</p>
+                <div class="card-actions">
+                    <button id="retryButton" class="primary-button" type="button"><span>Tentar de novo</span><i aria-hidden="true">↻</i></button>
+                    <a class="ghost-button" href="/labs/">Outros labs</a>
+                </div>
             </div>
         </div>
 
@@ -262,7 +306,7 @@
     </main>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="src/main.js?v=4"></script>
+    <script type="module" src="src/main.js?v=5"></script>
 </body>
 
 </html>

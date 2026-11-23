@@ -1,6 +1,8 @@
 /**
  * Drone pentatônico suave + pluck ao trocar peça.
  * Começa mudo até o primeiro gesto (política de autoplay).
+ * Áudio nunca quebra o ateliê: criar/retomar o contexto é protegido e falha em silêncio;
+ * com a aba oculta o contexto é suspenso (setSuspended) e volta ao reaparecer.
  */
 
 export class StudioAudio {
@@ -12,9 +14,19 @@ export class StudioAudio {
     }
 
     async resume() {
-        if (!this.ctx) this.boot();
-        if (!this.ctx) return;
-        if (this.ctx.state === 'suspended') await this.ctx.resume();
+        if (!this.ctx) {
+            try {
+                this.boot();
+            } catch {
+                this.ctx = null;
+            }
+        }
+        if (!this.ctx || this.hidden) return;
+        try {
+            if (this.ctx.state === 'suspended') await this.ctx.resume();
+        } catch {
+            return;
+        }
         this.started = true;
         if (this.droneGain && this.enabled) {
             this.droneGain.gain.setTargetAtTime(0.055, this.ctx.currentTime, 1.4);
@@ -92,7 +104,15 @@ export class StudioAudio {
         this.enabled = on;
         if (!this.master || !this.ctx) return;
         this.master.gain.setTargetAtTime(on ? this.volume : 0, this.ctx.currentTime, 0.08);
-        if (on && this.ctx.state === 'suspended') this.ctx.resume();
+        if (on && this.ctx.state === 'suspended' && !this.hidden) this.ctx.resume().catch(() => {});
+    }
+
+    /** Aba oculta: suspende o contexto (o drone não toca em segundo plano). */
+    setSuspended(hidden) {
+        this.hidden = hidden;
+        if (!this.ctx) return;
+        if (hidden) this.ctx.suspend().catch(() => {});
+        else if (this.started) this.ctx.resume().catch(() => {});
     }
 
     /** Pluck pentatônico ao trocar uma peça. slot 0 cabeça, 1 corpo, 2 acessório. */

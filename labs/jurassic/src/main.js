@@ -15,10 +15,26 @@
  *   • A seta-guia aponta o exemplar mais próximo de uma espécie que ainda falta:
  *     ângulo = rumo até o animal − rumo da câmera (as duas medidas em XZ).
  *   • O rex persegue quem para junto ao vão rompido da cerca ou entra no
- *     paddock, por no máximo 10 s (depois desiste e volta); a menos de 4,8 m
- *     dele o turno acaba. Em "Jogar de novo" ele volta para o centro do paddock.
+ *     paddock, por no máximo 12 s (depois desiste e volta). Antes de morder ele
+ *     TRAVA e avisa (HUD "bote", ~0,6 s); a mordida tira 1 de 3 pontos de
+ *     integridade, empurra o jipe (knockback) e dá 2,5 s de invulnerabilidade.
+ *     Integridade 0 = turno encerrado. Em "Jogar de novo" o rex volta ao paddock.
+ *   • Onboarding: três dicas curtas (acelerar → seguir a seta/coluna de luz →
+ *     segurar observar); some sozinho e não volta depois do 1º registro.
+ *
+ * ESTADOS (todos com saída): carregando → menu → jogo ⇄ pausa (Continuar,
+ *   Reiniciar, Portão) → vitória | fim de turno → Jogar de novo | Portão.
+ *   Aba oculta, janela sem foco ou Esc (perde o pointer lock) → pausa.
+ *   Carregamento: após 40 s aparece "Recarregar"; erro no quadro é registrado
+ *   uma vez e o laço segue.
  *
  * CÂMERAS (tecla C): perseguição · perseguição alta · capô.
+ *   Perseguição: o rumo da câmera ψc persegue o rumo do jipe com
+ *     ψc += wrap(ψ_alvo − ψc)·(1 − e^(−3,2·dt)),  ψ_alvo = ψ + 0,5·ângulo de deriva
+ *   (derrapando, a câmera mostra o carro de lado como nos jogos de rally); a posição
+ *   segue com mola exponencial (horizontal λ = 7, vertical λ = 3,5 para não sacudir
+ *   nos buracos), recua 0,08 s·v e abre o fov até +7° na máxima. Sem mexer o
+ *   mouse por 1,8 s, a órbita manual volta para trás do jipe.
  *   Observando: binóculo — a câmera sobe ao teto do jipe, mira o animal e fecha
  *   o campo:  fov = clamp(2·atan(1,1·tamanho / d); 9°; 46°)  com foco (DOF) em d.
  * TREMOR: cada passo pesado soma  peso / (1 + (d/12)²)  e decai com e^(−6·t).
@@ -27,18 +43,21 @@
 import * as THREE from 'three';
 import { createStage } from '../../shared/gfx/stage.js';
 import { clamp, damp, smoothstep } from '../../shared/gfx/core.js';
-import { STORAGE_KEY, QUALITY, CAMERA, WORLD, SPECIES, DAY_STOPS } from './config.js?v=21';
-import { Input } from './input.js?v=21';
-import { ParkAudio } from './audio.js?v=21';
-import { Hud } from './hud.js?v=21';
-import { World } from './world.js?v=21';
-import { Jeep } from './jeep.js?v=21';
-import { spawnDinosaurs } from './dinosaurs.js?v=21';
-import { buildStructures } from './structures.js?v=21';
-import { createParticles, createRain, createPuddles } from './fx.js?v=21';
+import { STORAGE_KEY, QUALITY, CAMERA, WORLD, SPECIES, DAY_STOPS, REX, JEEP } from './config.js?v=23';
+import { Input } from './input.js?v=23';
+import { ParkAudio } from './audio.js?v=23';
+import { Hud } from './hud.js?v=23';
+import { World } from './world.js?v=23';
+import { Jeep } from './jeep.js?v=23';
+import { spawnDinosaurs } from './dinosaurs.js?v=23';
+import { buildStructures } from './structures.js?v=23';
+import { createParticles, createRain, createPuddles, createBeacon } from './fx.js?v=23';
+import { wrapPi } from './utils.js?v=23';
 
 const DEBUG = new URLSearchParams(location.search);
 const nextTask = () => new Promise((r) => setTimeout(r, 0));
+/** Amortece um ângulo pelo caminho curto (sem dar a volta em ±π). */
+const dampAngle = (a, b, lambda, dt) => wrapPi(a + wrapPi(b - a) * (1 - Math.exp(-lambda * dt)));
 
 class Game {
     constructor() {
@@ -67,23 +86,36 @@ class Game {
         this.night = 0;
         this.hideUi = false;
         this.touch = matchMedia('(pointer: coarse)').matches;
+        this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.zoom = 0;
         this.sparkAcc = 0;
         this._look = new THREE.Vector3();
         this._cam = new THREE.Vector3();
         this._wanted = new THREE.Vector3();
         this._v = new THREE.Vector3();
+        this.camHeading = 0;
+        this.lookIdle = 9;
+        this.hull = REX.hull;
+        this.iframes = 0;
+        this.coachStep = 0;
+        this.coachT = 0;
+        this.frameErrors = 0;
+        this._frustum = new THREE.Frustum();
+        this._projView = new THREE.Matrix4();
         this.tramplers = Array.from({ length: 8 }, () => ({ x: 0, y: -999, z: 0, radius: 0.1 }));
         this.ctx = {
             jeep: null, jeepHead: null, camera: null, playing: false,
             jeepDist: (d) => Math.hypot(d.position.x - this.jeep.x, d.position.z - this.jeep.z),
+            frustum: null,
             onStep: (d, p, w) => this._step(d, p, w),
-            onRoar: (d, k) => this._roar(d, k)
+            onRoar: (d, k) => this._roar(d, k),
+            onWindup: (d) => this._windup(d),
+            onBite: (d) => this._bite(d)
         };
     }
 
     loadSettings() {
-        const fallback = { quality: 'auto', volume: 70, muted: false };
+        const fallback = { quality: 'auto', volume: 70, muted: false, coached: false };
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             const s = raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
@@ -101,6 +133,17 @@ class Game {
     }
 
     async init() {
+        // nada de loading infinito: após 40 s oferece recarregar (o carregamento segue)
+        const watchdog = setTimeout(() => this.hud.showLoadingStuck(), 40000);
+        document.querySelectorAll('[data-reload]').forEach((b) => b.addEventListener('click', () => location.reload()));
+        try {
+            await this._init();
+        } finally {
+            clearTimeout(watchdog);
+        }
+    }
+
+    async _init() {
         this.hud.setLoading(0.04, 'Acendendo os geradores…');
         await document.fonts?.load('700 48px Barlow').catch(() => {});
         const choice = DEBUG.get('tier') || this.settings.quality;
@@ -132,10 +175,11 @@ class Game {
         this.ctx.jeep = this.jeep;
         this.ctx.jeepHead = this.jeep.head;
 
-        this.fx = createParticles(this.quality.particles);
+        this.fx = createParticles(this.quality.particles, this.quality.burst);
         this.rainFx = createRain(this.quality.rain);
         this.puddles = createPuddles(this.world, this.quality.puddles);
-        this.scene.add(this.fx.object, this.rainFx.object, this.puddles.object);
+        this.beacon = createBeacon();
+        this.scene.add(this.fx.object, this.rainFx.object, this.puddles.object, this.beacon.object);
 
         this.input = new Input(this.canvas);
         this.audio = new ParkAudio();
@@ -153,7 +197,8 @@ class Game {
         progress(0.96, 'Compilando a luz da manhã…');
         this._heroCamera(0);
         this.world.update(0.016, 0, this.camera, this.tramplers);
-        await stage.warmup();
+        // a compilação dos shaders pode demorar em GPUs fracas; não segura o menu para sempre
+        await Promise.race([stage.warmup(), new Promise((r) => setTimeout(r, 15000))]);
 
         this.hud.el.qualitySelect.value = this.settings.quality;
         this.hud.el.volumeSlider.value = String(this.settings.volume);
@@ -167,7 +212,14 @@ class Game {
         this.hud.showMenu(true);
         this.state = 'menu';
         this.hud.setState('menu');
-        stage.start((dt, t) => this._frame(dt, t));
+        stage.start((dt, t) => {
+            try {
+                this._frame(dt, t);
+            } catch (err) {
+                // um erro num quadro não pode congelar o jogo: registra (pouco) e segue
+                if (this.frameErrors++ < 3) console.error(err);
+            }
+        });
         if (DEBUG.has('debug') || DEBUG.has('test')) this._debug();
     }
 
@@ -191,6 +243,7 @@ class Game {
         on('startButton', () => this.start());
         on('resumeButton', () => this.resume());
         on('pauseMenuButton', () => this.toMenu());
+        on('restartButton', () => this.start());
         on('retryButton', () => this.start());
         on('caughtMenuButton', () => this.toMenu());
         on('replayButton', () => this.start());
@@ -217,6 +270,11 @@ class Game {
         this.input.on('confirm', () => {
             if (this.state === 'menu') this.start();
         });
+        // Esc tira o pointer lock antes de o keydown chegar: perder a trava no meio do turno pausa
+        this.input.on('unlock', () => {
+            if (this.state === 'play' && !this.touch) this.pause();
+        });
+        this.input.on('reset', () => this._resetTouchUi());
     }
 
     _bindTouch() {
@@ -268,6 +326,12 @@ class Game {
         observe?.addEventListener('touchcancel', release);
     }
 
+    /** Solta o direcional na tela (ex.: a janela perdeu o foco no meio de um toque). */
+    _resetTouchUi() {
+        const knob = document.getElementById('moveKnob');
+        if (knob) knob.style.transform = '';
+    }
+
     // ───────────────────────────── estados ─────────────────────────────
 
     start() {
@@ -282,6 +346,13 @@ class Game {
         this.camDist = CAMERA.distance;
         this.shake = 0;
         this.zoom = 0;
+        this.hull = REX.hull;
+        this.iframes = 0;
+        this.lookIdle = 9;
+        this.coachStep = this.settings.coached ? 3 : 0;
+        this.coachT = 0;
+        this.hud.setHull(this.hull, REX.hull);
+        this.hud.setCoach('');
         this.jeep.reset(WORLD.spawn, this.world);
         this.jeep.setLights(this.night > 0.4 || this.rain || this.tod === 0, this.night);
         this._snapCamera();
@@ -290,7 +361,7 @@ class Game {
         this.park.openGate();
         this.hud.hideCaught();
         this.hud.hideVictory();
-        this.hud.setDanger(false);
+        this.hud.setThreat(0);
         this.hud.setObserve(0, false);
         this.hud.setPrompt('');
         this.hud.showMenu(false);
@@ -318,6 +389,10 @@ class Game {
         rex.timer = 0;
         rex.chaseT = 0;
         rex.calm = 0;
+        rex.threat = 0;
+        rex.bit = false;
+        rex.returnT = 0;
+        rex.detour.t = 0;
         rex.roarCool = 8;
         rex.position.set(P.x - 6, this.world.heightAt(P.x - 6, P.z + 3), P.z + 3);
         rex.target.x = P.x;
@@ -331,6 +406,9 @@ class Game {
         this.hud.showPause(true);
         // solta o binóculo: com a pausa o botão de observar pode nunca receber o "soltar"
         this.input.observeHeld = false;
+        this.input.touchMove.x = this.input.touchMove.y = 0;
+        this.input.touchLook.x = this.input.touchLook.y = 0;
+        this._resetTouchUi();
         this.hud.setDossier(null, false);
         this.hud.setObserve(0, false);
         this.input.exitLock();
@@ -346,6 +424,8 @@ class Game {
 
     toMenu() {
         this.input.exitLock();
+        this.hud.setThreat(0);
+        this.hud.setCoach('');
         this.hud.hideCaught();
         this.hud.hideVictory();
         this.hud.showPause(false);
@@ -440,6 +520,37 @@ class Game {
         if (this.state === 'play' && dist < 60) this.hud.setRadio('Central: o rex está vocalizando. Fique longe do vão rompido, no lado sul do paddock.');
     }
 
+    /** O rex travou para o bote: aviso sonoro e visual (dá ~0,6 s para reagir). */
+    _windup(d) {
+        this.audio.roar(0.8);
+        this.shake = Math.min(1, this.shake + 0.25);
+        this.hud.setThreat(2);
+        try { navigator.vibrate?.(60); } catch { /* sem vibração */ }
+    }
+
+    /**
+     * Mordida: −1 integridade, empurrão para longe do rex e invulnerabilidade.
+     *   knockback: Δv = REX.knockback m/s na direção rex → jipe, com tranco de guinada ±1,2 rad/s
+     */
+    _bite(d) {
+        if (this.state !== 'play' || this.iframes > 0) return;
+        this.hull -= 1;
+        this.iframes = REX.iframes;
+        const dx = this.jeep.x - d.position.x;
+        const dz = this.jeep.z - d.position.z;
+        this.jeep.push(dx, dz, REX.knockback, (Math.random() < 0.5 ? -1 : 1) * 1.2);
+        this.shake = 1;
+        this.hud.setHull(Math.max(0, this.hull), REX.hull);
+        this.hud.flashHit();
+        this.audio.bump?.(1);
+        this.audio.roar(1.2);
+        try { navigator.vibrate?.([90, 40, 120]); } catch { /* sem vibração */ }
+        if (this.hull <= 0) this._caught();
+        else this.hud.setRadio(this.hull === 1
+            ? 'Central: Unidade 4, o jipe não aguenta outra mordida! Saia daí!'
+            : 'Central: mordida no para-lama! Acelere para longe do rex.');
+    }
+
     _nearestDino() {
         // histerese: o animal que já está sendo observado continua válido até 1,2 × o raio
         // (sem isso ele "piscava" na borda do alcance e a barra de observação zerava)
@@ -476,12 +587,19 @@ class Game {
         return best ? { d: best, dist: bestD } : null;
     }
 
-    _updateGuide() {
+    _updateGuide(t) {
         const g = this._guideTarget();
+        this.guide = g;
         if (!g) {
             this.hud.setGuide(null);
+            this.beacon.update(t, 0, 0, 0, 0);
             return;
         }
+        // coluna de luz: aparece de longe, some quando o bicho já está à vista (e no binóculo)
+        const fade = clamp((g.dist - g.d.spec.observe * 0.55) / 25, 0, 1) * (1 - this.zoom);
+        const bx = g.d.position.x;
+        const bz = g.d.position.z;
+        this.beacon.update(t, bx, this.world.heightAt(bx, bz), bz, fade);
         this.camera.getWorldDirection(this._v);
         const heading = Math.atan2(this._v.x, this._v.z);
         const bearing = Math.atan2(g.d.position.x - this.jeep.x, g.d.position.z - this.jeep.z);
@@ -531,7 +649,7 @@ class Game {
         this.state = 'victory';
         this.hud.setState('victory');
         this.input.exitLock();
-        this.hud.setDanger(false);
+        this.hud.setThreat(0);
         this.hud.showHud(false);
         this.hud.setDossier(null, false);
         this.hud.showVictory(`
@@ -544,13 +662,14 @@ class Game {
         this.state = 'caught';
         this.hud.setState('caught');
         this.input.exitLock();
-        this.hud.setDanger(false);
+        this.hud.setThreat(0);
         this.hud.showHud(false);
         this.hud.setDossier(null, false);
         this.hud.setShake(true);
         this.audio.roar(1.4);
         this.hud.showCaught(`
             <span>Espécies no diário <b>${this.logged.size}/6</b></span>
+            <span>Tempo de turno <b>${this.hud.el.time.textContent}</b></span>
         `);
         setTimeout(() => this.hud.setShake(false), 900);
     }
@@ -572,23 +691,37 @@ class Game {
 
     _snapCamera() {
         const yaw = this.jeep.yaw;
+        this.camHeading = yaw;
         this._cam.set(this.jeep.x - Math.sin(yaw) * CAMERA.distance, this.jeep.y + CAMERA.height, this.jeep.z - Math.cos(yaw) * CAMERA.distance);
+        this._look.set(this.jeep.x + Math.sin(yaw) * CAMERA.lookAhead, this.jeep.y + CAMERA.lookY, this.jeep.z + Math.cos(yaw) * CAMERA.lookAhead);
         this.camera.position.copy(this._cam);
     }
 
     _camera(dt, t, observe) {
         const look = this.input.consumeLook();
-        this.camYaw -= look.x * 0.0022;
+        const moved = Math.abs(look.x) + Math.abs(look.y) > 0.01;
+        this.lookIdle = moved ? 0 : this.lookIdle + dt;
+        this.camYaw = wrapPi(this.camYaw - look.x * 0.0022);
         this.camPitch = clamp(this.camPitch - look.y * 0.002, CAMERA.pitchMin, CAMERA.pitchMax);
         this.camDist = clamp(this.camDist + this.input.consumeZoom() * 0.9, CAMERA.minDistance, CAMERA.maxDistance);
-        // sem mouse travado a câmera volta devagar para trás do jipe
-        if (!this.input.locked && Math.abs(this.jeep.speed) > 1) this.camYaw = damp(this.camYaw, 0, 1.2, dt);
-
         const j = this.jeep;
+        const sp = Math.abs(j.speed);
+        // sem mexer o mouse/dedo por um tempo, a órbita manual volta para trás do jipe
+        if (this.lookIdle > CAMERA.recenter && sp > 1.5) {
+            this.camYaw = damp(this.camYaw, 0, 1.6, dt);
+            this.camPitch = damp(this.camPitch, CAMERA.defaultPitch, 1.2, dt);
+        }
+
         const p = this.stage.pipeline.params;
         this.zoom = damp(this.zoom, observe ? 1 : 0, 5, dt);
-        let fov = this.camMode === 2 ? 62 : this.camMode === 1 ? 46 : 52;
-        const jYaw = j.yaw;
+        const speedK = clamp(sp / JEEP.governor, 0, 1);
+        let fov = (this.camMode === 2 ? 62 : this.camMode === 1 ? 46 : 52) + speedK * CAMERA.fovKick;
+
+        // rumo suavizado: segue o chassi e, derrapando, metade do ângulo de deriva (vê o carro de lado)
+        let headT = j.yaw;
+        if (j.speed > 3) headT = j.yaw + wrapPi(Math.atan2(j.vx, j.vz) - j.yaw) * 0.5;
+        this.camHeading = dampAngle(this.camHeading, headT, this.camMode === 2 ? 30 : CAMERA.headingLambda, dt);
+        const jYaw = this.camHeading;
 
         if (observe) {
             // binóculo: do teto do jipe para o animal
@@ -606,26 +739,39 @@ class Game {
             p.dofRange = 0;
             const yaw = jYaw + this.camYaw;
             const m = this.camMode;
-            const dist = m === 1 ? this.camDist * 1.7 : this.camDist;
+            const dist = (m === 1 ? this.camDist * 1.7 : this.camDist) + sp * 0.08;
             if (m === 2) {
-                // capô: olho do motorista, um pouco acima do volante
-                this._wanted.set(j.x + Math.sin(jYaw) * 0.25 + Math.cos(jYaw) * 0.1, j.y + 1.86, j.z + Math.cos(jYaw) * 0.25 - Math.sin(jYaw) * 0.1);
-                this._v.set(j.x + Math.sin(yaw) * 12, j.y + 1.5 - this.camPitch * 8, j.z + Math.cos(yaw) * 12);
+                // capô: olho do motorista, um pouco acima do volante (preso ao chassi)
+                const cy = j.yaw;
+                this._wanted.set(j.x + Math.sin(cy) * 0.25 + Math.cos(cy) * 0.1, j.y + 1.86, j.z + Math.cos(cy) * 0.25 - Math.sin(cy) * 0.1);
+                this._v.set(j.x + Math.sin(cy + this.camYaw) * 12, j.y + 1.5 - this.camPitch * 8, j.z + Math.cos(cy + this.camYaw) * 12);
             } else {
+                const ahead = CAMERA.lookAhead + sp * 0.25;
                 this._wanted.set(j.x - Math.sin(yaw) * dist, j.y + (m === 1 ? 7.4 : CAMERA.height) + this.camPitch * 7, j.z - Math.cos(yaw) * dist);
-                this._v.set(j.x + Math.sin(jYaw) * CAMERA.lookAhead, j.y + CAMERA.lookY, j.z + Math.cos(jYaw) * CAMERA.lookAhead);
+                this._v.set(j.x + Math.sin(jYaw) * ahead, j.y + CAMERA.lookY, j.z + Math.cos(jYaw) * ahead);
             }
             if (m !== 2) this._avoidFoliage(this._wanted);
             const ground = this.world.heightAt(this._wanted.x, this._wanted.z) + 1.1;
             if (this._wanted.y < ground) this._wanted.y = ground;
-            this._cam.lerp(this._wanted, 1 - Math.exp(-(m === 2 ? 30 : 5.5) * dt));
-            this._look.lerp(this._v, 1 - Math.exp(-(m === 2 ? 20 : 9) * dt));
+            if (m === 2) {
+                this._cam.copy(this._wanted);
+                this._look.lerp(this._v, 1 - Math.exp(-20 * dt));
+            } else {
+                // mola exponencial por eixo: firme no plano, macia na vertical
+                const kh = 1 - Math.exp(-CAMERA.posLambda * dt);
+                const kv = 1 - Math.exp(-CAMERA.heightLambda * dt);
+                this._cam.x += (this._wanted.x - this._cam.x) * kh;
+                this._cam.z += (this._wanted.z - this._cam.z) * kh;
+                this._cam.y += (this._wanted.y - this._cam.y) * kv;
+                if (this._cam.y < ground) this._cam.y = ground;
+                this._look.lerp(this._v, 1 - Math.exp(-10 * dt));
+            }
         }
         this.camera.fov = damp(this.camera.fov, fov, 6, dt);
         this.camera.updateProjectionMatrix();
         this.camera.position.copy(this._cam);
         // tremor: senos incomensuráveis (sem ruído branco, para não "vibrar" de quadro a quadro)
-        const s = this.shake * this.shake * (observe ? 0.35 : 1);
+        const s = this.shake * this.shake * (observe ? 0.35 : 1) * (this.reducedMotion ? 0.3 : 1);
         if (s > 0.0005) {
             this.camera.position.x += Math.sin(t * 37.1) * 0.16 * s;
             this.camera.position.y += Math.sin(t * 43.7 + 1.3) * 0.22 * s;
@@ -719,6 +865,21 @@ class Game {
                 }
             }
         }
+        // derrapagem: leque de terra nas rodas que escorregam (∝ deslizamento lateral)
+        const slip = Math.abs(j.slip);
+        if (slip > 1.6 && this.state === 'play') {
+            let n = Math.min(3, Math.floor((slip - 1.2) * dt * 14 + Math.random()));
+            const s = Math.sin(j.yaw);
+            const c = Math.cos(j.yaw);
+            const k = this.wet > 0.25 ? 0.24 : 0.5;
+            while (n-- > 0) {
+                const side = j.slip > 0 ? -1 : 1;
+                const x = j.x + side * 0.82 * c + (Math.random() - 0.6) * 1.4 * s;
+                const z = j.z - side * 0.82 * s + (Math.random() - 0.6) * 1.4 * c;
+                this.fx.emit(x, j.y + 0.15, z, side * c * slip * 0.4, 0.5 + Math.random(), -side * s * slip * 0.4,
+                    k * 1.15, k, k * 0.8, 0.28, 0.7, 2.4, 1 + Math.random() * 0.6, -0.15, 1.3);
+            }
+        }
         // faíscas no vão rompido da cerca
         this.sparkAcc -= dt;
         if (this.sparkAcc <= 0) {
@@ -760,6 +921,34 @@ class Game {
         for (; n < tr.length; n++) tr[n].y = -999;
     }
 
+    /** Dicas curtas no começo do primeiro turno (ver REGRAS: onboarding). */
+    _coach(dt) {
+        if (this.coachStep >= 3) return;
+        this.coachT += dt;
+        const g = this.guide;
+        if (this.coachStep === 0) {
+            this.hud.setCoach(this.touch ? 'Empurre o direcional para cima para acelerar' : 'Segure W (ou ↑) para acelerar · S freia e dá ré');
+            if (Math.abs(this.jeep.speed) > 4 && this.coachT > 1.2) {
+                this.coachStep = 1;
+                this.coachT = 0;
+            }
+        } else if (this.coachStep === 1) {
+            this.hud.setCoach(g ? `Siga a seta e a coluna de luz até o ${g.d.spec.common}` : '');
+            if ((g && g.dist < g.d.spec.observe) || this.coachT > 25) {
+                this.coachStep = 2;
+                this.coachT = 0;
+            }
+        } else {
+            // a dica de observar já está no aviso central; aqui só some quando registrar
+            this.hud.setCoach('');
+            if (this.logged.size > 0) {
+                this.coachStep = 3;
+                this.settings.coached = true;
+                this.saveSettings();
+            }
+        }
+    }
+
     _frame(dt, t) {
         const playing = this.state === 'play';
         this.ctx.playing = playing;
@@ -769,18 +958,29 @@ class Game {
 
         if (playing) {
             this.elapsed += dt;
+            this.iframes = Math.max(0, this.iframes - dt);
             this.jeep.update(dt, this.input, this.world, this.wet);
+            // batida: tremor e som proporcionais à velocidade normal do impacto
+            const imp = this.jeep.impact;
+            if (imp > 1.5) {
+                const k = clamp((imp - 1.5) / 8, 0, 1);
+                this.shake = Math.min(1, this.shake + k * 0.8);
+                this.audio.bump?.(k);
+                if (k > 0.5) this.hud.flashHit();
+            }
+            this.jeep.impact = 0;
         } else this.jeep.idle(dt);
 
+        // frustum do quadro (dinossauros fora da tela congelam o esqueleto)
+        this._projView.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+        this._frustum.setFromProjectionMatrix(this._projView);
+        this.ctx.frustum = this._frustum;
         if (this.state !== 'pause') this.dinos.update(dt, t, this.ctx);
 
         let observe = null;
         if (playing) {
-            if (this.dinos.trex.caught) this._caught();
-            else {
-                observe = this._updateObserve(dt);
-                if (!observe) this.hud.setObserve(0, false);
-            }
+            observe = this._updateObserve(dt);
+            if (!observe) this.hud.setObserve(0, false);
         }
         if (this.state === 'menu') this._heroCamera(t);
         else this._camera(dt, t, observe);
@@ -789,26 +989,32 @@ class Game {
         this._tramplers();
         this.world.update(dt, t, this.camera, this.tramplers);
 
-        if (!playing) return;
-        const rexDist = this.ctx.jeepDist(this.dinos.trex);
-        const chased = this.dinos.trex.state === 'chase';
-        this.hud.setShake(chased && rexDist < 30);
-        this.hud.setDanger(chased);
+        if (this.state !== 'play') {
+            if (this.state !== 'pause') this.beacon.update(t, 0, 0, 0, 0);
+            return;
+        }
+        const rex = this.dinos.trex;
+        const rexDist = this.ctx.jeepDist(rex);
+        const threat = rex.threat || 0;
+        this.hud.setShake(threat > 0 && rexDist < 30);
+        this.hud.setThreat(threat);
         this.radioAcc += dt;
         if (this.radioAcc > 28) {
             this.radioAcc = 0;
             this.hud.randomRadio();
         }
         this.hud.tickRadio(dt);
-        this.audio.update(dt, this.jeep.speed, this.rain, false);
+        this.audio.update(dt, this.jeep.speed, this.rain, false, this.jeep.rpm, Math.abs(this.jeep.throttle), this.jeep.slip);
         this.hudAccum += dt;
         if (this.hudAccum > 0.2) {
             this.hudAccum = 0;
             this.hud.setSpeed(Math.abs(this.jeep.speed) * 3.6, this.jeep.onRoad);
+            this.hud.setGear(Math.abs(this.jeep.speed) < 0.3 && this.jeep.throttle === 0 ? 0 : this.jeep.gear);
             this.hud.setTime(this.elapsed);
             this.hud.setFps(Math.round(this.stage.fps));
         }
-        if (this.state === 'play') this._updateGuide();
+        this._updateGuide(t);
+        this._coach(dt);
     }
 
     /** Atalhos de depuração (?debug=1): window.__lab. */

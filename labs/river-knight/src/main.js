@@ -16,21 +16,21 @@ import {
     LANDMARKS,
     STORAGE_KEY,
     BOAT
-} from './config.js?v=51';
-import { createFireLights, fireLights } from './lights.js?v=50';
-import { createWater, waterHeight } from './water.js?v=51';
-import { createTerrain } from './terrain.js?v=51';
-import { Effects } from './effects.js?v=51';
-import { Entities } from './entities.js?v=51';
-import { World } from './world.js?v=51';
-import { Player } from './player.js?v=51';
-import { createCastle } from './castle.js?v=51';
-import { BossBarge } from './boss.js?v=51';
-import { Hud } from './hud.js?v=52';
-import { Input } from './input.js?v=50';
-import { GameAudio } from './audio.js?v=50';
-import { centerX, halfWidth } from './river.js?v=51';
-import { clamp, damp, detectTouch, formatTime, randRange } from './utils.js?v=50';
+} from './config.js?v=60';
+import { createFireLights, fireLights } from './lights.js?v=60';
+import { createWater, waterHeight } from './water.js?v=60';
+import { createTerrain } from './terrain.js?v=60';
+import { Effects } from './effects.js?v=60';
+import { Entities } from './entities.js?v=60';
+import { World } from './world.js?v=60';
+import { Player } from './player.js?v=60';
+import { createCastle } from './castle.js?v=60';
+import { BossBarge } from './boss.js?v=60';
+import { Hud } from './hud.js?v=60';
+import { Input } from './input.js?v=60';
+import { GameAudio } from './audio.js?v=60';
+import { centerX, halfWidth } from './river.js?v=60';
+import { clamp, damp, detectTouch, formatTime, randRange } from './utils.js?v=60';
 
 /**
  * Hora solar ao longo da jornada (progresso p ∈ [0, 1]):
@@ -43,9 +43,11 @@ const HOUR_SPAN = 0.9;
 const DEBUG = new URLSearchParams(location.search).has('debug');
 
 const CAMERA_MODES = [
-    { name: 'perseguição', offset: new THREE.Vector3(0, 6.35, 13.0), look: new THREE.Vector3(0, 3.05, -14) },
-    { name: 'proa', offset: new THREE.Vector3(0, 5.4, 10.4), look: new THREE.Vector3(0, 2.7, -20) },
-    { name: 'aérea', offset: new THREE.Vector3(0, 15, 26), look: new THREE.Vector3(0, 1.5, -14) }
+    // Câmeras afastadas para um casco de 15 m (antes a vela tapava o rio):
+    // perseguição ≈ 1,5 comprimento atrás e acima do mastro, olhando ~25 m à frente.
+    { name: 'perseguição', offset: new THREE.Vector3(0, 9.2, 22), look: new THREE.Vector3(0, 3.2, -26) },
+    { name: 'popa', offset: new THREE.Vector3(0, 6.2, 13.5), look: new THREE.Vector3(0, 3, -22) },
+    { name: 'aérea', offset: new THREE.Vector3(0, 21, 34), look: new THREE.Vector3(0, 1.5, -18) }
 ];
 
 class Game {
@@ -622,13 +624,17 @@ class Game {
     }
 
     fireArrow(x, y, z, speedScale = 1) {
-        const lead = this.player.speed * 0.42;
-        const target = new THREE.Vector3(
-            this.player.x + randRange(-2.4, 2.4),
-            this.player.position.y + 1.4,
-            this.player.z - lead + randRange(-4, 4)
+        // Arqueiro mira onde o barco VAI estar: posição + velocidade sobre o fundo × tempo de voo
+        // (com 85% de acerto na antecipação e dispersão humana de ±2,4 m / ±4 m).
+        const p = this.player;
+        const speed = (34 + p.speed * 0.4) * speedScale;
+        const tFlight = Math.hypot(p.x - x, p.z - z) / speed;
+        const target = this._arrowTarget || (this._arrowTarget = new THREE.Vector3());
+        target.set(
+            p.x + p.vx * tFlight * 0.85 + randRange(-2.4, 2.4),
+            p.position.y + 1.4,
+            p.z + p.vz * tFlight * 0.85 + randRange(-4, 4)
         );
-        const speed = (30 + this.player.speed * 0.5) * speedScale;
         if (this.entities.spawnArrow(x, y, z, target, speed)) {
             this.audio.sfx('arrow');
         }
@@ -643,6 +649,24 @@ class Game {
         ctx.pull = this.pullVec;
         ctx.speedScale = this.bossStarted && this.boss.active && this.boss.dying <= 0 ? 0.92 : 1;
         ctx.bossLock = this.bossLock();
+
+        // Telégrafo de remo: W/S (↑/↓), botões ▲▼ no toque, LB/RB ou D-pad no controle.
+        const gearDelta = this.input.consumeGear();
+        if (gearDelta) {
+            const g = this.player.shiftGear(gearDelta);
+            if (g === null) {
+                this.hud.message('Remadores sem fôlego — aguarde', 'danger', 1400);
+            } else {
+                this.hud.message(BOAT.gears[g].label, g === BOAT.gears.length - 1 ? 'danger' : 'gold', 900);
+                this.audio.sfx(g > 1 ? 'horn' : 'hitWood', 0.35);
+            }
+        }
+        if (this.player.exhausted && !this._exhaustedShown) {
+            this._exhaustedShown = true;
+            this.hud.message('Remadores exaustos: ritmo de cruzeiro', 'danger', 1800);
+        } else if (!this.player.exhausted) {
+            this._exhaustedShown = false;
+        }
 
         // Escudeiro: o canhão dispara sozinho quando há alvo travado (só falta desviar).
         const autoFire = this.difficulty?.autoFire && this.player.canThrow() && this.player.getAimLock(this.entities, ctx.bossLock);
@@ -684,7 +708,7 @@ class Game {
             const wall = this.boss.group.position.z + 34;
             if (this.player.z < wall) {
                 this.player.z = wall;
-                this.player.speed = Math.min(this.player.speed, 12);
+                this.player.u = Math.min(this.player.u, 3);
             }
         }
 
@@ -745,7 +769,7 @@ class Game {
             const dist = Math.hypot(dx, dz);
             if (dist > 16) continue;
             const strength = (1 - dist / 16) ** 2;
-            this.pullVec.x += (dx / (dist || 1)) * strength * 16;
+            this.pullVec.x += (dx / (dist || 1)) * strength * 5; // m/s de arrasto lateral rumo ao olho
             this.pullVec.drag += strength * 1.4;
         }
     }
@@ -796,6 +820,7 @@ class Game {
                 this.hud.setHull(this.player.hull, this.player.maxHull);
                 this.hud.flash('danger');
                 this.player.z += 6;
+                this.player.bump(Math.sign(dx) || 1, 0.4, 3, 0.7);
             }
         } else if (!this.gateOpened) {
             this.gateOpened = true;
@@ -854,11 +879,15 @@ class Game {
                     if (Math.abs(dx) > entity.radius + 2) continue;
                 }
 
-                // Empurrão lateral para o jogador não "grudar" no obstáculo.
-                const push = Math.sign(dx || 1) * -1;
-                player.x += push * 2.4;
-                player.lateral = push * 8;
-                player.speed *= 0.55;
+                // Choque: separa os cascos ao longo da normal e transfere impulso
+                // (o barco perde seguimento e é jogado para o lado, sem "grudar").
+                const dist = Math.sqrt(dx * dx + dz * dz) || 1;
+                const nx = -dx / dist;
+                const nz = -dz / dist;
+                const overlap = reach - dist;
+                player.x += nx * Math.min(overlap, 3);
+                player.z += Math.max(0, nz) * Math.min(overlap, 3);
+                player.bump(nx, nz, key === 'rocks' ? 3.2 : 2.4, key === 'rocks' ? 0.6 : 0.45);
 
                 if (key === 'enemyShips' || key === 'barricades') {
                     entity.hit(2, ctx);
@@ -935,6 +964,8 @@ class Game {
         this.hud.setCombo(this.combo);
         this.hud.setTime(this.elapsed);
         this.hud.setHull(this.player.hull, this.player.maxHull);
+
+        this.hud.setNav(this.player);
 
         const furyRatio = this.player.hasFury ? this.player.furyTime / 9 : this.player.hasShield ? this.player.shieldTime / 8 : 0;
         this.hud.setFury(furyRatio, this.player.hasFury);
@@ -1046,9 +1077,14 @@ class Game {
             offsetZ += this.defeatTimer * 3.2;
         }
 
-        const yaw = p.root.rotation.y * 0.5;
-        const desiredX = p.position.x + Math.sin(yaw) * offsetZ * -1;
-        const desiredZ = p.position.z + Math.cos(yaw) * offsetZ;
+        // A câmera acompanha o RUMO do navio com atraso (como num jogo de navegação):
+        // fica atrás da popa e "puxa" a curva, sem copiar cada balanço do casco.
+        const heading = p.heading ?? 0;
+        if (instant || this._camHeading === undefined) this._camHeading = heading;
+        else this._camHeading += (heading - this._camHeading) * (1 - Math.exp(-2.2 * dt));
+        const ch = this._camHeading;
+        const desiredX = p.position.x - Math.sin(ch) * offsetZ;
+        const desiredZ = p.position.z + Math.cos(ch) * offsetZ;
         const waterY = waterHeight(desiredX, desiredZ, this.time);
         const desiredY = Math.max(waterY + 3.2, p.position.y + offsetY);
 
@@ -1062,18 +1098,16 @@ class Game {
         }
 
         this.lookTarget = this.lookTarget || new THREE.Vector3();
-        const aheadX = centerX(p.position.z + lookZ);
-        this.lookTarget.set(
-            lerpNum(p.position.x, aheadX, 0.18),
-            p.position.y + lookY,
-            p.position.z + lookZ
-        );
+        const ahead = -lookZ;
+        const lx = p.position.x + Math.sin(ch) * ahead;
+        const lz = p.position.z - Math.cos(ch) * ahead;
+        this.lookTarget.set(lerpNum(lx, centerX(lz), 0.15), p.position.y + lookY, lz);
         this.camera.lookAt(this.lookTarget);
 
         if (this.state === 'playing') {
             const span = Math.max(1, BOAT.boostSpeed - BOAT.baseSpeed);
             const boostT = clamp((p.speed - BOAT.baseSpeed) / span, 0, 1);
-            const fov = 61 + boostT * 7 + Math.abs(p.roll) * 8;
+            const fov = 60 + boostT * 5 + Math.abs(p.roll) * 6;
             this.camera.fov = damp(this.camera.fov, fov, 3.4, dt);
             this.camera.updateProjectionMatrix();
         }

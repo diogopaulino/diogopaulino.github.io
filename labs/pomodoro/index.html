@@ -26,7 +26,7 @@
     <meta name="twitter:description" content="Timer Pomodoro com tarefas, estatísticas, sons personalizáveis e notificações do navegador.">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -139,6 +139,7 @@
                         <span class="status-badge" id="status-badge">Foco</span>
                         <span class="time" id="time-display">25:00</span>
                         <span class="cycle-info">Ciclo <b id="cycle-count">1</b> de <b id="cycle-total">4</b></span>
+                        <button id="btn-extend" class="chip-extend" type="button" title="Mais 1 minuto (+)" aria-label="Adicionar 1 minuto">+1 min</button>
                     </div>
                 </div>
 
@@ -179,7 +180,7 @@
 
                 <p class="shortcuts-hint">
                     <kbd>Espaço</kbd> iniciar/pausar · <kbd>R</kbd> reiniciar · <kbd>S</kbd> pular ·
-                    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> modos
+                    <kbd>+</kbd> +1 min · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> modos
                 </p>
             </section>
 
@@ -316,6 +317,19 @@
                         <input type="range" id="setting-volume" min="0" max="100" step="5" value="70">
                     </label>
                     <label class="setting-row">
+                        <span>Som ambiente no foco</span>
+                        <select id="setting-ambient">
+                            <option value="none">Nenhum</option>
+                            <option value="brown">Ruído marrom</option>
+                            <option value="rain">Chuva</option>
+                            <option value="waves">Ondas do mar</option>
+                        </select>
+                    </label>
+                    <label class="setting-row">
+                        <span>Volume do ambiente <b id="ambient-volume-value">40%</b></span>
+                        <input type="range" id="setting-ambient-volume" min="0" max="100" step="5" value="40">
+                    </label>
+                    <label class="setting-row">
                         <span>Tique-taque durante o foco</span>
                         <input type="checkbox" id="setting-ticking" class="switch">
                     </label>
@@ -357,7 +371,7 @@
     <p class="sr-only" id="live-region" role="status" aria-live="polite"></p>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=5" defer></script>
+    <script src="script.js?v=6" defer></script>
 </body>
 
 </html>

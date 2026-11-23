@@ -223,6 +223,10 @@ export class Input {
             this.keys.clear();
             this.touchX = this.touchY = 0;
             this.touchCam = 0;
+            // pulo/agachar presos também soltam (senão o pulo variável nunca corta)
+            this.jumpDown = false;
+            this.jumpQueued = false;
+            this._touchCrouch = false;
         });
     }
 }

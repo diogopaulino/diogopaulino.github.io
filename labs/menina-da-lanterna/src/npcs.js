@@ -3,6 +3,8 @@
  *
  * Sombrio: patrulha waypoints. Se a lanterna estiver fraca (< 28) ou o
  * jogador estiver de costas, aproxima. Um pulso (flashRadius) força fuga.
+ * Velocidades (m/s) casadas com as de Clara (trote 2,4 · corrida 4,2):
+ *   patrulha 1,4 · caça 3,5 (alcança quem trota, perde quem corre) · fuga 6,0
  *
  * Luz desfaz sombra — regras visuais e de jogo:
  *   • fugindo do pulso, o corpo de fumaça se dissolve (0 → 0,85 em ~0,3 s) e
@@ -12,7 +14,7 @@
  *     aceso é abrigo.
  */
 
-import { clamp, damp } from './utils.js';
+import { clamp, damp } from './utils.js?v=22';
 
 const LAMP_SAFE = 3.4;
 
@@ -40,9 +42,9 @@ export class ShadowWisp {
         this.waypoints = waypoints;
         this.wp = 0;
         this.state = 'patrol';
-        this.speed = 2.15;
-        this.chaseSpeed = 4.4;
-        this.fleeSpeed = 7.2;
+        this.speed = 1.4;
+        this.chaseSpeed = 3.5;
+        this.fleeSpeed = 6.0;
         this.vision = 11;
         this.alive = true;
         this.catchR = 1.05;

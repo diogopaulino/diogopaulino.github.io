@@ -1,6 +1,9 @@
 /* ================================================================
    Orbis — observatório
    Paleta: vazio profundo + ouro estelar + ciano de atmosfera.
+   Layout: catálogo à esquerda, ficha do corpo à direita, relógio embaixo.
+   Celular: catálogo vira trilho no topo; ficha vira painel recolhível
+   acima do relógio. Landscape curto: tudo compacto nas bordas.
    ================================================================ */
 
 :root {
@@ -15,20 +18,27 @@
     --text-soft: oklch(80% 0.02 240);
     --text-dim: oklch(68% 0.02 240);
 
-    --panel: color-mix(in oklab, oklch(14% 0.03 264) 58%, transparent);
-    --panel-strong: color-mix(in oklab, oklch(10% 0.03 264) 78%, transparent);
+    --panel: color-mix(in oklab, oklch(14% 0.03 264) 62%, transparent);
+    --panel-strong: color-mix(in oklab, oklch(10% 0.03 264) 82%, transparent);
     --line: color-mix(in oklab, var(--cyan) 28%, transparent);
     --line-soft: color-mix(in oklab, white 10%, transparent);
 
     --radius: 16px;
-    --radius-lg: 24px;
+    --radius-lg: 22px;
     --blur: 22px;
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --touch: var(--touch-target, 44px);
 
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
+
+    --gutter: max(1rem, var(--safe-left));
+    --gutter-r: max(1rem, var(--safe-right));
+    --top: max(5.2rem, calc(var(--safe-top) + 4.4rem));
+    --dock-h: 72px; /* medido em JS (ResizeObserver) */
+    --dock-gap: max(1rem, var(--safe-bottom));
 }
 
 [data-theme="light"] {
@@ -50,6 +60,7 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: clip;
+    overflow-x: clip;
     overscroll-behavior: none;
     background: var(--void);
 }
@@ -73,6 +84,17 @@ button {
     background: none;
     border: 0;
     cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+
+button:disabled {
+    opacity: 0.38;
+    cursor: default;
 }
 
 .mono {
@@ -108,27 +130,30 @@ header[data-lab-header] {
     z-index: 20;
     padding: max(0.85rem, var(--safe-top)) max(1.2rem, var(--safe-right)) 1rem max(1.2rem, var(--safe-left)) !important;
     margin: 0 !important;
+    max-width: none !important;
     background: linear-gradient(to bottom, rgba(2, 4, 10, 0.78), transparent);
     border: 0 !important;
     box-shadow: none !important;
 }
 
-/* Fora do shell: fixed para não empurrar o viewport fullscreen. */
+/* Fora do shell: fixed para não empurrar o viewport fullscreen. No desktop
+   fica num canto, fora do relógio; no celular some (o header já volta). */
 .lab-foot {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: calc(0.4rem + var(--safe-bottom));
-    z-index: 30;
+    left: auto;
+    right: var(--gutter-r);
+    bottom: calc(0.2rem + var(--safe-bottom));
+    z-index: 11;
     width: auto;
     max-width: none;
     margin: 0;
-    padding: 0.4rem;
+    padding: 0.2rem 0;
     border: 0;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: var(--text-dim);
-    opacity: 0.5;
+    opacity: 0.55;
     pointer-events: none;
+    background: none;
 }
 
 .lab-foot a { color: var(--text-soft); pointer-events: auto; }
@@ -151,8 +176,10 @@ header[data-lab-header] {
 }
 
 .icon-btn {
-    width: 38px;
-    height: 38px;
+    width: var(--touch);
+    height: var(--touch);
+    min-width: var(--touch);
+    min-height: var(--touch);
     display: grid;
     place-items: center;
     border-radius: 12px;
@@ -160,12 +187,17 @@ header[data-lab-header] {
     background: var(--panel);
     border: 1px solid var(--line-soft);
     backdrop-filter: blur(12px);
-    transition: background 0.2s var(--ease), color 0.2s var(--ease), transform 0.2s var(--ease);
+    -webkit-backdrop-filter: blur(12px);
+    transition: background 0.2s var(--ease), color 0.2s var(--ease), transform 0.15s var(--ease), border-color 0.2s var(--ease);
 }
 
-.icon-btn:hover {
+.icon-btn:hover:not(:disabled) {
     color: var(--text);
     background: var(--panel-strong);
+}
+
+.icon-btn:active:not(:disabled) {
+    transform: scale(0.94);
 }
 
 .icon-btn[aria-pressed="true"] {
@@ -173,13 +205,17 @@ header[data-lab-header] {
     border-color: color-mix(in oklab, var(--gold) 40%, transparent);
 }
 
+/* ---------- carregamento ---------- */
+
 .loading {
     position: absolute;
     inset: 0;
     z-index: 40;
     display: grid;
     place-content: center;
+    justify-items: center;
     gap: 1.1rem;
+    padding: 1.5rem;
     background: radial-gradient(ellipse at 50% 42%, #14203a 0%, #02040a 62%);
     text-align: center;
     transition: opacity 0.55s var(--ease);
@@ -191,10 +227,18 @@ header[data-lab-header] {
 }
 
 .loading p {
+    max-width: 32ch;
+    margin: 0;
     color: var(--text-soft);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-size: 0.78rem;
+    line-height: 1.5;
+}
+
+.loading.has-error .loading-orb {
+    animation: none;
+    filter: grayscale(0.7);
 }
 
 .loading-orb {
@@ -212,12 +256,15 @@ header[data-lab-header] {
     to { transform: rotate(360deg); }
 }
 
+/* ---------- painéis ---------- */
+
 .hud-left,
 .hud-right,
 .forge,
 .dock,
 .hint,
-.fps-badge {
+.fps-badge,
+.toast {
     position: absolute;
     z-index: 12;
     pointer-events: none;
@@ -232,7 +279,8 @@ header[data-lab-header] {
 
 .hud-left,
 .hud-right,
-.forge {
+.forge,
+.dock {
     background: var(--panel);
     border: 1px solid var(--line-soft);
     backdrop-filter: blur(var(--blur));
@@ -242,19 +290,33 @@ header[data-lab-header] {
 }
 
 .hud-left {
-    top: max(5.4rem, calc(var(--safe-top) + 4.4rem));
-    left: max(1rem, var(--safe-left));
-    width: min(280px, calc(100vw - 2rem));
-    padding: 1.05rem 1.1rem 0.85rem;
-    max-height: calc(100dvh - 12rem);
+    top: var(--top);
+    left: var(--gutter);
+    width: min(272px, calc(100vw - 2rem));
+    padding: 1rem 0.85rem 0.75rem;
+    max-height: calc(100dvh - var(--top) - var(--dock-h) - var(--dock-gap) - 1.6rem);
     overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+.hud-left > .eyebrow,
+.hud-left > h2,
+.hud-left > .meta-line,
+.hud-left > .scale-note {
+    padding-inline: 0.3rem;
 }
 
 .hud-right {
-    top: max(5.4rem, calc(var(--safe-top) + 4.4rem));
-    right: max(1rem, var(--safe-right));
-    width: min(300px, calc(100vw - 2rem));
-    padding: 1.1rem 1.15rem 1rem;
+    top: var(--top);
+    right: var(--gutter-r);
+    width: min(330px, calc(100vw - 2rem));
+    padding: 1rem 1.05rem 1rem;
+    max-height: calc(100dvh - var(--top) - var(--dock-h) - var(--dock-gap) - 1.6rem);
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    transition: opacity 0.25s var(--ease);
 }
 
 .eyebrow {
@@ -269,7 +331,7 @@ header[data-lab-header] {
 h2 {
     margin: 0;
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.55rem;
+    font-size: clamp(1.3rem, 2.4vw, 1.6rem);
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1.15;
@@ -281,26 +343,34 @@ h2 {
     font-size: 0.78rem;
 }
 
-.lore {
-    margin: 0.75rem 0 0;
-    color: var(--text-soft);
-    font-size: 0.9rem;
+.scale-note {
+    margin: 0.55rem 0 0;
+    font-size: 0.7rem;
     line-height: 1.45;
+    color: var(--text-dim);
+}
+
+.lore {
+    margin: 0.85rem 0 0;
+    color: var(--text-soft);
+    font-size: 0.86rem;
+    line-height: 1.5;
 }
 
 .planet-list {
     display: grid;
-    gap: 0.4rem;
-    margin-top: 0.9rem;
+    gap: 0.2rem;
+    margin-top: 0.8rem;
 }
 
 .world-card {
     display: flex;
     align-items: center;
-    gap: 0.7rem;
+    gap: 0.65rem;
     width: 100%;
+    min-height: var(--touch);
     text-align: left;
-    padding: 0.45rem 0.5rem;
+    padding: 0.35rem 0.45rem;
     border-radius: 14px;
     border: 1px solid transparent;
     color: var(--text-soft);
@@ -319,16 +389,22 @@ h2 {
 }
 
 .world-orb {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     flex: none;
     box-shadow: inset -6px -4px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
+.world-orb.is-sun {
+    background: radial-gradient(circle at 35% 30%, #fff6d8, #f0b45a 42%, #c45a18 78%);
+    box-shadow: 0 0 12px #f0b45a77;
+}
+
 .world-copy {
     display: grid;
     min-width: 0;
+    flex: 1;
 }
 
 .world-copy strong {
@@ -345,6 +421,87 @@ h2 {
     text-overflow: ellipsis;
 }
 
+.world-key {
+    opacity: 0.45;
+}
+
+/* ---------- ficha do corpo ---------- */
+
+.info-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.info-title {
+    min-width: 0;
+}
+
+.info-title h2 {
+    overflow-wrap: anywhere;
+}
+
+.info-toggle svg {
+    transition: transform 0.25s var(--ease);
+}
+
+.hud-right.is-collapsed .info-toggle svg {
+    transform: rotate(180deg);
+}
+
+.hud-right.is-collapsed .info-body {
+    display: none;
+}
+
+.live,
+.stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.8rem;
+    margin: 0.8rem 0 0;
+}
+
+.live .stat {
+    padding: 0.5rem 0.6rem;
+    border-radius: 12px;
+    background: color-mix(in oklab, var(--cyan) 7%, transparent);
+    border: 1px solid color-mix(in oklab, var(--cyan) 16%, transparent);
+}
+
+.live dd {
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.stat {
+    min-width: 0;
+}
+
+.stat.wide {
+    grid-column: 1 / -1;
+}
+
+.stat dt {
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.stat dd {
+    margin: 0.1rem 0 0;
+    font-size: 0.84rem;
+    color: var(--text-soft);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.stats {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line-soft);
+}
+
 .hud-actions {
     display: flex;
     gap: 0.5rem;
@@ -356,8 +513,8 @@ h2 {
     align-items: center;
     justify-content: center;
     gap: 0.35rem;
-    min-height: var(--touch-target);
-    padding: 0.55rem 0.9rem;
+    min-height: var(--touch);
+    padding: 0.55rem 0.95rem;
     border-radius: 999px;
     border: 1px solid var(--line);
     background: color-mix(in oklab, var(--cyan) 12%, transparent);
@@ -386,23 +543,46 @@ h2 {
     font-weight: 800;
 }
 
+body[data-view="system"] #backSystem,
+body[data-view="system"] #forgeToggle {
+    display: none;
+}
+
+/* ---------- atelier (ocupa o lugar da ficha) ---------- */
+
 .forge {
     display: none;
-    right: max(1rem, var(--safe-right));
-    bottom: max(6.2rem, calc(var(--safe-bottom) + 5.6rem));
-    width: min(300px, calc(100vw - 2rem));
-    padding: 0.95rem 1.05rem 1rem;
+    top: var(--top);
+    right: var(--gutter-r);
+    width: min(330px, calc(100vw - 2rem));
+    padding: 0.85rem 1rem 0.9rem;
+    max-height: calc(100dvh - var(--top) - var(--dock-h) - var(--dock-gap) - 1.6rem);
+    overflow: auto;
+    overscroll-behavior: contain;
 }
 
 .forge.is-open {
     display: block;
 }
 
+.forge[hidden] {
+    display: none !important;
+}
+
+body.forge-open .hud-right {
+    opacity: 0;
+    visibility: hidden;
+}
+
 .forge-head {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 0.75rem;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.4rem;
+}
+
+.forge-head strong {
+    flex: 1;
 }
 
 .forge-head span {
@@ -412,7 +592,7 @@ h2 {
 
 .sliders {
     display: grid;
-    gap: 0.45rem;
+    gap: 0;
 }
 
 .slider {
@@ -430,7 +610,7 @@ h2 {
     width: 100%;
     /* 44px de alvo tocável; o trilho visível de 4px vive nos
        pseudo-elementos abaixo, então o desenho não muda. */
-    height: var(--touch-target);
+    height: var(--touch);
     border: none;
     background: transparent;
     outline: none;
@@ -464,76 +644,256 @@ h2 {
     margin-top: -5px;
 }
 
+.slider input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--gold);
+}
+
+/* ---------- relógio ---------- */
+
 .dock {
     left: 50%;
-    bottom: max(1.1rem, var(--safe-bottom));
+    bottom: var(--dock-gap);
     transform: translateX(-50%);
     display: flex;
+    flex-direction: row; /* o <footer> herda flex-direction: column do shared no mobile */
     align-items: center;
-    gap: 0.55rem;
-    padding: 0.45rem 0.5rem 0.45rem 0.55rem;
-    background: var(--panel);
-    border: 1px solid var(--line-soft);
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0.4rem 0.45rem 0.4rem 0.5rem;
+    font-size: 1rem;
     border-radius: 999px;
-    backdrop-filter: blur(var(--blur));
     width: max-content;
-    max-width: calc(100vw - 1.5rem);
+    max-width: calc(100vw - 2rem);
 }
 
-.preset-rail {
-    display: flex;
-    gap: 0.35rem;
-    overflow-x: auto;
-    max-width: min(42vw, 420px);
-    scrollbar-width: none;
+.clock {
+    position: relative;
+    min-width: 0;
 }
 
-.preset-rail::-webkit-scrollbar {
-    display: none;
-}
-
-.chip {
-    flex: none;
-    padding: 0.42rem 0.7rem;
+.clock-date {
+    display: grid;
+    justify-items: start;
+    min-height: var(--touch);
+    padding: 0.2rem 0.85rem 0.2rem 0.7rem;
     border-radius: 999px;
-    border: 1px solid var(--line-soft);
-    color: var(--text-soft);
-    font-size: 0.72rem;
+    text-align: left;
+    transition: background 0.2s var(--ease);
+}
+
+.clock-date:hover {
+    background: color-mix(in oklab, white 6%, transparent);
+}
+
+.clock-day {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.05rem;
     font-weight: 600;
+    letter-spacing: -0.01em;
     white-space: nowrap;
 }
 
-.chip:hover {
-    border-color: var(--line);
-    color: var(--text);
+.clock-sub {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    white-space: nowrap;
 }
 
-.seed-form {
+.approx {
+    display: none;
+    color: var(--gold);
+}
+
+body.is-approx .approx {
+    display: inline;
+}
+
+/* Visualmente oculto; o botão da data abre o seletor nativo. */
+.date-input {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    border: 0;
+    padding: 0;
+}
+
+.time-ctrl {
     display: flex;
     align-items: center;
     gap: 0.3rem;
 }
 
-.seed-form input {
-    width: 132px;
-    background: color-mix(in oklab, black 28%, transparent);
-    border: 1px solid var(--line-soft);
+.time-ctrl .icon-btn {
     border-radius: 999px;
-    padding: 0.42rem 0.7rem;
-    font-size: 0.75rem;
-    outline: none;
 }
 
-.seed-form input:focus {
+.play-btn {
+    color: #1a1208 !important;
+    background: linear-gradient(135deg, var(--gold), var(--gold-deep)) !important;
+    border-color: transparent !important;
+}
+
+.play-btn .i-play,
+body.is-paused .play-btn .i-pause {
+    display: none;
+}
+
+body.is-paused .play-btn .i-play {
+    display: block;
+}
+
+.today-btn {
+    min-width: var(--touch);
+    padding-inline: 0.8rem;
+}
+
+.rate {
+    margin: 0;
+    min-width: 7.2ch;
+    font-size: 0.78rem;
+    font-weight: 650;
+    color: var(--gold);
+    white-space: nowrap;
+    text-align: center;
+}
+
+body.is-paused .rate {
+    color: var(--text-dim);
+}
+
+.scale-toggle {
+    display: grid;
+    justify-items: start;
+    min-height: var(--touch);
+    padding: 0.2rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-soft);
+    text-align: left;
+    transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.scale-toggle span {
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.scale-toggle strong {
+    font-size: 0.8rem;
+    color: var(--text-soft);
+}
+
+.scale-toggle:hover {
     border-color: var(--line);
 }
 
-.hint {
-    left: max(1rem, var(--safe-left));
-    bottom: max(1.2rem, var(--safe-bottom));
+.scale-toggle[aria-pressed="true"] {
+    border-color: color-mix(in oklab, var(--gold) 45%, transparent);
+    background: color-mix(in oklab, var(--gold) 10%, transparent);
+}
+
+.scale-toggle[aria-pressed="true"] strong {
+    color: var(--gold);
+}
+
+/* ---------- rótulos 3D ---------- */
+
+.labels {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.body-label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: grid;
+    place-items: start center;
+    min-width: var(--touch);
+    min-height: 34px;
+    margin-left: calc(var(--touch) / -2);
+    padding: 0.15rem 0.3rem;
+    pointer-events: auto;
+    will-change: transform;
+}
+
+.body-label span {
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-soft);
+    background: color-mix(in oklab, var(--void) 55%, transparent);
+    border: 1px solid var(--line-soft);
+    white-space: nowrap;
+    transform: translateX(-50%);
+    margin-left: 50%;
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.body-label:hover span {
+    color: var(--text);
+    border-color: var(--line);
+}
+
+.body-label.is-sun span {
+    color: var(--gold);
+}
+
+.body-label.is-hidden,
+body.labels-off .body-label {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* ---------- avisos e extras ---------- */
+
+.toast {
+    left: 50%;
+    bottom: calc(var(--dock-h) + var(--dock-gap) + 0.7rem);
     margin: 0;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line-soft);
+    font-size: 0.78rem;
+    color: var(--text);
+    white-space: nowrap;
+    max-width: calc(100vw - 2rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transform: translate(-50%, 6px);
+    transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+    z-index: 25;
+}
+
+.toast.is-on {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.hint {
+    left: var(--gutter);
+    bottom: calc(var(--dock-gap) + 0.1rem);
+    margin: 0;
+    max-width: calc(50vw - 22rem);
     color: var(--text-dim);
-    font-size: 0.72rem;
+    font-size: 0.7rem;
+    line-height: 1.6;
     letter-spacing: 0.02em;
 }
 
@@ -542,12 +902,13 @@ kbd {
     padding: 0 0.28rem;
     border-radius: 4px;
     border: 1px solid var(--line-soft);
-    font-size: 0.68rem;
+    font-size: 0.66rem;
+    font-family: inherit;
 }
 
 .fps-badge {
-    right: max(1rem, var(--safe-right));
-    bottom: max(1.2rem, var(--safe-bottom));
+    right: var(--gutter-r);
+    bottom: calc(var(--dock-gap) + 1.2rem);
     margin: 0;
     font-size: 0.7rem;
     color: var(--text-dim);
@@ -559,151 +920,312 @@ body.ui-hidden .hud-right,
 body.ui-hidden .forge,
 body.ui-hidden .dock,
 body.ui-hidden .hint,
+body.ui-hidden .labels,
 body.ui-hidden header {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s var(--ease);
 }
 
-body[data-view="system"] #backSystem {
-    display: none;
+body.ui-hidden .hud-left *,
+body.ui-hidden .hud-right *,
+body.ui-hidden .dock *,
+body.ui-hidden header * {
+    pointer-events: none;
 }
 
-.forge[hidden] {
-    display: none !important;
+@media (max-width: 1240px) {
+    .hint,
+    .fps-badge {
+        display: none;
+    }
 }
 
+/* ================= tablet / celular ================= */
 @media (max-width: 860px) {
-    .hud-left,
-    .hud-right {
-        width: auto;
-        max-width: none;
+    :root {
+        --gutter: max(0.6rem, var(--safe-left));
+        --gutter-r: max(0.6rem, var(--safe-right));
+        --top: calc(max(0.85rem, var(--safe-top)) + 3.2rem);
+        --dock-gap: max(0.6rem, var(--safe-bottom));
     }
 
-    .hud-left {
-        right: max(1rem, var(--safe-right));
-        max-height: 38dvh;
-    }
-
-    .hud-right {
-        top: auto;
-        bottom: max(6.4rem, calc(var(--safe-bottom) + 5.8rem));
-        left: max(1rem, var(--safe-left));
-    }
-
-    .forge {
-        left: max(1rem, var(--safe-left));
-        right: max(1rem, var(--safe-right));
-        width: auto;
-        bottom: max(12.5rem, calc(var(--safe-bottom) + 11.5rem));
-    }
-
-    .hint {
+    .lab-foot {
         display: none;
     }
 
+    /* Catálogo vira um trilho horizontal no topo. */
+    .hud-left {
+        left: var(--gutter);
+        right: var(--gutter-r);
+        width: auto;
+        max-height: none;
+        padding: 0.3rem;
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .hud-left > .eyebrow,
+    .hud-left > h2,
+    .hud-left > .meta-line,
+    .hud-left > .scale-note {
+        display: none;
+    }
+
+    .planet-list {
+        display: flex;
+        gap: 0.25rem;
+        margin: 0;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+        overscroll-behavior-x: contain;
+    }
+
+    .planet-list::-webkit-scrollbar {
+        display: none;
+    }
+
+    .world-card {
+        flex: none;
+        width: auto;
+        gap: 0.4rem;
+        padding: 0.3rem 0.7rem 0.3rem 0.35rem;
+        border-radius: 999px;
+        scroll-snap-align: center;
+    }
+
+    .world-card:hover {
+        transform: none;
+    }
+
+    .world-orb {
+        width: 22px;
+        height: 22px;
+    }
+
+    .world-copy em,
+    .world-key {
+        display: none;
+    }
+
+    .world-copy strong {
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    /* Ficha e atelier: painel acima do relógio. */
+    .hud-right,
+    .forge {
+        top: auto;
+        left: var(--gutter);
+        right: var(--gutter-r);
+        width: auto;
+        bottom: calc(var(--dock-h) + var(--dock-gap) + 0.5rem);
+        max-height: min(46dvh, calc(100dvh - var(--top) - 3.6rem - var(--dock-h) - var(--dock-gap) - 1rem));
+        padding: 0.75rem 0.85rem 0.8rem;
+    }
+
+    .hud-right .eyebrow {
+        display: none;
+    }
+
+    .live {
+        margin-top: 0.55rem;
+        gap: 0.4rem;
+    }
+
+    .live .stat {
+        padding: 0.35rem 0.55rem;
+    }
+
+    .live dd {
+        font-size: 0.92rem;
+    }
+
+    .stats {
+        gap: 0.4rem 0.6rem;
+    }
+
+    .toast {
+        bottom: calc(var(--dock-h) + var(--dock-gap) + 9.5rem);
+    }
+
+    /* Relógio: 2 linhas — data · taxa · escala / controles. */
     .dock {
-        flex-wrap: wrap;
+        left: var(--gutter);
+        right: var(--gutter-r);
+        transform: none;
+        width: auto;
+        max-width: none;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-areas:
+            "clock rate scale"
+            "ctrl ctrl ctrl";
+        gap: 0.3rem 0.4rem;
+        padding: 0.35rem 0.4rem 0.4rem;
         border-radius: var(--radius-lg);
-        justify-content: center;
-        width: calc(100vw - 1.5rem);
     }
 
-    .preset-rail {
-        max-width: 100%;
+    .clock { grid-area: clock; }
+    .rate { grid-area: rate; }
+    .scale-toggle { grid-area: scale; padding-inline: 0.7rem; }
+
+    .time-ctrl {
+        grid-area: ctrl;
+        justify-content: space-between;
+    }
+
+    .time-ctrl .icon-btn,
+    .today-btn {
+        flex: 1;
+        max-width: 72px;
+    }
+
+    .clock-date {
+        padding-inline: 0.45rem;
+    }
+
+    .clock-day {
+        font-size: 0.98rem;
+    }
+}
+
+@media (max-width: 420px) {
+    /* Cabe back + título + 3 ações: o lab é sempre noturno e o iPhone não tem tela cheia. */
+    header .theme-toggle,
+    #fullscreen {
+        display: none !important;
+    }
+
+    .header-actions {
+        gap: 0.35rem !important;
+    }
+
+    .stat dd {
+        font-size: 0.8rem;
+    }
+}
+
+/* ================= landscape curto ================= */
+@media (max-height: 520px) and (orientation: landscape) {
+    :root {
+        --top: calc(max(0.5rem, var(--safe-top)) + 3rem);
+        --dock-gap: max(0.45rem, var(--safe-bottom));
+    }
+
+    header[data-lab-header] {
+        padding-top: max(0.4rem, var(--safe-top)) !important;
+        padding-bottom: 0.4rem !important;
+    }
+
+    .hud-left {
+        top: var(--top);
+        left: var(--gutter);
+        right: auto;
+        width: min(168px, 30vw);
+        max-height: calc(100dvh - var(--top) - var(--dock-gap) - 0.6rem);
+        padding: 0.3rem;
+        border-radius: var(--radius);
+        overflow-y: auto;
+    }
+
+    .planet-list {
+        display: grid;
+        overflow-x: hidden;
+        gap: 0.1rem;
+    }
+
+    .world-card {
         width: 100%;
-        order: 3;
+        min-height: 40px;
+        border-radius: 12px;
     }
 
-    .seed-form input {
-        width: 110px;
+    .hud-right,
+    .forge {
+        top: var(--top);
+        bottom: calc(var(--dock-h) + var(--dock-gap) + 0.4rem);
+        left: auto;
+        right: var(--gutter-r);
+        width: min(250px, 38vw);
+        max-height: none;
+    }
+
+    .hud-right.is-collapsed {
+        bottom: auto;
+    }
+
+    .hud-right .lore,
+    .hud-right .meta-line {
+        display: none;
+    }
+
+    /* Relógio entre o catálogo e a borda direita, numa linha só. */
+    .dock {
+        left: calc(var(--gutter) + min(168px, 30vw) + 0.5rem);
+        right: var(--gutter-r);
+        transform: none;
+        width: auto;
+        max-width: none;
+        display: flex;
+        justify-content: space-between;
+        gap: 0.25rem;
+        padding: 0.25rem;
+        border-radius: 999px;
+    }
+
+    .dock .rate,
+    .scale-toggle span {
+        display: none;
+    }
+
+    .time-ctrl {
+        flex: none;
+    }
+
+    .today-btn {
+        flex: none;
+        min-height: 40px;
+        padding-inline: 0.6rem;
+    }
+
+    .time-ctrl .icon-btn {
+        flex: none;
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+        min-height: 40px;
+    }
+
+    .scale-toggle {
+        min-height: 40px;
+        padding-inline: 0.6rem;
+    }
+
+    .clock-date {
+        min-height: 40px;
+        padding-inline: 0.5rem;
+    }
+
+    .clock-day {
+        font-size: 0.86rem;
+    }
+
+    .toast {
+        bottom: calc(var(--dock-h) + var(--dock-gap) + 0.5rem);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .loading-orb,
     .btn,
-    .world-card {
+    .icon-btn,
+    .world-card,
+    .toast,
+    .info-toggle svg {
         animation: none;
         transition: none;
     }
-}
-/* --- lab-responsive-pass --- */
-.icon-btn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
-
-@media (max-width: 860px) {
-    .hud-left {
-        max-height: min(32dvh, calc(100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 11rem));
-        overflow-y: auto;
-    }
-    .dock {
-        width: min(100%, calc(100% - var(--safe-left, 0px) - var(--safe-right, 0px) - 1rem));
-        max-width: 100%;
-    }
-}
-
-@media (max-height: 520px) and (orientation: landscape) {
-    .hud-left { max-height: 28dvh; width: min(220px, 42vw); }
-    .hud-right {
-        left: auto;
-        right: max(1rem, var(--safe-right));
-        bottom: max(1rem, var(--safe-bottom));
-        width: min(260px, 44vw);
-        max-height: 55dvh;
-        overflow-y: auto;
-    }
-    .hud-right .lore { display: none; }
-    .forge {
-        top: max(4.5rem, var(--safe-top));
-        bottom: max(1rem, var(--safe-bottom));
-        left: max(1rem, var(--safe-left));
-        right: auto;
-        width: min(280px, 46vw);
-        overflow-y: auto;
-    }
-}
-
-/* --- mobile: HUD, toque, landscape curto --- */
-@media (pointer: coarse) {
-    .icon-button,
-    .icon-btn {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-        min-height: 44px;
-    }
-}
-
-@media (max-width: 560px) {
-    .overlay,
-    .overlay-card,
-    .menu-card {
-        max-height: min(92dvh, 900px);
-    }
-    .overlay-card,
-    .menu-card {
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-}
-
-@media (max-height: 520px) and (orientation: landscape) {
-    .hud-actions {
-        top: calc(0.75rem + var(--safe-top, env(safe-area-inset-top, 0px)));
-        bottom: auto;
-        right: calc(0.75rem + var(--safe-right, env(safe-area-inset-right, 0px)));
-    }
-    .icon-button,
-    .icon-btn {
-        width: 44px;
-        height: 44px;
-    }
-    .touch-controls {
-        height: min(42%, 38dvh);
-    }
-}
-
-/* agent-responsive-768 */
-@media (max-width: 768px) {
-  html, body { overflow-x: clip; }
 }

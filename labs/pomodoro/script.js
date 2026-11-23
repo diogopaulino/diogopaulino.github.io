@@ -2,6 +2,19 @@
    Pomodoro - Labs
    Timer baseado em timestamp (imune ao throttling de aba),
    tarefas, estatísticas, sons sintetizados e notificações.
+
+   Regras do relógio
+   · Fonte da verdade: endsAt (Date.now() + restante no início). Cada tick
+     recalcula restante = endsAt − agora; nada acumula erro de setInterval.
+   · A UI atualiza a cada 250 ms só com a aba visível (LabRuntime).
+   · O FIM do ciclo é disparado por um Worker dedicado: timers de Worker não
+     sofrem o "intensive throttling" do Chrome em abas ocultas (que atrasa
+     setTimeout em até 1 min), então o alarme toca na hora certa mesmo com a
+     aba em segundo plano. Sem Worker, cai para setTimeout + resync ao voltar.
+   · total = duração planejada do ciclo, fixada no início: mudar as
+     configurações no meio não distorce o anel nem as estatísticas.
+   · Ciclo: foco → pausa curta … a cada N focos (N = "ciclos até a pausa
+     longa") vem a pausa longa, que zera a contagem.
    ========================================================= */
 
 (function () {
@@ -28,8 +41,12 @@
         muted: false,
         ticking: false,
         notifications: true,
-        askedNotifications: false
+        askedNotifications: false,
+        ambient: 'none',
+        ambientVolume: 40
     };
+
+    const AMBIENTS = ['none', 'brown', 'rain', 'waves'];
 
     const LIMITS = {
         focus: [1, 180],
@@ -125,6 +142,7 @@
 
         setMuted(muted) {
             this.muted = !!muted;
+            this.applyAmbientLevel();
         }
 
         get enabled() {
@@ -215,6 +233,135 @@
             }
         }
 
+        /* ---- Som ambiente (ruído sintetizado em loop) ----
+           brown: ruído browniano (integra ruído branco) + passa-baixa 900 Hz
+           rain:  ruído rosa (filtro de Paul Kellet) em passa-banda ~2,5 kHz
+           waves: browniano em passa-baixa 600 Hz com LFO de 0,11 Hz no ganho
+                  (≈ 9 s por "onda", ritmo de respiração calma) */
+        noiseBuffer(color) {
+            this.buffers = this.buffers || {};
+            if (this.buffers[color]) return this.buffers[color];
+            const ctx = this.ctx;
+            const frames = Math.floor(ctx.sampleRate * 6);
+            const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            if (color === 'brown') {
+                let last = 0;
+                for (let i = 0; i < frames; i += 1) {
+                    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+                    data[i] = last * 3.5;
+                }
+            } else {
+                let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+                for (let i = 0; i < frames; i += 1) {
+                    const white = Math.random() * 2 - 1;
+                    b0 = 0.99886 * b0 + white * 0.0555179;
+                    b1 = 0.99332 * b1 + white * 0.0750759;
+                    b2 = 0.969 * b2 + white * 0.153852;
+                    b3 = 0.8665 * b3 + white * 0.3104856;
+                    b4 = 0.55 * b4 + white * 0.5329522;
+                    b5 = -0.7616 * b5 - white * 0.016898;
+                    data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+                    b6 = white * 0.115926;
+                }
+            }
+            // Funde o fim no começo para o loop não estalar.
+            const fade = Math.floor(ctx.sampleRate * 0.05);
+            for (let i = 0; i < fade; i += 1) {
+                const k = i / fade;
+                data[frames - fade + i] = data[frames - fade + i] * (1 - k) + data[i] * k;
+            }
+            this.buffers[color] = buffer;
+            return buffer;
+        }
+
+        setAmbientVolume(percent) {
+            this.ambientVolume = clamp(percent, 0, 100) / 100;
+            this.applyAmbientLevel();
+        }
+
+        applyAmbientLevel() {
+            if (!this.ambientNodes || !this.ctx) return;
+            const level = this.muted ? 0 : (this.ambientVolume ?? 0.4) * 0.9;
+            this.ambientNodes.bus.gain.setTargetAtTime(level, this.ctx.currentTime, 0.25);
+        }
+
+        startAmbient(kind) {
+            if (!kind || kind === 'none') {
+                this.stopAmbient();
+                return;
+            }
+            if (this.ambientKind === kind && this.ambientNodes) {
+                this.applyAmbientLevel();
+                return;
+            }
+            this.stopAmbient();
+            const ctx = this.unlock();
+            if (!ctx) return;
+            try {
+                const src = ctx.createBufferSource();
+                src.buffer = this.noiseBuffer(kind === 'rain' ? 'pink' : 'brown');
+                src.loop = true;
+                const filter = ctx.createBiquadFilter();
+                const shape = ctx.createGain();
+                const bus = ctx.createGain();
+                bus.gain.value = 0;
+                const nodes = { src, filter, shape, bus, lfo: null };
+                if (kind === 'rain') {
+                    filter.type = 'bandpass';
+                    filter.frequency.value = 2500;
+                    filter.Q.value = 0.35;
+                    shape.gain.value = 1.4;
+                } else if (kind === 'waves') {
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 600;
+                    shape.gain.value = 0.55;
+                    const lfo = ctx.createOscillator();
+                    const depth = ctx.createGain();
+                    lfo.frequency.value = 0.11;
+                    depth.gain.value = 0.45;
+                    lfo.connect(depth);
+                    depth.connect(shape.gain);
+                    lfo.start();
+                    nodes.lfo = lfo;
+                } else {
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 900;
+                    shape.gain.value = 1;
+                }
+                src.connect(filter);
+                filter.connect(shape);
+                shape.connect(bus);
+                bus.connect(ctx.destination);
+                src.start();
+                this.ambientNodes = nodes;
+                this.ambientKind = kind;
+                this.applyAmbientLevel();
+            } catch (err) {
+                this.ambientNodes = null;
+                this.ambientKind = null;
+            }
+        }
+
+        stopAmbient() {
+            const nodes = this.ambientNodes;
+            this.ambientNodes = null;
+            this.ambientKind = null;
+            if (!nodes || !this.ctx) return;
+            const now = this.ctx.currentTime;
+            try {
+                nodes.bus.gain.cancelScheduledValues(now);
+                nodes.bus.gain.setTargetAtTime(0, now, 0.2);
+                nodes.src.stop(now + 1);
+                if (nodes.lfo) nodes.lfo.stop(now + 1);
+            } catch (err) {
+                /* já parado */
+            }
+            setTimeout(() => {
+                try { nodes.bus.disconnect(); } catch (err) { /* noop */ }
+            }, 1200);
+        }
+
         click() {
             if (!this.enabled || !this.ctx) return;
             this.tone({ freq: 660, type: 'triangle', duration: 0.06, gain: 0.06, sweepTo: 440 });
@@ -266,6 +413,8 @@
                 live: document.getElementById('live-region'),
                 notificationStatus: document.getElementById('notification-status'),
                 volumeValue: document.getElementById('volume-value'),
+                ambientVolumeValue: document.getElementById('ambient-volume-value'),
+                clearStats: document.getElementById('btn-clear-stats'),
                 inputs: {
                     focus: document.getElementById('setting-focus'),
                     short: document.getElementById('setting-short'),
@@ -277,6 +426,8 @@
                     alarm: document.getElementById('setting-alarm'),
                     volume: document.getElementById('setting-volume'),
                     ticking: document.getElementById('setting-ticking'),
+                    ambient: document.getElementById('setting-ambient'),
+                    ambientVolume: document.getElementById('setting-ambient-volume'),
                     notifications: document.getElementById('setting-notifications')
                 }
             };
@@ -291,7 +442,11 @@
             this.round = 0;
             this.running = false;
             this.remaining = this.settings.focus * 60000;
+            this.total = this.remaining;
             this.endsAt = 0;
+            this.deadline = this.createDeadlineWorker();
+            this.removedTask = null;
+            this.clearArmTimer = null;
             this.timerId = null;
             this.runtimeTicker = window.LabRuntime
                 ? LabRuntime.createInterval(() => this.tick(), TICK_MS)
@@ -305,6 +460,7 @@
             this.pendingAwayMessage = false;
 
             this.sound.setVolume(this.settings.volume);
+            this.sound.setAmbientVolume(this.settings.ambientVolume);
             this.sound.setMuted(this.settings.muted);
 
             this.restoreState();
@@ -335,6 +491,8 @@
             merged.alarm = ['bell', 'marimba', 'digital', 'gong', 'none'].includes(merged.alarm)
                 ? merged.alarm
                 : DEFAULTS.alarm;
+            merged.ambient = AMBIENTS.includes(merged.ambient) ? merged.ambient : DEFAULTS.ambient;
+            merged.ambientVolume = toInt(merged.ambientVolume, DEFAULTS.ambientVolume, [0, 100]);
 
             return merged;
         }
@@ -373,6 +531,7 @@
                 round: this.round,
                 running: this.running,
                 remaining: this.remaining,
+                total: this.total,
                 endsAt: this.endsAt,
                 activeTaskId: this.activeTaskId,
                 savedAt: Date.now()
@@ -392,7 +551,11 @@
                 ? saved.activeTaskId
                 : null;
 
-            const total = this.durationFor(this.mode);
+            const planned = Number(saved.total);
+            const total = Number.isFinite(planned) && planned >= 60000 && planned <= 180 * 60000
+                ? planned
+                : this.durationFor(this.mode);
+            this.total = total;
 
             if (saved.running && saved.endsAt) {
                 const left = saved.endsAt - Date.now();
@@ -412,6 +575,26 @@
             this.remaining = clamp(Number(saved.remaining) || total, 0, total) || total;
         }
 
+        /** Worker que só dispara o fim do ciclo (ver cabeçalho). */
+        createDeadlineWorker() {
+            if (typeof Worker === 'undefined' || typeof Blob === 'undefined') return null;
+            try {
+                const src = 'let t=null;onmessage=function(e){var d=e.data||{};if(t!==null){clearTimeout(t);t=null;}'
+                    + 'if(d.cmd==="arm"){t=setTimeout(function(){t=null;postMessage("due");},Math.max(0,d.ms));}};';
+                const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+                const worker = new Worker(url);
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+                worker.onmessage = () => this.syncFromTimestamp();
+                worker.onerror = () => {
+                    this.deadline = null;
+                    if (this.running) this.completionId = setTimeout(() => this.syncFromTimestamp(), Math.max(0, this.remaining) + 60);
+                };
+                return worker;
+            } catch (err) {
+                return null;
+            }
+        }
+
         durationFor(mode) {
             return this.settings[mode] * 60000;
         }
@@ -429,6 +612,12 @@
                 this.sound.click();
                 this.resetTimer();
                 this.toast('Ciclo reiniciado');
+            });
+
+            document.getElementById('btn-extend').addEventListener('click', () => {
+                this.sound.unlock();
+                this.sound.click();
+                this.extendSession(1);
             });
 
             this.el.skip.addEventListener('click', () => {
@@ -471,6 +660,27 @@
                 this.sound.setVolume(value);
             });
 
+            this.el.inputs.ambientVolume.addEventListener('input', (event) => {
+                const value = Number(event.target.value);
+                this.el.ambientVolumeValue.textContent = `${value}%`;
+                this.sound.setAmbientVolume(value);
+            });
+
+            // Prévia de 4 s do som ambiente escolhido.
+            this.el.inputs.ambient.addEventListener('change', (event) => {
+                const kind = event.target.value;
+                clearTimeout(this.previewTimer);
+                this.sound.unlock();
+                const wasMuted = this.sound.muted;
+                this.sound.setMuted(false);
+                this.sound.setAmbientVolume(Number(this.el.inputs.ambientVolume.value));
+                this.sound.startAmbient(kind);
+                this.previewTimer = setTimeout(() => {
+                    this.sound.setMuted(wasMuted);
+                    this.syncAmbient();
+                }, 4000);
+            });
+
             this.el.inputs.notifications.addEventListener('change', (event) => {
                 if (event.target.checked) this.enableNotifications(event.target);
                 else this.renderNotificationStatus();
@@ -492,7 +702,17 @@
                 this.toast('Configurações restauradas');
             });
 
-            document.getElementById('btn-clear-stats').addEventListener('click', () => {
+            // Ação destrutiva: o primeiro toque arma, o segundo (em até 4 s) confirma.
+            this.el.clearStats.addEventListener('click', () => {
+                const btn = this.el.clearStats;
+                if (btn.dataset.armed !== 'true') {
+                    btn.dataset.armed = 'true';
+                    btn.textContent = 'Confirmar?';
+                    clearTimeout(this.clearArmTimer);
+                    this.clearArmTimer = setTimeout(() => this.disarmClearStats(), 4000);
+                    return;
+                }
+                this.disarmClearStats();
                 this.stats = { days: {}, total: 0, minutes: 0 };
                 this.persistStats();
                 this.renderStats();
@@ -518,10 +738,16 @@
 
             // A aba voltou: sincroniza o relógio e o wake lock
             document.addEventListener('visibilitychange', () => {
-                if (document.hidden) return;
+                if (document.hidden) {
+                    this.persistState();
+                    return;
+                }
                 this.syncFromTimestamp();
                 if (this.running) this.requestWakeLock();
             });
+            // Celular que volta do bfcache / relógio do sistema ajustado.
+            window.addEventListener('pageshow', () => this.syncFromTimestamp());
+            window.addEventListener('focus', () => this.syncFromTimestamp());
 
             window.addEventListener('pagehide', () => this.persistState());
         }
@@ -535,7 +761,10 @@
 
         start() {
             if (this.running) return;
-            if (this.remaining <= 0) this.remaining = this.durationFor(this.mode);
+            if (this.remaining <= 0) {
+                this.total = this.durationFor(this.mode);
+                this.remaining = this.total;
+            }
 
             this.running = true;
             this.endsAt = Date.now() + this.remaining;
@@ -546,6 +775,7 @@
             this.requestWakeLock();
             this.renderControls();
             this.persistState();
+            this.syncAmbient();
             this.announce(`${MODES[this.mode].label} iniciado`);
         }
 
@@ -559,6 +789,7 @@
             this.renderControls();
             this.renderTime();
             this.persistState();
+            this.syncAmbient();
             this.announce('Cronômetro pausado');
         }
 
@@ -568,13 +799,16 @@
             else this.timerId = setInterval(() => this.tick(), TICK_MS);
             // O timestamp continua sendo a fonte da verdade; ao voltar para a aba
             // syncFromTimestamp corrige qualquer throttling do navegador.
-            this.completionId = setTimeout(() => this.syncFromTimestamp(), Math.max(0, this.remaining) + 60);
+            const due = Math.max(0, this.endsAt - Date.now()) + 30;
+            if (this.deadline) this.deadline.postMessage({ cmd: 'arm', ms: due });
+            else this.completionId = setTimeout(() => this.syncFromTimestamp(), due);
         }
 
         stopLoop() {
             if (this.runtimeTicker) this.runtimeTicker.stop();
             if (this.timerId) clearInterval(this.timerId);
             if (this.completionId) clearTimeout(this.completionId);
+            if (this.deadline) this.deadline.postMessage({ cmd: 'stop' });
             this.timerId = null;
             this.completionId = null;
         }
@@ -606,10 +840,41 @@
             this.stopLoop();
             this.running = false;
             this.releaseWakeLock();
-            this.remaining = this.durationFor(this.mode);
+            this.total = this.durationFor(this.mode);
+            this.remaining = this.total;
             this.renderControls();
             this.renderTime({ jump: true });
             this.persistState();
+            this.syncAmbient();
+        }
+
+        /** +1 min no ciclo atual (rodando ou pausado). */
+        extendSession(minutes = 1) {
+            const add = minutes * 60000;
+            const max = 180 * 60000;
+            if (this.total + add > max) return;
+            this.total += add;
+            this.remaining += add;
+            if (this.running) {
+                this.endsAt += add;
+                this.startLoop();
+            }
+            this.renderTime();
+            this.persistState();
+            this.toast(`+${minutes} min`);
+        }
+
+        /** Som ambiente só durante o foco com o relógio andando. */
+        syncAmbient() {
+            const on = this.running && this.mode === 'focus' && this.settings.ambient !== 'none';
+            if (on) this.sound.startAmbient(this.settings.ambient);
+            else this.sound.stopAmbient();
+        }
+
+        disarmClearStats() {
+            clearTimeout(this.clearArmTimer);
+            this.el.clearStats.dataset.armed = 'false';
+            this.el.clearStats.textContent = 'Apagar';
         }
 
         switchMode(mode, options = {}) {
@@ -619,7 +884,8 @@
             this.running = false;
             this.releaseWakeLock();
             this.mode = mode;
-            this.remaining = this.durationFor(mode);
+            this.total = this.durationFor(mode);
+            this.remaining = this.total;
 
             this.renderMode();
             this.renderControls();
@@ -629,10 +895,14 @@
             if (options.manual) this.announce(`Modo ${MODES[mode].label}`);
 
             if (options.autoStart) this.start();
+            else this.syncAmbient();
         }
 
         skipSession() {
             const next = this.nextMode();
+            // Pular o foco ainda avança o ciclo (senão a pausa longa nunca chega),
+            // mas não conta nas estatísticas nem na tarefa.
+            if (this.mode === 'focus') this.round += 1;
             if (this.mode === 'long') this.round = 0;
             this.switchMode(next, { manual: false });
             this.renderCycle();
@@ -656,7 +926,7 @@
 
             if (finishedMode === 'focus') {
                 this.round += 1;
-                this.recordSession(this.settings.focus);
+                this.recordSession(Math.round(this.total / 60000));
                 this.creditActiveTask();
                 next = this.round % this.settings.interval === 0 ? 'long' : 'short';
             } else {
@@ -683,8 +953,10 @@
         applySettingsToTimer() {
             this.el.cycleTotal.textContent = this.settings.interval;
             this.round = clamp(this.round, 0, this.settings.interval);
-            if (!this.running) {
-                this.remaining = this.durationFor(this.mode);
+            // Ciclo intocado pega a nova duração; em andamento/pausado mantém o total.
+            if (!this.running && this.remaining === this.total) {
+                this.total = this.durationFor(this.mode);
+                this.remaining = this.total;
                 this.renderTime({ jump: true });
             }
             this.renderCycle();
@@ -760,13 +1032,30 @@
                     this.activeTaskId = next ? next.id : null;
                 }
             } else if (button.classList.contains('task-remove')) {
+                const index = this.tasks.indexOf(task);
                 this.tasks = this.tasks.filter((entry) => entry.id !== id);
+                this.removedTask = { task, index, wasActive: this.activeTaskId === id };
                 if (this.activeTaskId === id) this.activeTaskId = null;
+                this.toast(`"${task.name.slice(0, 28)}" removida`, {
+                    label: 'Desfazer',
+                    run: () => this.undoRemoveTask()
+                });
             } else if (button.classList.contains('task-name')) {
                 this.activeTaskId = task.done ? this.activeTaskId : task.id;
             }
 
             this.sound.click();
+            this.persistTasks();
+            this.persistState();
+            this.renderTasks();
+        }
+
+        undoRemoveTask() {
+            const removed = this.removedTask;
+            if (!removed) return;
+            this.removedTask = null;
+            this.tasks.splice(Math.min(removed.index, this.tasks.length), 0, removed.task);
+            if (removed.wasActive) this.activeTaskId = removed.task.id;
             this.persistTasks();
             this.persistState();
             this.renderTasks();
@@ -901,8 +1190,13 @@
             this.el.modal.hidden = true;
             document.body.style.overflow = '';
             this.el.settingsBtn.setAttribute('aria-expanded', 'false');
-            // Descarta ajustes de volume não salvos.
+            // Descarta ajustes de volume não salvos e encerra a prévia do ambiente.
             this.sound.setVolume(this.settings.volume);
+            this.sound.setAmbientVolume(this.settings.ambientVolume);
+            this.sound.setMuted(this.settings.muted);
+            clearTimeout(this.previewTimer);
+            this.syncAmbient();
+            this.disarmClearStats();
             if (this.lastFocusedElement) this.lastFocusedElement.focus();
         }
 
@@ -944,6 +1238,9 @@
             inputs.alarm.value = this.settings.alarm;
             inputs.volume.value = this.settings.volume;
             inputs.ticking.checked = this.settings.ticking;
+            inputs.ambient.value = this.settings.ambient;
+            inputs.ambientVolume.value = this.settings.ambientVolume;
+            this.el.ambientVolumeValue.textContent = `${this.settings.ambientVolume}%`;
             inputs.notifications.checked = this.settings.notifications
                 && this.notificationsSupported()
                 && Notification.permission !== 'denied';
@@ -970,11 +1267,16 @@
                 alarm: inputs.alarm.value,
                 volume: toInt(inputs.volume.value, DEFAULTS.volume, [0, 100]),
                 ticking: inputs.ticking.checked,
+                ambient: AMBIENTS.includes(inputs.ambient.value) ? inputs.ambient.value : 'none',
+                ambientVolume: toInt(inputs.ambientVolume.value, DEFAULTS.ambientVolume, [0, 100]),
                 notifications: inputs.notifications.checked
             });
 
             this.persistSettings();
             this.sound.setVolume(this.settings.volume);
+            this.sound.setAmbientVolume(this.settings.ambientVolume);
+            clearTimeout(this.previewTimer);
+            this.syncAmbient();
 
             if (this.settings.wakeLock) this.requestWakeLock();
             else this.releaseWakeLock();
@@ -1021,6 +1323,10 @@
                 case 's':
                 case 'S':
                     this.skipSession();
+                    break;
+                case '+':
+                case '=':
+                    this.extendSession(1);
                     break;
                 case '1':
                     this.switchMode('focus', { manual: true });
@@ -1070,7 +1376,7 @@
         }
 
         renderTime(options = {}) {
-            const total = this.durationFor(this.mode) || 1;
+            const total = this.total || this.durationFor(this.mode) || 1;
             const remaining = clamp(this.remaining, 0, total);
             const seconds = Math.ceil(remaining / 1000);
             const text = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
@@ -1101,7 +1407,7 @@
                precisa continuar no título (é assim que o site é achado por
                busca). BASE_TITLE vem do próprio <title>, então os dois nunca
                divergem. */
-            const title = this.running || this.remaining < this.durationFor(this.mode)
+            const title = this.running || this.remaining < this.total
                 ? `${text} · ${suffix} — ${BASE_TITLE}`
                 : BASE_TITLE;
 
@@ -1335,16 +1641,32 @@
 
         /* ------------------------- feedback ------------------------- */
 
-        toast(message) {
+        toast(message, action) {
             const node = document.createElement('div');
             node.className = 'toast';
-            node.textContent = message;
+            const text = document.createElement('span');
+            text.textContent = message;
+            node.appendChild(text);
+            // Limita a pilha: toasts antigos saem para não cobrir a tela.
+            while (this.el.toasts.children.length >= 3) this.el.toasts.firstElementChild.remove();
+            if (action) {
+                node.classList.add('has-action');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'toast-action';
+                btn.textContent = action.label;
+                btn.addEventListener('click', () => {
+                    action.run();
+                    node.remove();
+                });
+                node.appendChild(btn);
+            }
             this.el.toasts.appendChild(node);
 
             setTimeout(() => {
                 node.classList.add('is-leaving');
                 setTimeout(() => node.remove(), 300);
-            }, 2600);
+            }, action ? 5000 : 2600);
         }
 
         announce(message) {

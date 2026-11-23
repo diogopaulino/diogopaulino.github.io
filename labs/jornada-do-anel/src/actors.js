@@ -12,7 +12,10 @@
  *     ouvido ⇔  correndo ∧ d < 5 m (mesmo pelas costas)
  *     Troncos e rochas (colisores com `block`) cortam a linha de visão: o
  *     segmento cavaleiro→portador é testado contra cada círculo.
- *     Perseguição termina quando d > 1,6·alcance. Pegou ⇔ d < 1,35 m.
+ *     Perseguição: galope contido de ~5,4 m/s entre as árvores (o halfling corre
+ *     a 4,5 m/s — não dá para fugir só correndo, é preciso quebrar a linha de visão).
+ *     Sem ver nem ouvir o portador por 1,4 s (ou d > 1,6·alcance) → vai até o
+ *     último ponto onde o viu, fareja 2,4 s e volta à ronda. Pegou ⇔ d < 1,35 m.
  *   Goblin (combate)
  *     ocioso → (d < 11 m) persegue → (d < 1,25 m) golpe com preparo de 0,32 s
  *     → recupera 0,75 s. Levar um golpe: recuo de 1,6 m, atordoa 0,45 s e
@@ -273,7 +276,12 @@ export class Rider {
         this.state = 'patrol';
         // velocidades casadas com as andaduras do cavalo (o casco não patina)
         this.speed = clamp(horse.gaits?.trot?.speed ?? 3.6, 2.8, 4.2);
-        this.chaseSpeed = clamp(horse.gaits?.run?.speed ?? 7.4, 6.6, 7.6);
+        // galope contido (passada encurtada pelo kit: √(v/v_nat) ≥ 0,45, casco não patina)
+        this.chaseSpeed = clamp((horse.gaits?.run?.speed ?? 7.4) * 0.74, 5, 5.8);
+        /** s sem contato durante a perseguição · último ponto onde viu o portador */
+        this.lostT = 0;
+        this.lastX = x;
+        this.lastZ = z;
         this.vision = 16;
         this.fov = 0.62;
         this.alive = true;
@@ -285,6 +293,19 @@ export class Rider {
         this.pauseT = 0;
         /** s de "cegueira" depois de alcançar o portador: dá tempo de fugir (jogo infantil, sem castigo em cadeia). */
         this.blindT = 0;
+    }
+
+    _nearestWaypoint() {
+        let best = 0;
+        let bd = Infinity;
+        this.waypoints.forEach((w, i) => {
+            const d = Math.hypot(w.x - this.x, w.z - this.z);
+            if (d < bd) {
+                bd = d;
+                best = i;
+            }
+        });
+        return best;
     }
 
     update(dt, player, world) {
@@ -305,8 +326,20 @@ export class Rider {
         if (seen || heard) {
             this.state = 'chase';
             this.alert = 1;
-        } else if (this.state === 'chase' && dist > this.vision * 1.6) {
-            this.state = 'patrol';
+            this.lostT = 0;
+            this.lastX = player.x;
+            this.lastZ = player.z;
+        } else if (this.state === 'chase') {
+            // perseguindo sem contato: ainda vê se olhar de lado (clear), senão perde o rastro
+            if (clear && this.blindT <= 0) {
+                this.lastX = player.x;
+                this.lastZ = player.z;
+                this.lostT = Math.max(0, this.lostT - dt);
+            } else this.lostT += dt;
+            if (this.lostT > 1.4 || dist > this.vision * 1.6) {
+                this.state = 'search';
+                this.lostT = 0;
+            }
         } else if (clear && facing > 0.2) {
             // na borda do campo de visão: o medidor sobe devagar, sem disparar a perseguição
             this.alert = Math.min(0.5, this.alert + dt * 0.5);
@@ -317,6 +350,16 @@ export class Rider {
         if (this.state === 'chase') {
             tx = player.x;
             tz = player.z;
+        } else if (this.state === 'search') {
+            // vai ao último ponto visto e fareja; depois volta à ronda
+            tx = this.lastX;
+            tz = this.lastZ;
+            this.alert = Math.max(this.alert, 0.35);
+            if (Math.hypot(this.x - tx, this.z - tz) < 1.8) {
+                this.state = 'patrol';
+                this.pauseT = 2.4;
+                this.wp = this._nearestWaypoint();
+            }
         } else {
             const w = this.waypoints[this.wp];
             tx = w.x;
