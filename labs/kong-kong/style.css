@@ -253,8 +253,9 @@ body.kong-lab {
     color: var(--cream);
     font: 800 0.78rem/1 "Nunito", system-ui, sans-serif;
     backdrop-filter: blur(8px);
-    touch-action: manipulation;
+    touch-action: none;
     user-select: none;
+    -webkit-user-select: none;
 }
 
 .pad-jump {

@@ -181,6 +181,16 @@ function ensureAudio() {
         /* opcional */
     }
     audio.ctx = ctx;
+    // Buffer silencioso: destrava o contexto na cadeia síncrona do gesto (Safari iOS).
+    try {
+        const buffer = ctx.createBuffer(1, 1, ctx.sampleRate || 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        src.connect(ctx.destination);
+        src.start(0);
+    } catch (error) {
+        /* best-effort */
+    }
     audio.preamp = ctx.createGain();
     let previous = audio.preamp;
     audio.filters = EQ_BANDS.map((band) => {

@@ -45,7 +45,7 @@ import { nearestInteractable } from './npcs.js?v=12';
 import { CameraRig } from './camera.js?v=12';
 import { createMarkers } from './markers.js?v=12';
 import { Guide } from '../../shared/gfx/guide.js?v=1';
-import { createStage } from '../../shared/gfx/stage.js';
+import { createStage } from '../../shared/gfx/stage.js?v=18';
 import { pickTier, detectMobile } from '../../shared/gfx/core.js';
 
 const TMP = new THREE.Vector3();
@@ -287,10 +287,11 @@ class Game {
             knob.style.transform = 'translate(0,0)';
         };
         stick.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             stickId = e.pointerId;
             capturePointer(stick, e.pointerId);
             setFrom(e.clientX, e.clientY);
-        });
+        }, { passive: false });
         stick.addEventListener('pointermove', (e) => {
             if (stickId === e.pointerId) setFrom(e.clientX, e.clientY);
         });
@@ -302,11 +303,12 @@ class Game {
         let lx = 0;
         let ly = 0;
         lookZone?.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             lookId = e.pointerId;
             capturePointer(lookZone, e.pointerId);
             lx = e.clientX;
             ly = e.clientY;
-        });
+        }, { passive: false });
         lookZone?.addEventListener('pointermove', (e) => {
             if (lookId !== e.pointerId) return;
             this.input.lookX += e.clientX - lx;
@@ -326,22 +328,27 @@ class Game {
         // pulo no toque: segurar o botão = pulo alto, tocar rápido = pulo curto (como no teclado)
         const jumpBtn = document.getElementById('btnJump');
         jumpBtn?.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             capturePointer(jumpBtn, e.pointerId);
             this.input.jumpPressed = true;
             this.input.jumpHeld = true;
-        });
+        }, { passive: false });
         const jumpUp = () => { this.input.jumpHeld = false; };
         jumpBtn?.addEventListener('pointerup', jumpUp);
         jumpBtn?.addEventListener('pointercancel', jumpUp);
         jumpBtn?.addEventListener('lostpointercapture', jumpUp);
-        document.getElementById('btnSprint')?.addEventListener('pointerdown', () => {
+        const sprintBtn = document.getElementById('btnSprint');
+        const endSprint = () => { this.input.touchSprint = false; };
+        sprintBtn?.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             this.input.touchSprint = true;
-        });
-        document.getElementById('btnSprint')?.addEventListener('pointerup', () => {
-            this.input.touchSprint = false;
-        });
-        document.getElementById('btnSprint')?.addEventListener('pointercancel', () => {
-            this.input.touchSprint = false;
+        }, { passive: false });
+        sprintBtn?.addEventListener('pointerup', endSprint);
+        sprintBtn?.addEventListener('pointercancel', endSprint);
+        window.addEventListener('blur', () => { end(); endLook(); jumpUp(); endSprint(); });
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) return;
+            end(); endLook(); jumpUp(); endSprint();
         });
     }
 

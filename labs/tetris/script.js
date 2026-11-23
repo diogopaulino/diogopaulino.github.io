@@ -1299,11 +1299,14 @@ function bindHold(selector, action) {
     let active = false;
 
     el.addEventListener('pointerdown', event => {
+        // Safari/iOS: toque pode chegar com button === -1.
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
         event.preventDefault();
         capturePointer(el, event.pointerId);
+        audio?.unlock?.();
         active = true;
         pressAction(action);
-    });
+    }, { passive: false });
 
     const stop = () => {
         if (!active) return;
@@ -1471,6 +1474,7 @@ document.querySelectorAll('.controls button').forEach(button => {
    a peça escorregando sozinha para a parede). */
 function autoPause() {
     releaseAllInput();
+    gesture = null;
     if (state === 'playing') setState('paused');
 }
 document.addEventListener('visibilitychange', () => {

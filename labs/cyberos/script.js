@@ -71,8 +71,20 @@
       if (!actx) {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return null;
-        actx = new AC();
+        try {
+          actx = new AC({ latencyHint: 'interactive' });
+        } catch {
+          actx = new AC();
+        }
         try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
+        // Buffer silencioso: destrava o AudioContext na cadeia do gesto (Safari iOS).
+        try {
+          const buffer = actx.createBuffer(1, 1, actx.sampleRate || 22050);
+          const src = actx.createBufferSource();
+          src.buffer = buffer;
+          src.connect(actx.destination);
+          src.start(0);
+        } catch { /* best-effort */ }
       }
       if (actx.state === 'suspended') actx.resume().catch(() => {});
       return actx;

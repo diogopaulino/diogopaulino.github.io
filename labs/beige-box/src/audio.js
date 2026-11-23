@@ -15,12 +15,14 @@ export class DeskAudio {
 
     init() {
         if (this.ctx) {
-            if (this.ctx.state === 'suspended') this.ctx.resume();
+            if (this.ctx.state === 'suspended') void this.ctx.resume().catch(() => {});
             return;
         }
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
-        const ctx = new Ctx();
+        let ctx;
+        try { ctx = new Ctx({ latencyHint: 'interactive' }); }
+        catch { try { ctx = new Ctx(); } catch { return; } }
         try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
         this.ctx = ctx;
 
@@ -37,6 +39,16 @@ export class DeskAudio {
         this.amb.connect(this.master);
         this.music.connect(this.master);
         this.master.connect(ctx.destination);
+
+        // iOS: buffer silencioso na cadeia do gesto desbloqueia o contexto de vez.
+        try {
+            const buffer = ctx.createBuffer(1, 1, ctx.sampleRate || 22050);
+            const src = ctx.createBufferSource();
+            src.buffer = buffer;
+            src.connect(this.master);
+            src.start(0);
+        } catch { /* best-effort */ }
+        if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
 
         this._night();
     }

@@ -1298,7 +1298,8 @@ var init_ProductScene = __esm({
         this.height = window.innerHeight;
         this.framing = FRAMING[this.breakpoint()];
         const raw = window.devicePixelRatio || 1;
-        const cap = this.breakpoint() === "mobile" ? 1.75 : 2;
+        // iPhone DPR 3: teto 1,5 no mobile (antes 1,75 ainda pesava com o modelo PBR).
+        const cap = this.breakpoint() === "mobile" ? 1.5 : 2;
         const budget = this.breakpoint() === "mobile" ? 25e5 : 5e6;
         const byArea = Math.sqrt(budget / (this.width * this.height));
         const dpr = Math.max(1, Math.min(raw, cap, byArea));

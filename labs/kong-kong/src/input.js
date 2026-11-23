@@ -82,7 +82,7 @@ export function createInput() {
       touch[flag] = false;
       el.classList.remove('is-down');
     };
-    el.addEventListener('pointerdown', start);
+    el.addEventListener('pointerdown', start, { passive: false });
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
     el.addEventListener('lostpointercapture', end);

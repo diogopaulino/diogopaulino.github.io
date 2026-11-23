@@ -143,15 +143,22 @@ async function boot() {
     if (typeof window !== 'undefined') window.__ravi = debugApi();
 
     window.addEventListener('keydown', onKeyDown);
-    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointerdown', (event) => {
+      Audio.init?.();
+      try { canvas.setPointerCapture(event.pointerId); } catch { /* ponteiro já solto */ }
+      onPointerDown(event);
+    }, { passive: false });
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerleave', () => setHover(null));
+    canvas.addEventListener('pointercancel', () => setHover(null));
 
     let resizeTimer = 0;
-    window.addEventListener('resize', () => {
+    const scheduleFit = () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(fit, 80);
-    });
+    };
+    window.addEventListener('resize', scheduleFit);
+    window.visualViewport?.addEventListener('resize', scheduleFit);
 
     // Perdeu o foco (outra janela/app): som suspende; volta ao focar.
     window.addEventListener('blur', () => Audio.suspend());

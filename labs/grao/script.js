@@ -832,12 +832,30 @@ function bind() {
     syncRange('setting-threshold', 'threshold-label', 'sleepThresholdMg', 'mg');
     syncRange('setting-dose', 'dose-label', 'defaultDoseMg', 'mg');
 
-    $('btn-export').addEventListener('click', () => {
+    $('btn-export').addEventListener('click', async () => {
+        const filename = `grao-${new Date().toISOString().slice(0, 10)}.json`;
         const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const isAppleTouch = /iP(hone|ad|od)/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const file = typeof File !== 'undefined' ? new File([blob], filename, { type: 'application/json' }) : null;
+        // iPhone: atributo download falha com frequência — folha de compartilhamento.
+        if (file && isAppleTouch && typeof navigator.share === 'function') {
+            const payload = { files: [file], title: filename };
+            if (typeof navigator.canShare !== 'function' || navigator.canShare(payload)) {
+                try {
+                    await navigator.share(payload);
+                    toast('Histórico exportado');
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                }
+            }
+        }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `grao-${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = filename;
+        a.rel = 'noopener';
         document.body.appendChild(a);
         a.click();
         a.remove();

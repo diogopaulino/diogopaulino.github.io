@@ -20,12 +20,12 @@
  */
 
 import * as THREE from 'three';
-import { createStage } from '../../shared/gfx/stage.js';
+import { createStage } from '../../shared/gfx/stage.js?v=18';
 import { pickTier } from '../../shared/gfx/core.js';
 import { Valley } from './world.js?v=23';
 import { Player } from './player.js?v=23';
 import { Effects } from './effects.js?v=23';
-import { Input } from './input.js?v=23';
+import { Input } from './input.js?v=24';
 import { Hud } from './hud.js?v=23';
 import { NinaAudio } from './audio.js?v=23';
 import { updateFriend } from './animals.js?v=23';

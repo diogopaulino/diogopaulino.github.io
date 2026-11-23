@@ -726,18 +726,37 @@ body {
     body {
         overflow-x: hidden;
         overflow-x: clip;
+        padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
         padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
         padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
     }
 
+    header {
+        margin-bottom: 1rem;
+    }
+
     .instructions {
-        margin-top: 0.75rem;
+        margin-top: 0.5rem;
         font-size: 0.85rem;
         padding-inline: 0.75rem;
     }
 
     .game-boy {
         width: min(360px, 100%);
+    }
+
+    footer {
+        margin-top: 0.75rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.25rem;
+    }
+}
+
+@media (max-width: 768px) and (max-height: 760px) {
+    footer,
+    .instructions .keys--board {
+        display: none;
     }
 }
 

@@ -46,8 +46,8 @@ function snap(raw) {
  *   canvas usa a altura inteira (sem nada cobrindo o palco).
  */
 export function fit() {
-  const iw = window.innerWidth;
-  const ih = window.innerHeight;
+  const iw = window.visualViewport?.width || window.innerWidth;
+  const ih = window.visualViewport?.height || window.innerHeight;
 
   let top = HEADER_H;
   let sTop = snap(Math.min(iw / W, (ih - top) / H));

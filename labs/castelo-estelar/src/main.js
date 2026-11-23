@@ -20,7 +20,7 @@
  */
 
 import * as THREE from 'three';
-import { createStage } from '../../shared/gfx/stage.js';
+import { createStage } from '../../shared/gfx/stage.js?v=18';
 import { smoothstep } from '../../shared/gfx/core.js';
 import { Guide } from '../../shared/gfx/guide.js';
 import { createKingdom } from './world.js?v=7';
@@ -28,7 +28,7 @@ import { Magic } from './effects.js?v=6';
 import { CineCamera, FollowCamera, INTRO_DURATION, FAIRY } from './camera.js?v=7';
 import { FanfareAudio } from './audio.js?v=7';
 import { WalkWorld, Walker, Shards, Companion, SPAWN } from './explore.js?v=7';
-import { Input } from './input.js?v=7';
+import { Input } from './input.js?v=8';
 
 const STORAGE = 'castelo-estelar-settings';
 const params = new URLSearchParams(location.search);
@@ -617,8 +617,21 @@ class CasteloEstelar {
     }
 
     toggleFullscreen() {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
-        else document.exitFullscreen?.().catch(() => {});
+        // iOS Safari não tem Fullscreen API para páginas — no-op silencioso.
+        const root = document.documentElement;
+        const can = Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled)
+            && typeof (root.requestFullscreen || root.webkitRequestFullscreen) === 'function';
+        if (!can) return;
+        const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+        try {
+            if (isFull) {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                exit?.call(document)?.catch?.(() => {});
+            } else {
+                const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+                enter?.call(root)?.catch?.(() => {});
+            }
+        } catch { /* ignore */ }
     }
 
     /** Tudo o que depende só do tempo da abertura (serve também ao seek de depuração). */

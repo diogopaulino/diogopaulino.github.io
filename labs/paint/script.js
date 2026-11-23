@@ -1270,10 +1270,15 @@ let panning = null;
 let spaceDown = false;
 let penSeen = false;
 
+const pointerOpts = { passive: false };
+
 canvas.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'pen') penSeen = true;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
-    try { canvas.setPointerCapture(e.pointerId); } catch { /* ok */ }
+    // Capture só mouse/caneta: no iOS o capture do 1º dedo impede a pinça.
+    if (e.pointerType !== 'touch') {
+        try { canvas.setPointerCapture(e.pointerId); } catch { /* ok */ }
+    }
 
     // Segundo dedo: cancela o traço recém-começado e vira pinça (Procreate).
     const touches = Array.from(pointers.values()).filter((p) => p.type === 'touch');
@@ -1289,10 +1294,12 @@ canvas.addEventListener('pointerdown', (e) => {
             vx: view.x,
             vy: view.y
         };
+        e.preventDefault();
         return;
     }
     if (pointers.size > 1) return;
 
+    // Safari/iOS: toque chega com button 0 ou -1.
     const wantsPan = e.button === 1 || spaceDown || prefs.tool === 'hand' || (e.pointerType === 'touch' && penSeen);
     if (wantsPan) {
         e.preventDefault();
@@ -1300,7 +1307,7 @@ canvas.addEventListener('pointerdown', (e) => {
         app.classList.add('is-panning');
         return;
     }
-    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
     const pt = toDoc(e.clientX, e.clientY);
     const tool = prefs.tool;
@@ -1313,13 +1320,14 @@ canvas.addEventListener('pointerdown', (e) => {
         return;
     }
     beginStroke(e, pt);
-});
+}, pointerOpts);
 
-canvas.addEventListener('pointermove', (e) => {
+function onPointerMove(e) {
     moveCursor(e);
     if (!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
     if (pinch) {
+        e.preventDefault();
         const touches = Array.from(pointers.values()).filter((p) => p.type === 'touch');
         if (touches.length < 2) return;
         const [a, b] = touches;
@@ -1341,16 +1349,23 @@ canvas.addEventListener('pointermove', (e) => {
         return;
     }
     if (panning) {
+        e.preventDefault();
         view.x = panning.vx + (e.clientX - panning.x);
         view.y = panning.vy + (e.clientY - panning.y);
         clampPan();
         requestRender();
         return;
     }
-    if (stroke && e.pointerId === stroke.id) moveStroke(e);
-});
+    if (stroke && e.pointerId === stroke.id) {
+        e.preventDefault();
+        moveStroke(e);
+    }
+}
+// Window: dedos sem capture (iOS) continuam desenhando/pinçando fora do canvas.
+window.addEventListener('pointermove', onPointerMove, pointerOpts);
 
 function releasePointer(e) {
+    if (!pointers.has(e.pointerId)) return;
     pointers.delete(e.pointerId);
     if (pinch && Array.from(pointers.values()).filter((p) => p.type === 'touch').length < 2) {
         pinch = null;
@@ -1361,12 +1376,14 @@ function releasePointer(e) {
     }
     if (stroke && e.pointerId === stroke.id) endStroke(true);
 }
-canvas.addEventListener('pointerup', releasePointer);
-canvas.addEventListener('pointercancel', releasePointer);
+window.addEventListener('pointerup', releasePointer);
+window.addEventListener('pointercancel', releasePointer);
 canvas.addEventListener('pointerleave', (e) => {
     if (e.pointerType === 'mouse') brushCursor.classList.remove('is-visible');
 });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); }, pointerOpts);
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); }, pointerOpts);
 
 canvas.addEventListener('wheel', (e) => {
     e.preventDefault();

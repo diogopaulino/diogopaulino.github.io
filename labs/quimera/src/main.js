@@ -18,7 +18,7 @@ import {
     wrapIndex, kitIndex, randomIds, mixTitle, parseHash, toHash
 } from './config.js?v=3';
 import { Character } from './character.js?v=82';
-import { createStudio, PLINTH_TOP } from './studio.js?v=81';
+import { createStudio, PLINTH_TOP } from './studio.js?v=84';
 import { setSculptTier } from './sculpt.js';
 import { preload } from '../../shared/gfx/assets.js';
 import { StudioAudio } from './audio.js?v=83';

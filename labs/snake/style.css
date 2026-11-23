@@ -336,7 +336,7 @@ canvas {
     position: absolute;
     border-radius: 3px;
     cursor: pointer;
-    touch-action: manipulation;
+    touch-action: none;
     box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
     transition: filter 0.15s ease;
 }
@@ -649,17 +649,38 @@ canvas {
     body {
         overflow-x: hidden;
         overflow-x: clip;
+        padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
         padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
         padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+    }
+
+    header {
+        margin-bottom: 1rem;
     }
 
     .instructions {
         font-size: 0.85rem;
         padding-inline: 0.75rem;
+        margin-top: 0.5rem;
     }
 
     .handheld-device {
         width: min(320px, 100%);
+    }
+
+    /* Em retrato alto o rodapé “voltar” só empurra o aparelho para fora. */
+    footer {
+        margin-top: 0.75rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.25rem;
+    }
+}
+
+@media (max-width: 768px) and (max-height: 760px) {
+    footer,
+    .instructions .keys--board {
+        display: none;
     }
 }
 

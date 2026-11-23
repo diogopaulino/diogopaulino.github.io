@@ -201,10 +201,11 @@ export function createStage({
     let tier = software ? 'low' : pickTier(tierChoice);
     let cfg = STAGE_TIERS[tier];
     // iPhone/iPad: DPR 3 com pós-processamento derruba o fps; começa mais baixo
-    // e sobe só se o medidor de desempenho permitir.
+    // e o teto adaptativo também respeita o cap (senão o medidor sobe de volta a 2–3).
     const appleTouch = /iP(hone|ad|od)/.test(navigator.userAgent)
         || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+    const touchPrCap = appleTouch || coarse ? 1.5 : Infinity;
     if (forceLDR) {
         const has = renderer.extensions.has.bind(renderer.extensions);
         renderer.extensions.has = (n) => (/color_buffer_(half_)?float/.test(n) ? false : has(n));
@@ -332,7 +333,7 @@ export function createStage({
     let pixelRatio = Math.min(
         window.devicePixelRatio || 1,
         cfg.pixelRatio,
-        appleTouch || coarse ? 1.5 : cfg.pixelRatio
+        touchPrCap
     );
     let appliedRatio = 0;
     function resize() {
@@ -379,7 +380,7 @@ export function createStage({
             rig.sun.shadow.map = null;
         }
         stage.shadowRadius = Math.min(stage.shadowRadius, cfg.shadowRadius);
-        const limit = Math.min(window.devicePixelRatio || 1, cfg.pixelRatio);
+        const limit = Math.min(window.devicePixelRatio || 1, cfg.pixelRatio, touchPrCap);
         pixelRatio = preserveResolution ? Math.min(pixelRatio, limit) : limit;
         resize();
         for (const fn of tierListeners) fn(tier);
@@ -397,7 +398,7 @@ export function createStage({
         perf.acc = 0;
         perf.frames = 0;
         if (!adaptive) return;
-        const maxPR = Math.min(window.devicePixelRatio || 1, cfg.pixelRatio);
+        const maxPR = Math.min(window.devicePixelRatio || 1, cfg.pixelRatio, touchPrCap);
         const minPR = Math.min(0.6, maxPR);
         let next = pixelRatio;
         if (perf.fps < 42) next = Math.max(minPR, pixelRatio - 0.1);

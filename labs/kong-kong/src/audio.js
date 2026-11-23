@@ -69,6 +69,14 @@ export class KongAudio {
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.22;
       this.master.connect(this.ctx.destination);
+      // iOS: sample silencioso no gesto libera o contexto de vez.
+      try {
+        const silent = this.ctx.createBuffer(1, 1, this.ctx.sampleRate || 22050);
+        const src = this.ctx.createBufferSource();
+        src.buffer = silent;
+        src.connect(this.master);
+        src.start(0);
+      } catch { /* best-effort */ }
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
     return this.ctx;

@@ -388,11 +388,12 @@ class App {
                 if (knob) knob.style.transform = 'translate(0,0)';
             };
             stick.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
                 pid = e.pointerId;
-                stick.setPointerCapture?.(e.pointerId);
+                try { stick.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
                 move(e);
-            });
-            stick.addEventListener('pointermove', (e) => { if (e.pointerId === pid) move(e); });
+            }, { passive: false });
+            stick.addEventListener('pointermove', (e) => { if (e.pointerId === pid) move(e); }, { passive: false });
             stick.addEventListener('pointerup', end);
             stick.addEventListener('pointercancel', end);
             stick.addEventListener('lostpointercapture', end);
@@ -409,11 +410,12 @@ class App {
                     this.rig.skipIntro();
                     return;
                 }
+                e.preventDefault();
                 active = e.pointerId;
                 lx = e.clientX;
                 ly = e.clientY;
-                el.setPointerCapture?.(e.pointerId);
-            });
+                try { el.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
+            }, { passive: false });
             el.addEventListener('pointermove', (e) => {
                 if (active !== e.pointerId || this.state !== 'playing' || this.paused) return;
                 const dx = e.clientX - lx;

@@ -85,6 +85,15 @@ function ensure() {
     noiseBuf = ctx.createBuffer(1, frames, ctx.sampleRate);
     const data = noiseBuf.getChannelData(0);
     for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+
+    // iOS: sample silencioso no gesto libera o contexto de vez.
+    try {
+      const silent = ctx.createBuffer(1, 1, ctx.sampleRate || 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = silent;
+      src.connect(master);
+      src.start(0);
+    } catch { /* best-effort */ }
   }
   if (ctx.state === 'suspended') ctx.resume()?.catch?.(() => {});
   return ctx;

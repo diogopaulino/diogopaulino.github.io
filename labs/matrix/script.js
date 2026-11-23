@@ -84,7 +84,10 @@
     let lastTime = 0;
     // Qualidade adaptativa: se o frame não fecha em ~40 fps, a resolução interna
     // cai em degraus (nunca abaixo de 1 px de canvas por px de CSS).
-    let qualityScale = 1;
+    // iPhone: começa mais baixo (DPR 3 estoura GPU); adaptQuality continua baixando se precisar.
+    const isAppleTouch = /iP(hone|ad|od)/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    let qualityScale = isAppleTouch ? 0.75 : 1;
     let perfAccum = 0;
     let perfFrames = 0;
     let perfStrikes = 0;
@@ -272,7 +275,9 @@
     /* ------------------------------------------------------------------ */
 
     function resize() {
-        dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2) * qualityScale);
+        // Cap de DPR no iPhone: 3× enche a GPU sem ganho perceptível na chuva.
+        const dprCap = isAppleTouch ? 1.5 : 2;
+        dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, dprCap) * qualityScale);
         width = Math.max(1, Math.round(window.innerWidth * dpr));
         height = Math.max(1, Math.round(window.innerHeight * dpr));
 
@@ -602,7 +607,11 @@
             if (actx) return actx;
             const AC = window.AudioContext || window.webkitAudioContext;
             if (!AC) return null;
-            actx = new AC();
+            try {
+                actx = new AC({ latencyHint: 'interactive' });
+            } catch (err) {
+                try { actx = new AC(); } catch (err2) { return null; }
+            }
             try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
             master = actx.createGain();
             master.gain.value = 0;
@@ -610,9 +619,22 @@
             return actx;
         }
 
+        function unlock() {
+            if (!ensure()) return;
+            try {
+                const buffer = actx.createBuffer(1, 1, actx.sampleRate || 22050);
+                const src = actx.createBufferSource();
+                src.buffer = buffer;
+                src.connect(master || actx.destination);
+                src.start(0);
+            } catch (err) { /* best-effort */ }
+            if (actx.state === 'suspended') void actx.resume().catch(() => {});
+        }
+
         function start() {
             if (!ensure()) return;
-            if (actx.state === 'suspended') actx.resume();
+            unlock();
+            if (actx.state === 'suspended') void actx.resume().catch(() => {});
             if (nodes.length) {
                 master.gain.setTargetAtTime(0.09, actx.currentTime, 0.6);
                 return;

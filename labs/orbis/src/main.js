@@ -168,8 +168,10 @@ class Orbis {
             this.showLoadProblem('Seu navegador não conseguiu iniciar o WebGL. Ative a aceleração de hardware e tente de novo.');
             return;
         }
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.pr, 2));
+        const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.pr, coarse ? 1.5 : 2));
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); });
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.08;
@@ -748,9 +750,19 @@ class Orbis {
     }
 
     toggleFullscreen() {
+        const root = document.documentElement;
+        const can = Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled)
+            && typeof (root.requestFullscreen || root.webkitRequestFullscreen) === 'function';
+        if (!can) return;
+        const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
         try {
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen?.()?.catch?.(() => {});
-            else document.exitFullscreen?.()?.catch?.(() => {});
+            if (isFull) {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                exit?.call(document)?.catch?.(() => {});
+            } else {
+                const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+                enter?.call(root)?.catch?.(() => {});
+            }
         } catch { /* iOS sem API de tela cheia */ }
     }
 
@@ -843,7 +855,12 @@ class Orbis {
             this.updateViewOffset();
         });
         on('#forgeClose', 'click', () => this.closeForge());
-        on('#fullscreen', 'click', () => this.toggleFullscreen());
+        {
+            const fsBtn = $('#fullscreen');
+            const canFs = Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+            if (fsBtn && !canFs) fsBtn.hidden = true;
+            else on('#fullscreen', 'click', () => this.toggleFullscreen());
+        }
         on('#retryBtn', 'click', () => window.location.reload());
         on('#sliders', 'input', (e) => {
             const key = e.target.dataset.key;
@@ -925,7 +942,8 @@ class Orbis {
         const h = window.innerHeight;
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
-        const pr = Math.min(window.devicePixelRatio, this.quality.pr, 2);
+        const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+        const pr = Math.min(window.devicePixelRatio, this.quality.pr, coarse ? 1.5 : 2);
         this.renderer.setPixelRatio(pr);
         this.renderer.setSize(w, h);
         this.system.setPixelRatio(pr);

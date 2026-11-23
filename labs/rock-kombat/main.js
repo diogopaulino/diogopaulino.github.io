@@ -715,7 +715,9 @@ bindKeyboard(playerInput, {
   }
 });
 
-addEventListener('keydown', () => audio.ensure(), { once: true });
+const unlockAudio = () => audio.ensure();
+addEventListener('keydown', unlockAudio, { once: true });
+addEventListener('pointerdown', unlockAudio, { once: true, capture: true });
 bindTouch(playerInput, () => arenaActive() && !paused);
 addEventListener('blur', () => playerInput.clear());
 reducedMotion.addEventListener('change', () => {

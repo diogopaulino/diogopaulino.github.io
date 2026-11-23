@@ -644,10 +644,10 @@ function buildCard(item) {
             <div class="card-status"></div>
         </div>
         <div class="card-actions">
-            <a class="dl-btn" data-act="download">
+            <button type="button" class="dl-btn" data-act="download" aria-label="Baixar imagem">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 19h14"/></svg>
                 <span>Baixar</span>
-            </a>
+            </button>
             <button type="button" class="remove-btn" data-act="remove" aria-label="Remover imagem">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>

@@ -111,6 +111,9 @@ header[data-lab-header] .subtitle {
   image-rendering: crisp-edges;
   background: #000;
   cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 #hud {

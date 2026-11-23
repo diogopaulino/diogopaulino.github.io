@@ -67,6 +67,7 @@ syncCamera();
 
 if ('ResizeObserver' in window) new ResizeObserver(resizeCanvas).observe(canvas);
 else window.addEventListener('resize', resizeCanvas);
+window.visualViewport?.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 /* ---------- som ---------- */

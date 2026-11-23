@@ -121,7 +121,7 @@ export class Input {
 
         const start = (e) => {
             this.touchOrigin = { id: e.pointerId, x: e.clientX };
-            steerZone.setPointerCapture?.(e.pointerId);
+            try { steerZone.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
             e.preventDefault();
         };
 
@@ -138,8 +138,9 @@ export class Input {
             this.touchSteer = 0;
         };
 
-        steerZone.addEventListener('pointerdown', start);
-        steerZone.addEventListener('pointermove', move);
+        // Safari iOS: preventDefault em toque exige {passive:false}, senão o scroll “rouba” o leme.
+        steerZone.addEventListener('pointerdown', start, { passive: false });
+        steerZone.addEventListener('pointermove', move, { passive: false });
         steerZone.addEventListener('pointerup', end);
         steerZone.addEventListener('pointercancel', end);
 
@@ -147,6 +148,7 @@ export class Input {
             const control = btn.dataset.control;
             const down = (e) => {
                 e.preventDefault();
+                try { btn.setPointerCapture?.(e.pointerId); } catch { /* ok */ }
                 btn.dataset.active = 'true';
                 if (control === 'throw') {
                     this.firePressed = true;
@@ -166,10 +168,14 @@ export class Input {
                 if (control === 'throw') this.fireHeld = false;
                 else if (control === 'boost') this.touchBoost = false;
             };
-            btn.addEventListener('pointerdown', down);
+            btn.addEventListener('pointerdown', down, { passive: false });
             btn.addEventListener('pointerup', up);
             btn.addEventListener('pointerleave', up);
             btn.addEventListener('pointercancel', up);
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) this._onBlur();
         });
     }
 

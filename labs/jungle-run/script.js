@@ -700,7 +700,10 @@ class JungleRun {
         });
 
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden && this.state === 'playing') this.pauseGame();
+            if (document.hidden) {
+                this.releaseInputs();
+                if (this.state === 'playing') this.pauseGame();
+            }
             // LabRuntime.bindPixiTicker reinicia o ticker ao voltar; se ainda
             // estamos pausados, mantém parado até o resume explícito.
             else if (!document.hidden && this.state === 'paused' && this.app?.ticker) {
@@ -738,16 +741,23 @@ class JungleRun {
 
         // Toque em qualquer ponto livre da cena = pular (segurar = pulo alto).
         // Os botões do pad ficam por cima e continuam com a própria função.
-        const tapJumpRelease = () => { this.touch.tap = false; };
+        const tapJumpRelease = (event) => {
+            if (event && this._tapPointerId != null && event.pointerId !== this._tapPointerId) return;
+            this._tapPointerId = null;
+            this.touch.tap = false;
+        };
         this.canvas.addEventListener('pointerdown', (event) => {
             if (this.state !== 'playing' || event.pointerType === 'mouse') return;
             event.preventDefault();
+            this.audio?.lab?.unlock?.();
+            this._tapPointerId = event.pointerId;
+            try { this.canvas.setPointerCapture(event.pointerId); } catch { /* ponteiro já solto */ }
             this.touch.tap = true;
             this.jumpBufferFrames = CONFIG.JUMP_BUFFER_FRAMES;
-        });
+        }, { passive: false });
         this.canvas.addEventListener('pointerup', tapJumpRelease);
         this.canvas.addEventListener('pointercancel', tapJumpRelease);
-        this.canvas.addEventListener('pointerleave', tapJumpRelease);
+        this.canvas.addEventListener('lostpointercapture', tapJumpRelease);
 
         this.bindHoldButton('leftBtn', 'left');
         this.bindHoldButton('rightBtn', 'right');
@@ -759,7 +769,10 @@ class JungleRun {
     bindHoldButton(id, control) {
         const button = document.getElementById(id);
         const activate = (event) => {
+            // Safari/iOS: toque pode chegar com button === -1.
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
             event.preventDefault();
+            this.audio?.lab?.unlock?.();
             this.touch[control] = true;
             if (control === 'jump') this.jumpBufferFrames = CONFIG.JUMP_BUFFER_FRAMES;
             button.classList.add('is-active');
@@ -778,7 +791,7 @@ class JungleRun {
             button.classList.remove('is-active');
         };
 
-        button.addEventListener('pointerdown', activate);
+        button.addEventListener('pointerdown', activate, { passive: false });
         button.addEventListener('pointerup', release);
         button.addEventListener('pointercancel', release);
         button.addEventListener('lostpointercapture', release);

@@ -83,10 +83,11 @@ export class Input {
             if (!el) return;
             const on = (e) => {
                 e.preventDefault();
+                try { el.setPointerCapture?.(e.pointerId); } catch { /* ok */ }
                 setter(true);
             };
             const off = () => setter(false);
-            el.addEventListener('pointerdown', on);
+            el.addEventListener('pointerdown', on, { passive: false });
             el.addEventListener('pointerup', off);
             el.addEventListener('pointercancel', off);
             el.addEventListener('pointerleave', off);
@@ -122,7 +123,7 @@ export class Input {
                 r: Math.min(rect.width, rect.height) * 0.42
             };
             this._steer(e);
-        });
+        }, { passive: false });
         stick.addEventListener('pointermove', (e) => {
             if (this.stickId === e.pointerId) this._steer(e);
         });
@@ -134,6 +135,15 @@ export class Input {
         };
         stick.addEventListener('pointerup', end);
         stick.addEventListener('pointercancel', end);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) return;
+            this.stickId = null;
+            this.touchX = this.touchY = 0;
+            this.touchCam = 0;
+            this.jumpDown = false;
+            this._touchCrouch = false;
+            this._updateKnob(0, 0);
+        });
     }
 
     _steer(e) {

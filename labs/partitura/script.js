@@ -984,13 +984,19 @@ function setupVirtualKeyboard() {
   refreshKeyboardLabels();
 
   // Multitoque: cada ponteiro toca a tecla em que caiu.
+  // passive:false — Safari iOS ignora preventDefault em listeners passivos.
+  const kbOpts = { passive: false };
   kb.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     const key = e.target.closest('[data-pitch]');
     if (!key) return;
     e.preventDefault();
     handleNoteInput(key.dataset.pitch, e);
-  });
+  }, kbOpts);
+  kb.addEventListener('touchstart', (e) => {
+    const key = e.target.closest && e.target.closest('[data-pitch]');
+    if (key) e.preventDefault();
+  }, kbOpts);
   kb.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 

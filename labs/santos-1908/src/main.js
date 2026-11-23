@@ -149,8 +149,15 @@ class Santos1908 {
             }
             if (e.code === 'KeyM') this.toggleMute();
             if (e.code === 'KeyF') {
-                if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
-                else document.exitFullscreen?.();
+                const root = document.documentElement;
+                const can = Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled)
+                    && typeof (root.requestFullscreen || root.webkitRequestFullscreen) === 'function';
+                if (!can) return;
+                const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+                try {
+                    if (isFull) (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+                    else (root.requestFullscreen || root.webkitRequestFullscreen)?.call(root);
+                } catch { /* iOS sem API */ }
             }
         });
         window.addEventListener('resize', () => this.resize());
@@ -183,8 +190,13 @@ class Santos1908 {
             const software = detectSoftwareGL(renderer);
             this.tier = software ? 'low' : pickTier(this.settings.quality);
             this.quality = QUALITY[this.tier];
-            this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.quality.pr);
+            const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+            this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.quality.pr, coarse ? 1.5 : this.quality.pr);
             renderer.setPixelRatio(this.pixelRatio);
+            this.canvas.addEventListener('webglcontextlost', (e) => {
+                e.preventDefault();
+                if (this.state === 'playing') this.togglePause();
+            });
             renderer.setSize(window.innerWidth, window.innerHeight, false);
             renderer.shadowMap.enabled = this.quality.shadows;
             renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -394,7 +406,10 @@ class Santos1908 {
         if (this.settings.quality !== 'auto') return;
         let next = this.pixelRatio;
         if (fps < 42) next = Math.max(0.7, next - 0.1);
-        else if (fps > 57) next = Math.min(Math.min(window.devicePixelRatio || 1, this.quality.pr), next + 0.05);
+        else if (fps > 57) {
+            const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+            next = Math.min(window.devicePixelRatio || 1, this.quality.pr, coarse ? 1.5 : this.quality.pr, next + 0.05);
+        }
         if (Math.abs(next - this.pixelRatio) < 0.04) return;
         this.pixelRatio = next;
         this.renderer.setPixelRatio(next);

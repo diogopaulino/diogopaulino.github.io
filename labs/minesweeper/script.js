@@ -323,6 +323,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const cell = event.target.closest('.cell');
         // Safari/iOS: toque pode chegar com button === -1; clique direito usa contextmenu.
         if (!cell || gameOver || (event.pointerType === 'mouse' && event.button !== 0) || press) return;
+        event.preventDefault();
+        audio?.unlock?.();
         const r = +cell.dataset.r, c = +cell.dataset.c;
         capturePointer(cell, event.pointerId);
         press = { id: event.pointerId, r, c, x: event.clientX, y: event.clientY, held: false };
@@ -350,6 +352,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (held || gameOver) return;
         if (isChord) chord(r, c);
         else (flagMode ? handleRightClick : handleClick)(r, c);
+    });
+    boardElement.addEventListener('pointercancel', (event) => {
+        if (press?.id === event.pointerId) endPress();
     });
     boardElement.addEventListener('lostpointercapture', (event) => {
         if (press?.id === event.pointerId) endPress();
@@ -773,6 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let timerPausedByTab = false;
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
+            endPress();
             timerPausedByTab = timerInterval !== null;
             stopTimer();
         } else if (timerPausedByTab && !gameOver && !firstClick) {
@@ -780,6 +786,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timerPausedByTab = false;
         }
     });
+    window.addEventListener('blur', () => endPress());
 
     flagToggle?.addEventListener('click', () => setFlagMode(!flagMode));
 

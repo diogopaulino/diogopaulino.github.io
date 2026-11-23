@@ -566,9 +566,13 @@ body {
 }
 
 /* Números proporcionais à célula (no celular a célula passa de 40px). */
+.game-board {
+    touch-action: none;
+}
+
 .cell {
     font-size: calc(var(--cell-size) * 0.56);
-    touch-action: manipulation;
+    touch-action: none;
     user-select: none;
     -webkit-user-select: none;
 }
@@ -617,9 +621,23 @@ body {
 
 @media (pointer: coarse) {
     .face-btn {
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         font-size: 22px;
+    }
+
+    /* Caixa Win95 continua 15px visualmente; o rótulo já tem 44px de altura. */
+    .win-check input {
+        position: relative;
+    }
+
+    .win-check input::before {
+        content: '';
+        position: absolute;
+        inset: 50% auto auto 50%;
+        width: var(--touch-target, 44px);
+        height: var(--touch-target, 44px);
+        transform: translate(-50%, -50%);
     }
 }
 

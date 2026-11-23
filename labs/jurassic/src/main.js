@@ -41,7 +41,7 @@
  */
 
 import * as THREE from 'three';
-import { createStage } from '../../shared/gfx/stage.js';
+import { createStage } from '../../shared/gfx/stage.js?v=18';
 import { clamp, damp, smoothstep } from '../../shared/gfx/core.js';
 import { STORAGE_KEY, QUALITY, CAMERA, WORLD, SPECIES, DAY_STOPS, REX, JEEP } from './config.js?v=23';
 import { Input } from './input.js?v=23';

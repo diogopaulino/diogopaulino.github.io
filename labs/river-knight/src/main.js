@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { createStage } from '../../shared/gfx/stage.js';
+import { createStage } from '../../shared/gfx/stage.js?v=18';
 
 import {
     QUALITY,
@@ -27,8 +27,8 @@ import { Player } from './player.js?v=60';
 import { createCastle } from './castle.js?v=60';
 import { BossBarge } from './boss.js?v=60';
 import { Hud } from './hud.js?v=60';
-import { Input } from './input.js?v=60';
-import { GameAudio } from './audio.js?v=60';
+import { Input } from './input.js?v=61';
+import { GameAudio } from './audio.js?v=61';
 import { centerX, halfWidth } from './river.js?v=60';
 import { clamp, damp, detectTouch, formatTime, randRange } from './utils.js?v=60';
 

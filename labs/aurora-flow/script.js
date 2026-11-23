@@ -327,7 +327,8 @@ function sizeLayer(layer) {
 function resize() {
     width = window.innerWidth;
     height = window.innerHeight;
-    dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
+    // iPhone: 1.25× já cobre a tela; acima disso a aurora vira thermal throttle.
+    dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.25 : 2);
     sizeLayer(canvas);
     sizeLayer(sky);
     sizeLayer(land);
@@ -1612,22 +1613,44 @@ document.getElementById('glow')?.addEventListener('input', (e) => {
     document.getElementById('glowValue').textContent = e.target.value + '%';
 });
 
+function canFullscreen() {
+    return Boolean(
+        document.fullscreenEnabled || document.webkitFullscreenEnabled
+    ) && typeof (document.documentElement.requestFullscreen
+        || document.documentElement.webkitRequestFullscreen) === 'function';
+}
+
 function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
+    if (!canFullscreen()) return;
+    const root = document.documentElement;
+    const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    if (!isFull) {
+        const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+        if (enter) {
+            const p = enter.call(root);
+            if (p && p.catch) p.catch(() => {});
+        }
     } else {
-        document.exitFullscreen();
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) exit.call(document);
     }
 }
 
-document.getElementById('fullscreen')?.addEventListener('click', toggleFullscreen);
-document.addEventListener('fullscreenchange', () => {
-    const on = !!document.fullscreenElement;
+const fullscreenBtn = document.getElementById('fullscreen');
+if (fullscreenBtn) {
+    // iOS Safari: Fullscreen API de página não existe — esconde o botão no-op.
+    if (!canFullscreen()) fullscreenBtn.hidden = true;
+    else fullscreenBtn.addEventListener('click', toggleFullscreen);
+}
+function syncFullscreenIcon() {
+    const on = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
     const enter = document.querySelector('.fullscreen-enter');
     const exit = document.querySelector('.fullscreen-exit');
     if (enter) enter.hidden = on;
     if (exit) exit.hidden = !on;
-});
+}
+document.addEventListener('fullscreenchange', syncFullscreenIcon);
+document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
 
 document.addEventListener('keydown', (e) => {
     const tag = document.activeElement?.tagName;
@@ -1643,7 +1666,7 @@ document.addEventListener('keydown', (e) => {
     } else if (key === 's') {
         saveImage();
     } else if (key === 'f') {
-        toggleFullscreen();
+        if (fullscreenBtn && !fullscreenBtn.hidden) toggleFullscreen();
     } else if (key === 'c') {
         setTuneOpen(tunePanel.hidden);
     } else if (key === 'm') {

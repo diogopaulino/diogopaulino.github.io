@@ -93,9 +93,9 @@ export class InputManager {
             const rect = stick.getBoundingClientRect();
             originX = rect.left + rect.width / 2;
             originY = rect.top + rect.height / 2;
-            stick.setPointerCapture?.(e.pointerId);
+            try { stick.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
             stick.classList.add('is-active');
-        });
+        }, { passive: false });
 
         on(stick, 'pointermove', (e) => {
             if (e.pointerId !== stickId) return;
@@ -114,7 +114,7 @@ export class InputManager {
             this.touch.x = (dx / STICK_RADIUS) * k;
             this.touch.z = (dy / STICK_RADIUS) * k;
             if (knob) knob.style.transform = `translate(${dx}px, ${dy}px)`;
-        });
+        }, { passive: false });
 
         on(stick, 'pointerup', stickEnd);
         on(stick, 'pointercancel', stickEnd);
@@ -136,8 +136,8 @@ export class InputManager {
             lookId = e.pointerId;
             lastX = e.clientX;
             lastY = e.clientY;
-            lookZone.setPointerCapture?.(e.pointerId);
-        });
+            try { lookZone.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
+        }, { passive: false });
 
         on(lookZone, 'pointermove', (e) => {
             if (e.pointerId !== lookId || !this.enabled) return;
@@ -157,10 +157,11 @@ export class InputManager {
 
             on(btn, 'pointerdown', (e) => {
                 e.preventDefault();
+                try { btn.setPointerCapture?.(e.pointerId); } catch { /* ok */ }
                 btn.classList.add('is-active');
                 this.applyTouchAction(action, true);
                 if (toggle) btn.setAttribute('aria-pressed', String(this.touch[action]));
-            });
+            }, { passive: false });
 
             const release = () => {
                 btn.classList.remove('is-active');
@@ -170,6 +171,10 @@ export class InputManager {
             on(btn, 'pointerup', release);
             on(btn, 'pointercancel', release);
             on(btn, 'pointerleave', release);
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) this.release();
         });
 
         this.touch.active = true;
