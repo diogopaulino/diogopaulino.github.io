@@ -26,7 +26,7 @@
  */
 
 import * as THREE from 'three';
-import { createStage, STAGE_TIERS } from '../../shared/gfx/stage.js';
+import { createStage, STAGE_TIERS } from '../../shared/gfx/stage.js?v=18';
 import { CHAPTERS, QUALITY, STORAGE_KEY, PLAYER, STORY, ROOT_ORDER, ROOT_NAMES } from './config.js?v=22';
 import { clamp, detectTouch, formatTime, lerp, damp, smoothstep } from './utils.js?v=22';
 import { Input } from './input.js?v=22';
@@ -348,10 +348,11 @@ class Game {
             knob.style.transform = 'translate(0,0)';
         };
         stick.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             stickId = e.pointerId;
             capturePointer(stick, e.pointerId);
             setFrom(e.clientX, e.clientY);
-        });
+        }, { passive: false });
         stick.addEventListener('pointermove', (e) => {
             if (stickId === e.pointerId) setFrom(e.clientX, e.clientY);
         });
@@ -363,11 +364,12 @@ class Game {
         let lx = 0;
         let ly = 0;
         lookZone?.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             lookId = e.pointerId;
             capturePointer(lookZone, e.pointerId);
             lx = e.clientX;
             ly = e.clientY;
-        });
+        }, { passive: false });
         lookZone?.addEventListener('pointermove', (e) => {
             if (lookId !== e.pointerId) return;
             /* Sem o guarda, o arrasto durante a abertura do capítulo se
@@ -393,7 +395,7 @@ class Game {
                 e.preventDefault();
                 capturePointer(el, e.pointerId);
                 fn();
-            });
+            }, { passive: false });
             return el;
         };
 
@@ -418,6 +420,13 @@ class Game {
         window.addEventListener('blur', () => {
             endSprint();
             end();
+            endLook();
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) return;
+            endSprint();
+            end();
+            endLook();
         });
     }
 

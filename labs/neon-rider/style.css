@@ -49,6 +49,7 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: clip;
+    overflow-x: hidden;
     overflow-x: clip;
     overscroll-behavior: none;
     background: var(--ink-deep);

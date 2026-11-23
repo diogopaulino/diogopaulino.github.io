@@ -59,7 +59,13 @@ const QUALITY = {
 };
 
 function isMobile() {
-    return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 720;
+    // iPadOS 13+ manda UA de Macintosh; maxTouchPoints distingue do Mac real.
+    const appleTouch = /iP(hone|ad|od)/i.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return appleTouch
+        || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+        || window.innerWidth < 720
+        || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
 }
 
 
@@ -299,7 +305,9 @@ class Atelier {
         }
 
         this.quality = pickQuality(this.settings.quality);
-        this.engine.setHardwareScalingLevel(1 / Math.min(devicePixelRatio || 1, this.quality.pr));
+        const touchCap = isMobile() ? 1.5 : this.quality.pr;
+        this.engine.setHardwareScalingLevel(1 / Math.min(devicePixelRatio || 1, this.quality.pr, touchCap));
+        this.canvas.addEventListener('webglcontextlost', (e) => e.preventDefault());
 
         // Câmera orbital elegante. Radius maior + FOV mais fechado do que o
         // padrão do Babylon (0.8) achatam a perspectiva: sem isso, a casa mais
@@ -662,9 +670,10 @@ class Atelier {
         this.pointerPosition(e);
         this.renderDirty = true;
         this.cameraTransition = null;
-        if (e.button !== 0 || document.body.dataset.state !== 'play' || this.busy || this.pendingPromo || this.playIsOver()) return;
+        // Safari/iOS: toque pode chegar com button === -1.
+        if ((e.pointerType === 'mouse' && e.button !== 0) || document.body.dataset.state !== 'play' || this.busy || this.pendingPromo || this.playIsOver()) return;
         this.canvas.focus({ preventScroll: true });
-        this.canvas.setPointerCapture(e.pointerId);
+        try { this.canvas.setPointerCapture(e.pointerId); } catch { /* ponteiro já solto */ }
         this.drag = { x: e.clientX, y: e.clientY, active: true, mesh: null, origin: null, square: -1 };
         const hit = this.hit();
         const piece = this.game.board[hit];
@@ -1160,7 +1169,7 @@ class Atelier {
         }
         applyShadowQuality(window.BABYLON, this.lights, this.quality);
         this.world.reflection.setEnabled(this.quality.reflections);
-        this.renderScale = Math.min(devicePixelRatio || 1, this.quality.pr);
+        this.renderScale = Math.min(devicePixelRatio || 1, this.quality.pr, isMobile() ? 1.5 : this.quality.pr);
         this.engine.setHardwareScalingLevel(1 / this.renderScale);
         this.scene.shadowsEnabled = this.quality.shadows;
         this.lights.shadowGen.mapSize = this.quality.shadowMap;

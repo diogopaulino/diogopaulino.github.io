@@ -11,7 +11,7 @@
  * Tema claro/escuro do site troca a cor do ciclorama, o HDRI (overcast/dusk) e as luzes.
  */
 import * as THREE from 'three';
-import { createStage } from '../../shared/gfx/stage.js';
+import { createStage } from '../../shared/gfx/stage.js?v=18';
 import { applyHDRI, pbrSet, tiledTexture } from '../../shared/gfx/assets.js';
 import { revolve, loop, mesh, xf } from './sculpt.js';
 

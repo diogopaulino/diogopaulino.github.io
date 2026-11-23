@@ -1,5 +1,6 @@
 /* Lab shell overrides — não importar shared.css (conflita com o stage fixo) */
 html {
+  overflow-x: hidden;
   overflow-x: clip;
 }
 

@@ -760,6 +760,9 @@
   function bindPointer() {
     const piano = ui.piano;
     const pointerNote = new Map();
+    // passive:false — sem isso o Safari iOS ignora preventDefault e o scroll
+    // come o toque; setPointerCapture em touch quebra acordes multitoque.
+    const opts = { passive: false };
 
     const keyAt = (x, y) => {
       const el = document.elementFromPoint(x, y);
@@ -783,6 +786,7 @@
     };
 
     const release = (e) => {
+      if (!pointerNote.has(e.pointerId)) return;
       const prev = pointerNote.get(e.pointerId);
       pointerNote.delete(e.pointerId);
       if (prev != null) noteOff(prev, `p:${e.pointerId}`);
@@ -791,16 +795,23 @@
     piano.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
-      try { piano.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+      // Capture só mouse/caneta — no iOS o capture do 1º dedo engole os demais.
+      if (e.pointerType !== 'touch') {
+        try { piano.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+      }
       update(e);
-    });
-    piano.addEventListener('pointermove', (e) => {
+    }, opts);
+    // Move/up no window: dedos sem capture continuam rastreáveis fora da tecla.
+    window.addEventListener('pointermove', (e) => {
       if (pointerNote.has(e.pointerId) || piano.hasPointerCapture(e.pointerId)) update(e);
-    });
-    piano.addEventListener('pointerup', release);
-    piano.addEventListener('pointercancel', release);
+    }, opts);
+    window.addEventListener('pointerup', release);
+    window.addEventListener('pointercancel', release);
     piano.addEventListener('lostpointercapture', release);
     piano.addEventListener('contextmenu', (e) => e.preventDefault());
+    // Cinto: bloqueia scroll/zoom nativo mesmo se o Pointer Event falhar.
+    piano.addEventListener('touchstart', (e) => { e.preventDefault(); }, opts);
+    piano.addEventListener('touchmove', (e) => { e.preventDefault(); }, opts);
 
     ui.releaseAllPointers = () => {
       pointerNote.clear();

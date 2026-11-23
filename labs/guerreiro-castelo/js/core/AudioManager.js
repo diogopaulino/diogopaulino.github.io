@@ -47,12 +47,21 @@ export class AudioManager {
         }
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
-        this.ctx = new Ctx();
+        try { this.ctx = new Ctx({ latencyHint: 'interactive' }); }
+        catch { this.ctx = new Ctx(); }
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
         /* ruído branco reaproveitado por duração (passos e impactos tocam toda hora) */
         this._noise = new Map();
         this.master = this.ctx.createGain();
         this.master.gain.value = this.muted ? 0 : this.volume.master;
         this.master.connect(this.ctx.destination);
+        try {
+            const buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate || 22050);
+            const src = this.ctx.createBufferSource();
+            src.buffer = buffer;
+            src.connect(this.master);
+            src.start(0);
+        } catch { /* best-effort */ }
 
         for (const name of ['music', 'ambient', 'sfx', 'dialogue']) {
             const g = this.ctx.createGain();

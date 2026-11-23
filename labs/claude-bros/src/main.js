@@ -300,11 +300,13 @@ window.addEventListener('keyup', (event) => {
 });
 
 // Perdeu o foco com tecla presa: solta tudo para o personagem não correr sozinho.
-window.addEventListener('blur', () => {
+function releaseHeldKeys() {
     game.keys.left = false;
     game.keys.right = false;
     game.releaseJump();
-});
+    document.querySelectorAll('.touch-btn.is-active').forEach((btn) => btn.classList.remove('is-active'));
+}
+window.addEventListener('blur', releaseHeldKeys);
 
 /* Botões de toque em pointer events: um só caminho cobre dedo, caneta e mouse.
    `setPointerCapture` mantém o botão pressionado mesmo se o dedo escorregar. */
@@ -312,18 +314,24 @@ function bindHold(id, onPress, onRelease) {
     const el = document.getElementById(id);
     if (!el) return;
     const release = (event) => {
-        if (event) el.releasePointerCapture?.(event.pointerId);
+        if (event) {
+            try { el.releasePointerCapture?.(event.pointerId); } catch { /* ok */ }
+        }
         el.classList.remove('is-active');
         onRelease?.();
     };
     el.addEventListener('pointerdown', (event) => {
+        // Safari/iOS: toque pode chegar com button === -1.
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
         event.preventDefault();
-        el.setPointerCapture?.(event.pointerId);
+        audio?.unlock?.();
+        try { el.setPointerCapture?.(event.pointerId); } catch { /* ponteiro já solto */ }
         el.classList.add('is-active');
         onPress();
-    });
+    }, { passive: false });
     el.addEventListener('pointerup', release);
     el.addEventListener('pointercancel', release);
+    el.addEventListener('lostpointercapture', release);
     el.addEventListener('contextmenu', (event) => event.preventDefault());
 }
 
@@ -426,6 +434,7 @@ function draw(dt) {
 // Sair da aba pausa em vez de deixar o jogador morrer sozinho; cancela o rAF.
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
+        releaseHeldKeys();
         if (game.state === 'playing') togglePause();
         if (rafId) {
             cancelAnimationFrame(rafId);
@@ -508,6 +517,7 @@ async function boot() {
     };
     new ResizeObserver(resize).observe(stageEl);
     window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+    window.visualViewport?.addEventListener('resize', resize);
     resize();
 
     const terrain = buildTerrain(scene, quality);

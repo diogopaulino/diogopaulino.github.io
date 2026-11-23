@@ -15,7 +15,7 @@
  * à mão, porque a adaptação noturna do palco (exposição 2,6) foi calibrada para céu aberto.
  */
 
-import { PRESETS } from '../../../shared/gfx/stage.js';
+import { PRESETS } from '../../../shared/gfx/stage.js?v=18';
 
 const BASE = PRESETS['dia-claro'];
 PRESETS['gc-casa'] = {

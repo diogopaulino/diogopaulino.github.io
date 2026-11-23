@@ -15,14 +15,14 @@
  */
 
 import * as THREE from 'three';
-import { createStage } from '../../../shared/gfx/stage.js';
+import { createStage } from '../../../shared/gfx/stage.js?v=18';
 import { preload } from '../../../shared/gfx/assets.js';
 import { pickTier } from '../../../shared/gfx/core.js';
 import { QUALITY } from './QualitySettings.js?v=50';
-import { AudioManager } from './AudioManager.js?v=50';
-import { InputManager } from './InputManager.js?v=50';
+import { AudioManager } from './AudioManager.js?v=51';
+import { InputManager } from './InputManager.js?v=51';
 import { CollisionWorld } from '../world/CollisionWorld.js?v=50';
-import { WeatherSystem } from '../world/WeatherSystem.js?v=50';
+import { WeatherSystem } from '../world/WeatherSystem.js?v=51';
 import { Ocean } from '../world/Sea.js?v=50';
 import { StormController } from '../world/StormController.js?v=50';
 import { ArrowSystem } from '../world/ArrowSystem.js?v=50';

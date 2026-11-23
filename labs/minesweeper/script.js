@@ -321,7 +321,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     boardElement.addEventListener('pointerdown', (event) => {
         const cell = event.target.closest('.cell');
-        if (!cell || gameOver || event.button !== 0 || press) return;
+        // Safari/iOS: toque pode chegar com button === -1; clique direito usa contextmenu.
+        if (!cell || gameOver || (event.pointerType === 'mouse' && event.button !== 0) || press) return;
+        event.preventDefault();
+        audio?.unlock?.();
         const r = +cell.dataset.r, c = +cell.dataset.c;
         capturePointer(cell, event.pointerId);
         press = { id: event.pointerId, r, c, x: event.clientX, y: event.clientY, held: false };
@@ -340,7 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 450);
     });
     boardElement.addEventListener('pointermove', (event) => {
-        if (press?.id === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 6) endPress();
+        // iOS jitter / micro-scroll costuma passar de 6px — 16px ainda distingue arraste de long-press.
+        if (press?.id === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 16) endPress();
     });
     boardElement.addEventListener('pointerup', (event) => {
         if (press?.id !== event.pointerId) return;
@@ -349,6 +353,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (held || gameOver) return;
         if (isChord) chord(r, c);
         else (flagMode ? handleRightClick : handleClick)(r, c);
+    });
+    boardElement.addEventListener('pointercancel', (event) => {
+        if (press?.id === event.pointerId) endPress();
     });
     boardElement.addEventListener('lostpointercapture', (event) => {
         if (press?.id === event.pointerId) endPress();
@@ -772,6 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let timerPausedByTab = false;
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
+            endPress();
             timerPausedByTab = timerInterval !== null;
             stopTimer();
         } else if (timerPausedByTab && !gameOver && !firstClick) {
@@ -779,6 +787,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timerPausedByTab = false;
         }
     });
+    window.addEventListener('blur', () => endPress());
 
     flagToggle?.addEventListener('click', () => setFlagMode(!flagMode));
 

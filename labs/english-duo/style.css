@@ -29,6 +29,7 @@
 
 body {
     font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow-x: hidden;
     overflow-x: clip;
 }
 

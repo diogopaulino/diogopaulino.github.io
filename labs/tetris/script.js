@@ -1299,11 +1299,14 @@ function bindHold(selector, action) {
     let active = false;
 
     el.addEventListener('pointerdown', event => {
+        // Safari/iOS: toque pode chegar com button === -1.
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
         event.preventDefault();
         capturePointer(el, event.pointerId);
+        audio?.unlock?.();
         active = true;
         pressAction(action);
-    });
+    }, { passive: false });
 
     const stop = () => {
         if (!active) return;
@@ -1351,9 +1354,13 @@ function cellCssSize() {
 
 if (screenEl) {
     screenEl.addEventListener('pointerdown', event => {
-        if (gesture || event.button !== 0) return;
+        // Em Safari/iOS o toque às vezes chega com button === -1; só o mouse
+        // deve filtrar botão auxiliar.
+        if (gesture || (event.pointerType === 'mouse' && event.button !== 0)) return;
         // Botões do overlay (modo, jogar, continuar) cuidam do próprio clique.
         if (event.target.closest('button')) return;
+        event.preventDefault();
+        audio?.unlock?.();
         capturePointer(screenEl, event.pointerId);
         const now = performance.now();
         gesture = {
@@ -1368,7 +1375,7 @@ if (screenEl) {
             done: false,
             acted: false,
         };
-    });
+    }, { passive: false });
 
     screenEl.addEventListener('pointermove', event => {
         if (gesture?.pointerId !== event.pointerId || state !== 'playing') return;
@@ -1469,6 +1476,7 @@ document.querySelectorAll('.controls button').forEach(button => {
    a peça escorregando sozinha para a parede). */
 function autoPause() {
     releaseAllInput();
+    gesture = null;
     if (state === 'playing') setState('paused');
 }
 document.addEventListener('visibilitychange', () => {

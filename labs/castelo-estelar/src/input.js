@@ -55,11 +55,17 @@ export class Input {
         }, { passive: false });
 
         if (zone) {
-            zone.addEventListener('pointerdown', (e) => this.onStickDown(e));
+            zone.addEventListener('pointerdown', (e) => this.onStickDown(e), { passive: false });
             zone.addEventListener('pointermove', (e) => this.onStickMove(e));
             zone.addEventListener('pointerup', (e) => this.onStickUp(e));
             zone.addEventListener('pointercancel', (e) => this.onStickUp(e));
         }
+
+        const clearOnHide = () => {
+            if (document.hidden) this.clear();
+        };
+        document.addEventListener('visibilitychange', clearOnHide);
+        window.addEventListener('blur', () => this.clear());
     }
 
     setEnabled(on) {

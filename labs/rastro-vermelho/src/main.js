@@ -60,12 +60,15 @@ class RastroVermelho {
         this.lastHud = 0; this.lastSave = 0; this.timeScale = 1; this.focusActive = false; this.aimTimer = 0; this.audio = new Soundscape();
         this.hitstop = 0; this.invuln = 0; this.shake = 0; this.shooter = null; this.enemyGap = 0; this._shake = null;
         this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-        this.coarse = matchMedia('(pointer: coarse)').matches;
+        this.coarse = matchMedia('(pointer: coarse)').matches
+            || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
         this.ui = Object.fromEntries([...document.querySelectorAll('[id]')].map(el => [el.id, el]));
         this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', alpha: false, stencil: false });
         this.software = detectSoftwareGL(this.renderer);
         this.profile = this.pickQuality();
-        this.maxPr = Math.min(devicePixelRatio || 1, this.profile.pr); this.pr = this.maxPr;
+        // Ponteiro grosso: teto 1,5 mesmo se o perfil salvo for “cinemática”.
+        const touchCap = this.coarse ? 1.5 : this.profile.pr;
+        this.maxPr = Math.min(devicePixelRatio || 1, this.profile.pr, touchCap); this.pr = this.maxPr;
         this.renderer.setPixelRatio(this.pr);
         this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFShadowMap;
         this.renderer.info.autoReset = false;
@@ -160,7 +163,13 @@ class RastroVermelho {
         canvas.addEventListener('contextmenu', e => e.preventDefault());
         const bindLook = el => {
             let drag = null;
-            el.addEventListener('pointerdown', e => { if (this.state !== 'play' || drag) return; drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0, button: e.button }; el.setPointerCapture(e.pointerId); canvas.focus({ preventScroll: true }); });
+            el.addEventListener('pointerdown', e => {
+                if (this.state !== 'play' || drag) return;
+                e.preventDefault();
+                drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0, button: e.button };
+                try { el.setPointerCapture(e.pointerId); } catch { /* ponteiro já solto */ }
+                canvas.focus({ preventScroll: true });
+            }, { passive: false });
             el.addEventListener('pointermove', e => {
                 if (!drag || e.pointerId !== drag.id || this.state !== 'play') return;
                 const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.moved += Math.abs(dx) + Math.abs(dy);
@@ -179,13 +188,24 @@ class RastroVermelho {
             const length = Math.max(1, Math.hypot(x, z)); this.touch.x = x / length; this.touch.z = z / length;
             this.ui.moveKnob.style.transform = `translate(${this.touch.x * radius}px, ${-this.touch.z * radius}px)`;
         };
-        stick.addEventListener('pointerdown', e => { if (pointer !== null || this.state !== 'play') return; pointer = e.pointerId; stick.setPointerCapture(pointer); move(e); });
+        stick.addEventListener('pointerdown', e => {
+            if (pointer !== null || this.state !== 'play') return;
+            e.preventDefault();
+            pointer = e.pointerId;
+            try { stick.setPointerCapture(pointer); } catch { /* ok */ }
+            move(e);
+        }, { passive: false });
         stick.addEventListener('pointermove', move);
         const release = e => { if (e && e.pointerId !== pointer) return; const old = pointer; pointer = null; this.touch.x = this.touch.z = 0; this.ui.moveKnob.style.transform = ''; if (old !== null && stick.hasPointerCapture(old)) stick.releasePointerCapture(old); };
         for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) stick.addEventListener(name, release);
         this.releaseStick = release;
         const spur = this.ui.btnSpur;
-        spur.addEventListener('pointerdown', e => { if (this.state !== 'play') return; spur.setPointerCapture(e.pointerId); this.touch.sprint = true; });
+        spur.addEventListener('pointerdown', e => {
+            if (this.state !== 'play') return;
+            e.preventDefault();
+            try { spur.setPointerCapture(e.pointerId); } catch { /* ok */ }
+            this.touch.sprint = true;
+        }, { passive: false });
         for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) spur.addEventListener(name, () => { this.touch.sprint = false; });
         this.ui.btnShoot.addEventListener('click', () => this.shoot()); this.ui.btnReload.addEventListener('click', () => this.reload());
         this.ui.btnFocus.addEventListener('click', () => this.toggleFocus()); this.ui.interactButton.addEventListener('click', () => this.interact());

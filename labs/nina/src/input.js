@@ -154,7 +154,7 @@ export class Input {
             owner = e.pointerId;
             stick.classList.add('is-active');
             onMove(e);
-        });
+        }, { passive: false });
         stick.addEventListener('pointermove', (e) => {
             if (owner === e.pointerId) onMove(e);
         });
@@ -165,9 +165,10 @@ export class Input {
         if (jump) {
             jump.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
+                try { jump.setPointerCapture?.(e.pointerId); } catch { /* ok */ }
                 this.jumpPressed = true;
                 this.jumpHeld = true;
-            });
+            }, { passive: false });
             const release = () => { this.jumpHeld = false; };
             jump.addEventListener('pointerup', release);
             jump.addEventListener('pointerleave', release);
@@ -178,12 +179,16 @@ export class Input {
             if (!btn) return;
             const down = (e) => { e.preventDefault(); this.keys.add(code); };
             const upFn = () => this.keys.delete(code);
-            btn.addEventListener('pointerdown', down);
+            btn.addEventListener('pointerdown', down, { passive: false });
             btn.addEventListener('pointerup', upFn);
             btn.addEventListener('pointerleave', upFn);
             btn.addEventListener('pointercancel', upFn);
         };
         hold(run, 'ShiftLeft');
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) this.clear();
+        });
     }
 
     /** Lê eixo e câmera do frame. Devolve o mesmo objeto `lookOut` (sem alocar). */

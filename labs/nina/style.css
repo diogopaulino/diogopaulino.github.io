@@ -735,10 +735,15 @@ kbd {
     }
 }
 
+/* Só esconde no desktop sem toque — iPad + trackpad mantém o stick (html.is-touch). */
 @media (pointer: fine) {
-    .touch-controls {
+    html:not(.is-touch) .touch-controls {
         display: none !important;
     }
+}
+
+html.is-touch .touch-controls {
+    display: block;
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
@@ -875,7 +880,7 @@ kbd {
 
 /* agent-responsive-768 */
 @media (max-width: 768px) {
-  html, body { overflow-x: clip; }
+  html, body { overflow-x: hidden; overflow-x: clip; }
   .hud, .overlay, .menu-overlay, .overlay-card {
     max-width: 100%;
   }

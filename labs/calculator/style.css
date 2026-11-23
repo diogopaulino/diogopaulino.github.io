@@ -26,12 +26,19 @@
     --calc-display: linear-gradient(180deg, #050505 0%, #0d0d0d 100%);
 }
 
+html {
+    overflow-x: hidden;
+    overflow-x: clip;
+}
+
 body {
     background:
         radial-gradient(ellipse 60% 40% at 50% -10%, var(--shadow-accent), transparent 70%),
         var(--bg-body);
     padding-top: max(1.25rem, env(safe-area-inset-top, 0px));
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 .container {

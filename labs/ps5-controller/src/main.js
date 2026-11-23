@@ -1214,7 +1214,8 @@ var init_ProductScene = __esm({
       }
       /* ------------------------------------------------------ direct control -- */
       onDragStart = (event) => {
-        if (this.drag.active || event.button !== 0) return;
+        // Safari/iOS: toque pode chegar com button === -1.
+        if (this.drag.active || (event.pointerType === "mouse" && event.button !== 0)) return;
         const surface = event.currentTarget;
         this.drag.active = true;
         this.drag.pointerId = event.pointerId;
@@ -1224,7 +1225,7 @@ var init_ProductScene = __esm({
         this.drag.lastMove = performance.now();
         this.drag.velocityYaw = 0;
         this.drag.velocityPitch = 0;
-        surface.setPointerCapture(event.pointerId);
+        try { surface.setPointerCapture(event.pointerId); } catch { /* ponteiro já solto */ }
         surface.style.cursor = "grabbing";
       };
       onDragMove = (event) => {
@@ -1297,7 +1298,8 @@ var init_ProductScene = __esm({
         this.height = window.innerHeight;
         this.framing = FRAMING[this.breakpoint()];
         const raw = window.devicePixelRatio || 1;
-        const cap = this.breakpoint() === "mobile" ? 1.75 : 2;
+        // iPhone DPR 3: teto 1,5 no mobile (antes 1,75 ainda pesava com o modelo PBR).
+        const cap = this.breakpoint() === "mobile" ? 1.5 : 2;
         const budget = this.breakpoint() === "mobile" ? 25e5 : 5e6;
         const byArea = Math.sqrt(budget / (this.width * this.height));
         const dpr = Math.max(1, Math.min(raw, cap, byArea));

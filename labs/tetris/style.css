@@ -468,14 +468,10 @@ body {
 
 .d-pad .up::after {
     inset: calc(var(--hit) * -2) calc(var(--hit) * -1) 0 calc(var(--hit) * -1);
-    /* Cima e baixo vêm antes de esquerda/direita no DOM, então perdiam os
-       cantos da própria área ampliada. O z-index devolve a faixa inteira. */
-    z-index: 1;
 }
 
 .d-pad .down::after {
     inset: 0 calc(var(--hit) * -1) calc(var(--hit) * -2) calc(var(--hit) * -1);
-    z-index: 1;
 }
 
 .d-pad .left::after {
@@ -485,6 +481,13 @@ body {
 .d-pad .right::after {
     inset: calc(var(--hit) * -1) calc(var(--hit) * -2) calc(var(--hit) * -1) 0;
 }
+
+/* Esquerda/direita acima de cima/baixo: no DOM up/down vêm antes e, com a
+   área ampliada, cobriam o braço lateral — o toque em ← parecia morto. */
+.d-pad .up,
+.d-pad .down { z-index: 1; }
+.d-pad .left,
+.d-pad .right { z-index: 2; }
 
 /* A/B são redondos de 35px; Select/Start são barras de 14px de altura. Cada um
    cresce até o alvo mínimo, também compensando a escala do console. */
@@ -724,19 +727,41 @@ body {
 
 @media (max-width: 768px) {
     body {
+        overflow-x: hidden;
         overflow-x: clip;
+        padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
         padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
         padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
     }
 
+    header {
+        margin-bottom: 1rem;
+    }
+
     .instructions {
-        margin-top: 0.75rem;
+        margin-top: 0.5rem;
+        margin-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
         font-size: 0.85rem;
         padding-inline: 0.75rem;
+        padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
     }
 
     .game-boy {
         width: min(360px, 100%);
+    }
+
+    footer {
+        margin-top: 0.75rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.25rem;
+    }
+}
+
+@media (max-width: 768px) and (max-height: 760px) {
+    footer,
+    .instructions .keys--board {
+        display: none;
     }
 }
 

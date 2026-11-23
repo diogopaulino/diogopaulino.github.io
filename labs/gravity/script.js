@@ -1322,7 +1322,10 @@
         if (cssW === 0 || cssH === 0) return;
         const oldMin = Math.min(width, height);
         const ratio = window.devicePixelRatio || 1;
-        dpr = Math.min(ratio, cssW < 768 ? 1.75 : 2);
+        // iPhone: N-corpos + trails a 3× DPR derrete a bateria; 1.25× basta.
+        const appleTouch = /iP(hone|ad|od)/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        dpr = Math.min(ratio, appleTouch ? 1.25 : (cssW < 768 ? 1.75 : 2));
         width = cssW;
         height = cssH;
         canvas.width = Math.floor(cssW * dpr);
@@ -2559,9 +2562,14 @@
         return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
 
+    const gravityPointerOpts = { passive: false };
     canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         const p = canvasPoint(e);
-        try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+        // Capture só mouse/caneta — no iOS o capture do 1º dedo impede a pinça.
+        if (e.pointerType !== 'touch') {
+            try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+        }
         pointers.set(e.pointerId, p);
         dismissHint();
         if (pointers.size === 2) {
@@ -2575,10 +2583,11 @@
         if (pointers.size > 2) return;
         const pan = e.button === 1 || e.button === 2 || e.shiftKey;
         beginGesture(p.x, p.y, pan);
-    });
+    }, gravityPointerOpts);
 
-    canvas.addEventListener('pointermove', (e) => {
+    function onGravityPointerMove(e) {
         if (!pointers.has(e.pointerId)) return;
+        e.preventDefault();
         const p = canvasPoint(e);
         pointers.set(e.pointerId, p);
         if (pinch && pointers.size >= 2) {
@@ -2600,7 +2609,8 @@
         }
         if (pinch) return;
         moveGesture(p.x, p.y);
-    });
+    }
+    window.addEventListener('pointermove', onGravityPointerMove, gravityPointerOpts);
 
     function pointerEnd(e) {
         if (!pointers.has(e.pointerId)) return;
@@ -2611,12 +2621,14 @@
         }
         if (pointers.size === 0) endGesture(e.type !== 'pointercancel');
     }
-    canvas.addEventListener('pointerup', pointerEnd);
-    canvas.addEventListener('pointercancel', pointerEnd);
+    window.addEventListener('pointerup', pointerEnd);
+    window.addEventListener('pointercancel', pointerEnd);
     canvas.addEventListener('lostpointercapture', (e) => {
         if (pointers.has(e.pointerId)) pointerEnd(e);
     });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); }, gravityPointerOpts);
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); }, gravityPointerOpts);
     canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
         const p = canvasPoint(e);
@@ -3207,17 +3219,42 @@
         saveSettings();
     });
 
-    fullscreenBtn.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-            const req = document.documentElement.requestFullscreen;
-            if (req) req.call(document.documentElement).then(() => document.body.classList.add('fullscreen')).catch(() => {});
-        } else {
-            document.exitFullscreen().then(() => document.body.classList.remove('fullscreen')).catch(() => {});
-        }
-    });
-    document.addEventListener('fullscreenchange', () => {
-        document.body.classList.toggle('fullscreen', !!document.fullscreenElement);
-    });
+    const canFs = Boolean(
+        document.fullscreenEnabled || document.webkitFullscreenEnabled
+    ) && typeof (document.documentElement.requestFullscreen
+        || document.documentElement.webkitRequestFullscreen) === 'function';
+    if (!canFs) {
+        // iOS Safari: sem Fullscreen API de página — esconde o botão.
+        fullscreenBtn.hidden = true;
+    } else {
+        fullscreenBtn.addEventListener('click', () => {
+            const root = document.documentElement;
+            const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+            if (!isFull) {
+                const req = root.requestFullscreen || root.webkitRequestFullscreen;
+                if (req) {
+                    const p = req.call(root);
+                    if (p && p.then) p.then(() => document.body.classList.add('fullscreen')).catch(() => {});
+                    else document.body.classList.add('fullscreen');
+                }
+            } else {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                if (exit) {
+                    const p = exit.call(document);
+                    if (p && p.then) p.then(() => document.body.classList.remove('fullscreen')).catch(() => {});
+                    else document.body.classList.remove('fullscreen');
+                }
+            }
+        });
+    }
+    const syncFs = () => {
+        document.body.classList.toggle(
+            'fullscreen',
+            Boolean(document.fullscreenElement || document.webkitFullscreenElement)
+        );
+    };
+    document.addEventListener('fullscreenchange', syncFs);
+    document.addEventListener('webkitfullscreenchange', syncFs);
 
     // ---- Teclado ----
     const modeKeys = { v: 'pan', w: 'body', q: 'spawn', a: 'attract', x: 'erase' };
@@ -3255,7 +3292,7 @@
             loadScenario(scene.id, { undoable: true });
         } else if (k === 'c' || k === 'C') {
             clearAll();
-        } else if (k === 'f' || k === 'F') {
+        } else if ((k === 'f' || k === 'F') && !fullscreenBtn.hidden) {
             fullscreenBtn.click();
         } else if (k === 't' || k === 'T') {
             trailsCheckbox.click();

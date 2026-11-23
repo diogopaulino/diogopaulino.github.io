@@ -927,7 +927,24 @@ amountTwo.addEventListener('input', () => convert('two'));
         if (v !== null && !Number.isNaN(v)) input.value = formatMoney(v);
         convert(input === amountOne ? 'one' : 'two');
     });
+    // iOS: teclado virtual não deve cobrir o campo de câmbio.
+    const keepVisible = () => {
+        try { input.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' }); }
+        catch { input.scrollIntoView(true); }
+    };
+    input.addEventListener('focus', () => setTimeout(keepVisible, 50));
 });
+if (window.visualViewport) {
+    const onVv = () => {
+        const el = document.activeElement;
+        if (el === amountOne || el === amountTwo) {
+            try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); }
+            catch { el.scrollIntoView(true); }
+        }
+    };
+    window.visualViewport.addEventListener('resize', onVv);
+    window.visualViewport.addEventListener('scroll', onVv);
+}
 refreshBtn.addEventListener('click', () => refreshRates({ force: true }));
 $('#swap').addEventListener('click', () => {
     if (!rates) return;

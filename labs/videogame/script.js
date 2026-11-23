@@ -914,21 +914,33 @@ const App = {
             if (!options.silent) this.showToast('Erro ao exportar save.', 'error');
         }
     },
-    downloadBlob(blob, filename) {
+    async downloadBlob(blob, filename) {
+        const isAppleTouch = /iP(hone|ad|od)/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const file = typeof File !== 'undefined'
+            ? new File([blob], filename, { type: blob.type || 'application/octet-stream' })
+            : null;
+        // iPhone: atributo download falha — tenta a folha de compartilhamento.
+        if (file && isAppleTouch && typeof navigator.share === 'function') {
+            const payload = { files: [file], title: filename };
+            if (typeof navigator.canShare !== 'function' || navigator.canShare(payload)) {
+                try {
+                    await navigator.share(payload);
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                }
+            }
+        }
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        const supportsDownload = 'download' in link;
-        if (supportsDownload) {
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } else {
-            const opened = window.open(url, '_blank');
-            if (!opened) window.location.href = url;
-        }
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        link.href = url;
+        link.download = filename;
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
     },
     dataURLToBlob(dataUrl) {
         try {

@@ -24,9 +24,33 @@ function persistMuted(value) {
 }
 
 function ac() {
-    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') ctx.resume();
+    if (!ctx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        try {
+            ctx = new Ctx({ latencyHint: 'interactive' });
+        } catch {
+            try { ctx = new Ctx(); } catch { return null; }
+        }
+        try {
+            if (navigator.audioSession) navigator.audioSession.type = 'playback';
+        } catch { /* iOS 17+ opcional */ }
+    }
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
     return ctx;
+}
+
+/** Chamado no primeiro gesto para o Safari iOS liberar o contexto. */
+export function unlock() {
+    const c = ac();
+    if (!c) return;
+    try {
+        const buffer = c.createBuffer(1, 1, c.sampleRate || 22050);
+        const src = c.createBufferSource();
+        src.buffer = buffer;
+        src.connect(c.destination);
+        src.start(0);
+    } catch { /* best-effort */ }
 }
 
 export function setMuted(v) {
@@ -41,6 +65,7 @@ export function isMuted() {
 function tone(freq, dur, type = 'sine', gain = 0.04, delay = 0) {
     if (muted) return;
     const c = ac();
+    if (!c) return;
     const t0 = c.currentTime + delay;
     const o = c.createOscillator();
     const g = c.createGain();

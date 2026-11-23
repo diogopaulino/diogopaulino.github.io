@@ -35,6 +35,8 @@ const LOAD_TIMEOUT = 35000;
 const SPAWN = { x: -100, z: WALK.spawnZ, yaw: Math.PI / 2 };
 
 const coarsePointer = () => matchMedia('(pointer: coarse)').matches;
+// iPadOS + trackpad: pointer fine, mas ainda precisa do stick.
+const wantsTouchUi = () => coarsePointer() || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
 
 function withTimeout(promise, ms, message) {
     let timer;
@@ -350,10 +352,10 @@ class App {
 
         const touch = $('touchControls');
         if (touch) {
-            const coarse = coarsePointer();
-            touch.hidden = !coarse;
-            touch.style.display = coarse ? '' : 'none';
-            document.documentElement.classList.toggle('is-touch', coarse);
+            const on = wantsTouchUi();
+            touch.hidden = !on;
+            touch.style.display = on ? '' : 'none';
+            document.documentElement.classList.toggle('is-touch', on);
         }
 
         $('landmarkList')?.addEventListener('click', (e) => {
@@ -388,11 +390,12 @@ class App {
                 if (knob) knob.style.transform = 'translate(0,0)';
             };
             stick.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
                 pid = e.pointerId;
-                stick.setPointerCapture?.(e.pointerId);
+                try { stick.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
                 move(e);
-            });
-            stick.addEventListener('pointermove', (e) => { if (e.pointerId === pid) move(e); });
+            }, { passive: false });
+            stick.addEventListener('pointermove', (e) => { if (e.pointerId === pid) move(e); }, { passive: false });
             stick.addEventListener('pointerup', end);
             stick.addEventListener('pointercancel', end);
             stick.addEventListener('lostpointercapture', end);
@@ -409,11 +412,12 @@ class App {
                     this.rig.skipIntro();
                     return;
                 }
+                e.preventDefault();
                 active = e.pointerId;
                 lx = e.clientX;
                 ly = e.clientY;
-                el.setPointerCapture?.(e.pointerId);
-            });
+                try { el.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
+            }, { passive: false });
             el.addEventListener('pointermove', (e) => {
                 if (active !== e.pointerId || this.state !== 'playing' || this.paused) return;
                 const dx = e.clientX - lx;

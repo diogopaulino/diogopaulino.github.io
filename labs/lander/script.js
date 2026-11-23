@@ -146,6 +146,7 @@ function syncHiDPI() {
 }
 syncHiDPI();
 window.addEventListener('resize', syncHiDPI);
+window.visualViewport?.addEventListener('resize', syncHiDPI);
 
 const COLORS = Object.freeze({
     background: '#03050a',
@@ -235,6 +236,7 @@ function ensureEngineAudio() {
         if (!Ctx) return null;
 
         const ctxAudio = new Ctx();
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
         const seconds = 2;
         const buffer = ctxAudio.createBuffer(1, ctxAudio.sampleRate * seconds, ctxAudio.sampleRate);
         const data = buffer.getChannelData(0);
@@ -1609,8 +1611,11 @@ function bindButton(id, code) {
     };
 
     element.addEventListener('pointerdown', event => {
+        // Safari/iOS: toque pode chegar com button === -1.
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
         event.preventDefault();
         userGestured = true;
+        labAudio?.unlock?.();
         capturePointer(element, event.pointerId);
         if (paused) {
             setPaused(false);
@@ -1618,7 +1623,7 @@ function bindButton(id, code) {
             startMission({ nextLevel: gameState === 'LANDED' });
         }
         setPressed(true);
-    });
+    }, { passive: false });
     element.addEventListener('pointerup', () => setPressed(false));
     element.addEventListener('pointercancel', () => setPressed(false));
     element.addEventListener('lostpointercapture', () => setPressed(false));

@@ -41,7 +41,17 @@ export class GameAudio {
     boot() {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtx) return;
-        this.ctx = new AudioCtx();
+        try { this.ctx = new AudioCtx({ latencyHint: 'interactive' }); }
+        catch { try { this.ctx = new AudioCtx(); } catch { return; } }
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
+        // iOS: 1 sample silencioso na cadeia do gesto desbloqueia o contexto.
+        try {
+            const buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate || 22050);
+            const src = this.ctx.createBufferSource();
+            src.buffer = buffer;
+            src.connect(this.ctx.destination);
+            src.start(0);
+        } catch { /* best-effort */ }
         // um segundo de ruído branco reaproveitado por caixa, chimbal, batida e vento
         this.noiseBuf = this.ctx.createBuffer(1, this.ctx.sampleRate, this.ctx.sampleRate);
         const data = this.noiseBuf.getChannelData(0);

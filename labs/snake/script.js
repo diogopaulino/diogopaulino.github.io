@@ -790,9 +790,13 @@ document.querySelectorAll('.d-pad [data-key]').forEach(btn => {
     // pointerdown fires for mouse, pen and touch, so a single binding covers all
     // inputs without the double-fire the old mousedown + touchstart pair caused.
     btn.addEventListener('pointerdown', (e) => {
+        // Safari/iOS: toque pode chegar com button === -1.
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
         e.preventDefault();
+        try { btn.setPointerCapture(e.pointerId); } catch { /* ponteiro já solto */ }
+        audio?.unlock?.();
         handleInput(btn.dataset.key);
-    });
+    }, { passive: false });
     btn.addEventListener('click', (e) => {
         if (e.detail === 0) handleInput(btn.dataset.key);
     });
@@ -812,9 +816,11 @@ if (screenPlay) {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         // Botões dos overlays (modo, jogar, continuar) têm o próprio clique.
         if (e.target.closest('button')) return;
+        e.preventDefault();
         try { screenPlay.setPointerCapture(e.pointerId); } catch (err) { /* segue sem captura */ }
+        audio?.unlock?.();
         touchStart = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false, lastKey: '' };
-    });
+    }, { passive: false });
 
     screenPlay.addEventListener('pointermove', (e) => {
         if (!touchStart || touchStart.id !== e.pointerId) return;
@@ -868,14 +874,19 @@ document.getElementById('btnB').addEventListener('click', () => {
 
 // Aba oculta: pausa de verdade (overlay de PAUSA). Voltar para a aba não
 // solta a cobra andando de surpresa — o jogador escolhe quando continuar.
+function releaseTouchGesture() {
+    touchStart = null;
+}
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
+        releaseTouchGesture();
         if (isGameRunning && !isPaused) setPaused(true);
         stopLoop();
     }
 });
 // Trocar de janela (alt-tab) também pausa: a cobra não segue sozinha.
 window.addEventListener('blur', () => {
+    releaseTouchGesture();
     if (isGameRunning && !isPaused && !awaitingFirstMove) setPaused(true);
 });
 

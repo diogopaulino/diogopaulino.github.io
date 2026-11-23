@@ -36,6 +36,7 @@ body {
     box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.5);
     min-width: 200px;
     max-width: min(100%, 100vw - 1.5rem);
+    overflow-x: hidden;
     overflow-x: clip;
     -webkit-overflow-scrolling: touch;
 }
@@ -316,6 +317,10 @@ body {
     font-size: 16px;
     cursor: default;
     font-family: sans-serif;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
 }
 
 .cell:active:not(.revealed) {
@@ -489,6 +494,7 @@ body {
     .window {
         width: min(100%, 100vw);
         max-width: 100%;
+        overflow-x: hidden;
         overflow-x: clip;
     }
     .face-btn {
@@ -564,9 +570,13 @@ body {
 }
 
 /* Números proporcionais à célula (no celular a célula passa de 40px). */
+.game-board {
+    touch-action: none;
+}
+
 .cell {
     font-size: calc(var(--cell-size) * 0.56);
-    touch-action: manipulation;
+    touch-action: none;
     user-select: none;
     -webkit-user-select: none;
 }
@@ -615,9 +625,23 @@ body {
 
 @media (pointer: coarse) {
     .face-btn {
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         font-size: 22px;
+    }
+
+    /* Caixa Win95 continua 15px visualmente; o rótulo já tem 44px de altura. */
+    .win-check input {
+        position: relative;
+    }
+
+    .win-check input::before {
+        content: '';
+        position: absolute;
+        inset: 50% auto auto 50%;
+        width: var(--touch-target, 44px);
+        height: var(--touch-target, 44px);
+        transform: translate(-50%, -50%);
     }
 }
 

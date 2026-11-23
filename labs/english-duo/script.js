@@ -2362,8 +2362,25 @@ class AudioManager {
     init() {
         if (this.initialized) return;
         try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            try {
+                this.audioContext = new Ctx({ latencyHint: 'interactive' });
+            } catch {
+                this.audioContext = new Ctx();
+            }
+            try {
+                if (navigator.audioSession) navigator.audioSession.type = 'playback';
+            } catch { /* iOS 17+ opcional */ }
             this.initialized = true;
+            // Buffer silencioso: destrava o contexto na cadeia do gesto (Safari iOS).
+            try {
+                const buffer = this.audioContext.createBuffer(1, 1, this.audioContext.sampleRate || 22050);
+                const src = this.audioContext.createBufferSource();
+                src.buffer = buffer;
+                src.connect(this.audioContext.destination);
+                src.start(0);
+            } catch { /* best-effort */ }
             this.audioContext.resume?.()?.catch?.(() => {});
         } catch (e) {
             console.warn('Web Audio API not supported');
@@ -2463,16 +2480,34 @@ class SpeechManager {
         this.failed = false;
         this.voices = [];
         this.voicesLoaded = false;
+        this._voicesWaiters = [];
         if (this.synth) {
             const load = () => {
                 try { this.voices = this.synth.getVoices() || []; } catch { this.voices = []; }
                 if (this.voices.length) this.voicesLoaded = true;
+                if (this.voicesLoaded) {
+                    const waiters = this._voicesWaiters.splice(0);
+                    waiters.forEach((fn) => { try { fn(); } catch { /* ignore */ } });
+                }
             };
             load();
             try { this.synth.addEventListener('voiceschanged', () => { load(); this.voicesLoaded = true; }); } catch { /* navegador antigo */ }
-            // Sem evento em alguns navegadores: depois de 2 s, a lista vale como carregada.
-            setTimeout(() => { load(); this.voicesLoaded = true; }, 2000);
+            // Sem evento em alguns navegadores: depois de 2 s, a lista vale como carregada
+            // (mesmo vazia — aí canSpeak/falha graciosa entram em ação).
+            setTimeout(() => {
+                load();
+                this.voicesLoaded = true;
+                const waiters = this._voicesWaiters.splice(0);
+                waiters.forEach((fn) => { try { fn(); } catch { /* ignore */ } });
+            }, 2000);
         }
+    }
+
+    whenVoicesReady() {
+        if (!this.synth || this.voicesLoaded) return Promise.resolve();
+        return new Promise((resolve) => {
+            this._voicesWaiters.push(resolve);
+        });
     }
 
     voiceFor(lang) {
@@ -2487,7 +2522,9 @@ class SpeechManager {
 
     canSpeak(lang = 'en-US') {
         if (!this.synth) return false;
-        if (!this.voicesLoaded || !this.voices.length) return true; // ainda não sabemos: tenta
+        if (this.failed) return false;
+        if (!this.voicesLoaded) return true; // ainda não sabemos: tenta
+        if (!this.voices.length) return false; // Safari mudo / sem vozes
         return !!this.voiceFor(lang);
     }
 
@@ -2506,10 +2543,13 @@ class SpeechManager {
         try { this.synth.cancel(); } catch { /* ignora */ }
         this._setSpeaking(false);
 
-        // Chrome descarta speak() no mesmo turno de cancel().
-        this._timer = window.setTimeout(() => {
-            this._timer = null;
+        const run = () => {
             if (token !== this._token || !this.synth) return;
+            // Lista vazia depois de voiceschanged = síntese indisponível (mudo / sem voz).
+            if (this.voicesLoaded && !this.voices.length) {
+                this.failed = true;
+                return;
+            }
             let started = false;
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = lang;
@@ -2531,12 +2571,36 @@ class SpeechManager {
             };
 
             try { this.synth.speak(utterance); } catch { this.failed = true; return; }
+            // Safari iOS às vezes “pausa” a fila de fala sem onend — um resume
+            // periódico mantém a utterance andando.
+            if (!this._resumeTimer) {
+                this._resumeTimer = window.setInterval(() => {
+                    try {
+                        if (this.synth && this.synth.speaking && this.synth.paused) this.synth.resume();
+                    } catch { /* ignore */ }
+                }, 250);
+            }
             // Vigia: não começou → falha; começou → limpa ao fim estimado.
             this._watch = window.setTimeout(() => {
                 if (token !== this._token) return;
                 if (!started) { this.failed = true; done(); }
                 else window.setTimeout(done, Math.max(1500, text.length * 110));
             }, 2500);
+        };
+
+        // Safari: getVoices() começa vazio; espera voiceschanged antes do 1º speak.
+        this._timer = window.setTimeout(() => {
+            this._timer = null;
+            if (token !== this._token) return;
+            if (!this.voicesLoaded) {
+                this.whenVoicesReady().then(() => {
+                    if (token !== this._token) return;
+                    // Chrome descarta speak() no mesmo turno de cancel() — folga curta.
+                    this._timer = window.setTimeout(run, 60);
+                });
+                return;
+            }
+            run();
         }, 60);
     }
 
@@ -2766,9 +2830,8 @@ function renderIntroduceExercise(lesson) {
     DOM.questionText.append(big, mean);
     const options = shuffleArray([lesson.word, ...distractors(lesson, 'word')]);
     renderOptions(options, lesson.word, checkTranslateAnswer);
-    if (audio.enabled) setTimeout(() => {
-        if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.word, lang.voice);
-    }, 350);
+    // iOS Safari: speechSynthesis fora da cadeia do gesto fica mudo — o
+    // jogador toca a palavra nas opções / “Ouvir” para ouvir.
 }
 
 function renderListenChooseExercise(lesson) {
@@ -2780,7 +2843,7 @@ function renderListenChooseExercise(lesson) {
     const listenBtn = listenButton(lesson.sentence, lang.voice);
     DOM.optionsContainer.prepend(listenBtn);
     DOM.optionsContainer.append(cantListenButton());
-    setTimeout(() => { if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.sentence, lang.voice); }, 450);
+    // Sem autoplay de TTS: no iPhone o setTimeout perde o gesto do usuário.
 }
 
 function listenButton(text, voice) {
@@ -2825,9 +2888,7 @@ function renderReverseExercise(lesson) {
     DOM.questionText.textContent = `O que significa “${lesson.word}”?`;
     const options = shuffleArray([lesson.translation, ...distractors(lesson, 'translation')]);
     renderOptions(options, lesson.translation, checkTranslateAnswer);
-    if (audio.enabled) setTimeout(() => {
-        if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.word, lang.voice);
-    }, 350);
+    // TTS só sob gesto (botão / toque na opção) — ver renderIntroduceExercise.
 }
 
 function renderTranslateExercise(lesson) {
@@ -2880,6 +2941,21 @@ function renderWriteWordExercise(lesson) {
     inputWrapper.appendChild(input);
     inputWrapper.appendChild(submitBtn);
     DOM.optionsContainer.appendChild(inputWrapper);
+
+    // iOS: teclado virtual cobre o input — sobe o campo para a área visível.
+    const keepInputVisible = () => {
+        try {
+            input.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+        } catch {
+            input.scrollIntoView(true);
+        }
+    };
+    input.addEventListener('focus', () => setTimeout(keepInputVisible, 50));
+    if (window.visualViewport) {
+        const onVv = () => { if (document.activeElement === input) keepInputVisible(); };
+        window.visualViewport.addEventListener('resize', onVv);
+        window.visualViewport.addEventListener('scroll', onVv);
+    }
     
     setTimeout(() => input.focus(), 100);
     
@@ -2950,9 +3026,7 @@ function renderListenWriteExercise(lesson) {
     DOM.questionType.textContent = 'Ouça e escreva';
     DOM.questionText.textContent = 'Ouça a frase e escreva o que você ouviu:';
 
-    setTimeout(() => {
-        if (gameState.currentExercise?.lesson === lesson) speech.speak(lesson.sentence, lang.voice);
-    }, 500);
+    // Sem autoplay: no iOS o speak após setTimeout é bloqueado. Use “Ouvir”.
 
     DOM.optionsContainer.innerHTML = '';
     DOM.optionsContainer.className = 'write-exercise';
@@ -2986,7 +3060,22 @@ function renderListenWriteExercise(lesson) {
     DOM.optionsContainer.appendChild(inputWrapper);
     DOM.optionsContainer.appendChild(cantListenButton());
 
-    setTimeout(() => input.focus({ preventScroll: true }), 100);
+    const keepInputVisible = () => {
+        try { input.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' }); }
+        catch { input.scrollIntoView(true); }
+    };
+    input.addEventListener('focus', () => setTimeout(keepInputVisible, 50));
+    if (window.visualViewport) {
+        const onVv = () => { if (document.activeElement === input) keepInputVisible(); };
+        window.visualViewport.addEventListener('resize', onVv);
+        window.visualViewport.addEventListener('scroll', onVv);
+    }
+
+    setTimeout(() => {
+        try { input.focus({ preventScroll: true }); }
+        catch { input.focus(); }
+        keepInputVisible();
+    }, 100);
     document.onkeydown = null;
 }
 

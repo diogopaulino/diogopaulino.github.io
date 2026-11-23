@@ -256,6 +256,8 @@
        e, abaixo, d-pad à esquerda e A/B/C à direita. Nada fica sobre a imagem do jogo. */
     @media (orientation: portrait) {
         .player {
+            /* Safari < 15.4 não tem dvh — 46vh de reserva; dvh sobrescreve. */
+            --screen-h: min(46vh, calc(100vw * 0.75));
             --screen-h: min(46dvh, calc(100vw * 0.75));
         }
 
@@ -264,16 +266,22 @@
             top: env(safe-area-inset-top, 0px);
             left: 0;
             width: 100% !important;
+            max-width: 100%;
             height: var(--screen-h) !important;
             background: #000;
             z-index: 40;
             padding: 0;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         #screen canvas {
             width: 100% !important;
             height: 100% !important;
             object-fit: contain !important;
+            touch-action: none;
+            -webkit-touch-callout: none;
         }
 
         .mobile-controls {
@@ -295,6 +303,10 @@
             z-index: 100;
             overflow: hidden;
             box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+            /* Base tem pointer-events:none — no retrato o painel inteiro precisa receber toque. */
+            pointer-events: auto;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .pad-bar {
@@ -351,6 +363,7 @@
     @media (orientation: landscape) {
         .player {
             --side: clamp(140px, 21vw, 200px);
+            --pad: min(calc(var(--side) - 12px), 46vh);
             --pad: min(calc(var(--side) - 12px), 46dvh);
         }
 
@@ -364,6 +377,9 @@
             height: auto !important;
             background: #000;
             z-index: 10;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         #screen canvas {
@@ -371,6 +387,8 @@
             height: 100% !important;
             object-fit: contain !important;
             padding: 0;
+            touch-action: none;
+            -webkit-touch-callout: none;
         }
 
         .mobile-controls {

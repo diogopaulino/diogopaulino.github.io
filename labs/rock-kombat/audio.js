@@ -21,6 +21,7 @@ function ensure() {
     const AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!AudioCtx) return null;
     context = new AudioCtx();
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
     master = context.createGain();
     master.gain.value = muted ? 0 : 0.68;
     const limiter = context.createDynamicsCompressor();
@@ -39,6 +40,14 @@ function ensure() {
     for (let i = 0; i < length; i++) {
       data[i] = Math.random() * 2 - 1;
     }
+    // iOS: sample silencioso no gesto libera o contexto de vez.
+    try {
+      const silent = context.createBuffer(1, 1, context.sampleRate || 22050);
+      const src = context.createBufferSource();
+      src.buffer = silent;
+      src.connect(master);
+      src.start(0);
+    } catch { /* best-effort */ }
   }
   if (context.state === 'suspended') context.resume().catch(() => {});
   return context;

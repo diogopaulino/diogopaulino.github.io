@@ -176,7 +176,11 @@ export function detectSoftwareGL(renderer) {
 }
 
 export function detectMobile() {
-    return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+    // iPadOS 13+ manda UA de Macintosh; maxTouchPoints distingue do Mac real.
+    const appleTouch = /iP(hone|ad|od)/i.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return appleTouch
+        || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
         || (navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 900);
 }
 
@@ -190,10 +194,11 @@ export function detectTouch() {
  */
 export function pickTier(choice = 'auto') {
     if (choice === 'low' || choice === 'medium' || choice === 'high') return choice;
-    const memory = navigator.deviceMemory || 8;
-    const cores = navigator.hardwareConcurrency || 8;
+    // Safari não expõe deviceMemory — assumir 4 evita medium/high otimista no iPhone.
+    const memory = navigator.deviceMemory || 4;
+    const cores = navigator.hardwareConcurrency || 4;
     const shortSide = Math.min(window.innerWidth, window.innerHeight);
-    if (detectMobile() || memory <= 4 || cores <= 4) return 'low';
+    if (detectMobile() || detectTouch() || memory <= 4 || cores <= 4) return 'low';
     if (memory >= 8 && cores >= 8 && shortSide >= 700) return 'high';
     return 'medium';
 }

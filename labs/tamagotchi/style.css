@@ -41,7 +41,7 @@ header {
   position: relative;
   isolation: isolate;
   width: 100%;
-  min-height: 620px;
+  min-height: min(620px, 100dvh);
   display: grid;
   align-content: start;
   justify-items: center;
@@ -453,10 +453,15 @@ header {
   z-index: 6;
   width: 46px;
   height: 60px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
   border: 0;
   color: #64110c;
   cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
   background:
     radial-gradient(circle at 36% 28%, rgba(255, 255, 255, 0.42), transparent 17%),
     linear-gradient(145deg, var(--key-light), var(--key) 48%, var(--key-dark));
@@ -516,6 +521,9 @@ header {
   border: 1px solid var(--key-dark);
   border-radius: 5px 5px 25px 25px / 5px 5px 22px 22px;
   cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
   background:
     radial-gradient(ellipse at 35% 16%, rgba(255, 255, 255, 0.46), transparent 25%),
     linear-gradient(var(--key-light), var(--key) 48%, var(--key-dark));
@@ -787,6 +795,8 @@ header {
 /* --- lab-responsive-pass --- */
 @media (max-width: 720px) {
     .device-area {
+        min-height: 0;
+        padding-top: max(4.5rem, env(safe-area-inset-top, 0px));
         padding-bottom: max(1.35rem, env(safe-area-inset-bottom, 0px));
         width: 100%;
         max-width: 100%;
@@ -840,7 +850,7 @@ header {
 
 /* agent-responsive-768 */
 @media (max-width: 768px) {
-  html, body { overflow-x: clip; }
+  html, body { overflow-x: hidden; overflow-x: clip; }
 }
 
 /* --- Guia para iniciantes ------------------------------------------------- */

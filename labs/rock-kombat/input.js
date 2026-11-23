@@ -216,16 +216,17 @@ export function bindTouch(playerInput, isActive) {
   }
 
   controls.addEventListener('pointerdown', event => {
-    if (event.button !== 0 || !isActive()) return;
+    // Safari/iOS: toque pode chegar com button === -1.
+    if ((event.pointerType === 'mouse' && event.button !== 0) || !isActive()) return;
     const button = event.target.closest('[data-input]');
     const directional = dpad.contains(event.target);
     if (!button && !directional) return;
     event.preventDefault();
     const pointer = { id: event.pointerId, action: button?.dataset.input, directional, actions: [] };
     pointers.set(pointer.id, pointer);
-    controls.setPointerCapture(pointer.id);
+    try { controls.setPointerCapture(pointer.id); } catch { /* ponteiro já solto */ }
     update(pointer, actionsAt(pointer, event));
-  });
+  }, { passive: false });
 
   controls.addEventListener('pointermove', event => {
     const pointer = pointers.get(event.pointerId);
@@ -241,6 +242,10 @@ export function bindTouch(playerInput, isActive) {
 
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) controls.addEventListener(type, release);
   controls.addEventListener('contextmenu', event => event.preventDefault());
+  // Aba oculta / blur: solta os dedos para não ficar golpe preso.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) playerInput.clear();
+  });
   playerInput.onClear = () => {
     pointers.clear();
     for (const button of buttons) button.classList.remove('is-down');

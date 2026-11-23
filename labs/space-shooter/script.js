@@ -389,12 +389,14 @@ window.addEventListener('keyup', e => {
 // Cada dedo mantém o próprio disparo até ser solto, mesmo com o direcional em uso.
 function bindFireControl(element) {
     element.addEventListener('pointerdown', event => {
-        if (!gameRunning || paused || event.button !== 0) return;
+        // Safari/iOS: toque pode chegar com button === -1; filtre só o mouse.
+        if (!gameRunning || paused || (event.pointerType === 'mouse' && event.button !== 0)) return;
         event.preventDefault();
+        labAudio?.unlock?.();
         capturePointer(element, event.pointerId);
         firingPointers.add(event.pointerId);
         fireCooldown = Math.min(fireCooldown, 0);
-    });
+    }, { passive: false });
     const release = event => firingPointers.delete(event.pointerId);
     element.addEventListener('pointerup', release);
     element.addEventListener('pointercancel', release);
@@ -406,9 +408,12 @@ bindFireControl(canvas);
    de onde ela está — o dedo pode ficar abaixo dela, sem cobri-la. */
 const DRAG_GAIN = 1.2;
 canvas.addEventListener('pointerdown', e => {
-    if (!gameRunning || paused || e.button !== 0) return;
+    if (!gameRunning || paused || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    e.preventDefault();
+    labAudio?.unlock?.();
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* ponteiro já solto */ }
     drag = { id: e.pointerId, x: e.clientX, t: performance.now() };
-});
+}, { passive: false });
 canvas.addEventListener('pointermove', e => {
     if (!drag || drag.id !== e.pointerId || !gameRunning || paused) return;
     const now = performance.now();
@@ -1348,7 +1353,10 @@ function updateHud() {
 
 function bindHoldControl(element, keyName) {
     const activate = e => {
+        // Safari/iOS: toque pode chegar com button === -1.
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
         e.preventDefault();
+        labAudio?.unlock?.();
         capturePointer(element, e.pointerId);
         keys[keyName] = true;
     };
@@ -1356,7 +1364,7 @@ function bindHoldControl(element, keyName) {
         e.preventDefault();
         keys[keyName] = false;
     };
-    element.addEventListener('pointerdown', activate);
+    element.addEventListener('pointerdown', activate, { passive: false });
     element.addEventListener('pointerup', deactivate);
     element.addEventListener('pointercancel', deactivate);
     element.addEventListener('lostpointercapture', deactivate);
@@ -1408,9 +1416,9 @@ if (window.LabVisibility) {
     document.addEventListener('visibilitychange', () => onVisibility(document.hidden));
 }
 
-// Initial Resize
+// Initial Resize — visualViewport cobre a barra de URL do iOS Safari.
 let resizeTimer = 0;
-window.addEventListener('resize', () => {
+function scheduleResize() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
         resize();
@@ -1421,7 +1429,9 @@ window.addEventListener('resize', () => {
             draw();
         }
     }, 80);
-});
+}
+window.addEventListener('resize', scheduleResize);
+window.visualViewport?.addEventListener('resize', scheduleResize);
 
 resize();
 initStars();

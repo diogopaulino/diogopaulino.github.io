@@ -4,8 +4,8 @@
    Um único requestAnimationFrame com delta time real e passo lógico fixo.
    ========================================================================== */
 
-import { initScreen, fit, toBuffer } from './screen.js';
-import { Audio } from './audio.js';
+import { initScreen, fit, toBuffer } from './screen.js?v=29';
+import { Audio } from './audio.js?v=29';
 import { hitTest } from './scenes.js';
 import { initGame, update, draw, handleNumber, currentSpots, debugApi, setHover } from './game.js';
 import { buildSprites } from './sprites.js';
@@ -107,10 +107,17 @@ function syncSoundButton(btn, muted) {
 }
 
 async function toggleFullscreen() {
+  // iOS Safari não tem Fullscreen API para páginas — botão some via CSS/UA.
   const root = document.documentElement;
+  const isFull = () => Boolean(document.fullscreenElement || document.webkitFullscreenElement);
   try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else if (root.requestFullscreen) await root.requestFullscreen();
+    if (isFull()) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) await exit.call(document);
+    } else {
+      const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (enter) await enter.call(root);
+    }
   } catch (_) {
     /* ignore */
   }
@@ -136,15 +143,22 @@ async function boot() {
     if (typeof window !== 'undefined') window.__ravi = debugApi();
 
     window.addEventListener('keydown', onKeyDown);
-    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointerdown', (event) => {
+      Audio.init?.();
+      try { canvas.setPointerCapture(event.pointerId); } catch { /* ponteiro já solto */ }
+      onPointerDown(event);
+    }, { passive: false });
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerleave', () => setHover(null));
+    canvas.addEventListener('pointercancel', () => setHover(null));
 
     let resizeTimer = 0;
-    window.addEventListener('resize', () => {
+    const scheduleFit = () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(fit, 80);
-    });
+    };
+    window.addEventListener('resize', scheduleFit);
+    window.visualViewport?.addEventListener('resize', scheduleFit);
 
     // Perdeu o foco (outra janela/app): som suspende; volta ao focar.
     window.addEventListener('blur', () => Audio.suspend());

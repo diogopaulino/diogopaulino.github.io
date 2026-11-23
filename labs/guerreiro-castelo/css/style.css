@@ -519,6 +519,7 @@ kbd {
    Controles de toque
    Só existem quando não há teclado nem pointer lock (ponteiro grosso). O stick
    fica à esquerda, os botões de ação à direita e o resto da tela é a câmera.
+   `.is-touch` cobre iPadOS com trackpad (pointer: fine + maxTouchPoints).
    --------------------------------------------------------------------------- */
 .touch-controls {
     display: none;
@@ -535,9 +536,22 @@ kbd {
         user-select: none;
         -webkit-user-select: none;
     }
+}
 
-    /* A camada de câmera cobre a tela inteira e fica atrás dos controles:
-       arrastar em qualquer área livre gira a câmera. */
+html.is-touch .touch-controls {
+    position: absolute;
+    inset: 0;
+    z-index: 14;
+    display: block;
+    pointer-events: none;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* A camada de câmera cobre a tela inteira e fica atrás dos controles:
+   arrastar em qualquer área livre gira a câmera. */
+@media (pointer: coarse), html.is-touch {
     .touch-look {
         position: absolute;
         inset: 0;
@@ -719,7 +733,7 @@ kbd {
 
 /* agent-responsive-768 */
 @media (max-width: 768px) {
-  html, body { overflow-x: clip; }
+  html, body { overflow-x: hidden; overflow-x: clip; }
   .hud, .overlay, .menu-overlay, .overlay-card {
     max-width: 100%;
   }

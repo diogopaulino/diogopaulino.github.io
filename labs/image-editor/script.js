@@ -901,19 +901,25 @@ cropOverlay.addEventListener('pointercancel', endCropDrag);
 const pointers = new Map();
 let gesture = null;
 
+const stagePointerOpts = { passive: false };
 stage.addEventListener('pointerdown', (e) => {
     if (!originalImage || cropMode) return;
+    e.preventDefault();
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    try { stage.setPointerCapture(e.pointerId); } catch { /* ok */ }
+    // Capture só mouse/caneta — no iOS o capture do 1º dedo impede a pinça.
+    if (e.pointerType !== 'touch') {
+        try { stage.setPointerCapture(e.pointerId); } catch { /* ok */ }
+    }
     if (pointers.size === 2) {
         const [a, b] = Array.from(pointers.values());
         gesture = { kind: 'pinch', dist: Math.hypot(a.x - b.x, a.y - b.y), zoom: view.zoom };
     } else if (view.zoom > 1.001) {
         gesture = { kind: 'pan', x: e.clientX, y: e.clientY, vx: view.x, vy: view.y };
     }
-});
-stage.addEventListener('pointermove', (e) => {
+}, stagePointerOpts);
+function onStagePointerMove(e) {
     if (!pointers.has(e.pointerId)) return;
+    e.preventDefault();
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (!gesture) return;
     if (gesture.kind === 'pinch' && pointers.size >= 2) {
@@ -924,14 +930,18 @@ stage.addEventListener('pointermove', (e) => {
         view.y = gesture.vy + (e.clientY - gesture.y);
         layout();
     }
-});
+}
+window.addEventListener('pointermove', onStagePointerMove, stagePointerOpts);
 const endStagePointer = (e) => {
+    if (!pointers.has(e.pointerId)) return;
     pointers.delete(e.pointerId);
     if (pointers.size < 2 && gesture && gesture.kind === 'pinch') gesture = null;
     if (!pointers.size) gesture = null;
 };
-stage.addEventListener('pointerup', endStagePointer);
-stage.addEventListener('pointercancel', endStagePointer);
+window.addEventListener('pointerup', endStagePointer);
+window.addEventListener('pointercancel', endStagePointer);
+stage.addEventListener('touchstart', (e) => { if (originalImage && !cropMode) e.preventDefault(); }, stagePointerOpts);
+stage.addEventListener('touchmove', (e) => { if (originalImage && !cropMode) e.preventDefault(); }, stagePointerOpts);
 stage.addEventListener('wheel', (e) => {
     if (!originalImage || cropMode) return;
     e.preventDefault();

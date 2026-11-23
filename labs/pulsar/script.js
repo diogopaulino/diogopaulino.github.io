@@ -49,7 +49,10 @@
     const MAX_VOICES = window.matchMedia('(pointer: coarse)').matches ? 14 : 22;
     const MAX_STARS = 160;
     const STORAGE_KEY = 'pulsar-state-v3';
-    const DPR_CAP = 2;
+    // iPhone: DPR 3 estoura GPU no campo de orbes; 1.5× cobre a tela.
+    const isAppleTouch = /iP(hone|ad|od)/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const DPR_CAP = isAppleTouch ? 1.5 : 2;
     const LOOKAHEAD = 0.12;      // s de antecedência no agendamento
     const SCHED_EVERY = 25;      // ms entre rodadas do agendador
     const COLOR_BUCKETS = 24;
@@ -984,8 +987,10 @@
         };
     }
 
+    const canvasPointerOpts = { passive: false };
     canvas.addEventListener('pointerdown', function (e) {
         if (dragState) return; // um orbe por vez (multitoque não duplica)
+        e.preventDefault();
         AudioEngine.resume();
         const pos = getPos(e);
         ghost = null;
@@ -998,12 +1003,13 @@
         }
         try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* pointer already up */ }
         hideHint();
-    });
+    }, canvasPointerOpts);
 
     canvas.addEventListener('pointermove', function (e) {
         const pos = getPos(e);
         if (dragState) {
             if (e.pointerId !== dragState.pointerId) return;
+            e.preventDefault();
             if (Math.hypot(pos.x - dragState.startX, pos.y - dragState.startY) > 6) dragState.moved = true;
             const o = dragState.orb;
             o.x = pos.x;
@@ -1016,7 +1022,9 @@
         }
         if (!finePointer) return;
         ghost = findOrbAt(pos.x, pos.y) ? null : makeGhost(pos.x, pos.y);
-    });
+    }, canvasPointerOpts);
+    canvas.addEventListener('touchstart', function (e) { e.preventDefault(); }, canvasPointerOpts);
+    canvas.addEventListener('touchmove', function (e) { if (dragState) e.preventDefault(); }, canvasPointerOpts);
 
     canvas.addEventListener('pointerleave', function () {
         if (!dragState) ghost = null;
@@ -1251,22 +1259,36 @@
 
     const fullscreenBtn = document.getElementById('fullscreen');
     if (fullscreenBtn) {
-        if (!document.fullscreenEnabled) fullscreenBtn.hidden = true;
-        fullscreenBtn.addEventListener('click', function () {
-            if (!document.fullscreenElement) {
-                const req = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
-                if (req && req.catch) req.catch(function () { /* noop */ });
-            } else {
-                document.exitFullscreen();
-            }
-        });
-        document.addEventListener('fullscreenchange', function () {
-            const on = !!document.fullscreenElement;
-            const enter = fullscreenBtn.querySelector('.fullscreen-enter');
-            const exit = fullscreenBtn.querySelector('.fullscreen-exit');
-            if (enter) enter.hidden = on;
-            if (exit) exit.hidden = !on;
-        });
+        const root = document.documentElement;
+        const canFs = Boolean(
+            document.fullscreenEnabled || document.webkitFullscreenEnabled
+        ) && typeof (root.requestFullscreen || root.webkitRequestFullscreen) === 'function';
+        // iOS Safari: Fullscreen API de página não existe — esconde o botão.
+        if (!canFs) fullscreenBtn.hidden = true;
+        else {
+            fullscreenBtn.addEventListener('click', function () {
+                const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+                if (!isFull) {
+                    const req = root.requestFullscreen || root.webkitRequestFullscreen;
+                    if (req) {
+                        const p = req.call(root);
+                        if (p && p.catch) p.catch(function () { /* noop */ });
+                    }
+                } else {
+                    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                    if (exit) exit.call(document);
+                }
+            });
+            const syncFs = function () {
+                const on = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+                const enter = fullscreenBtn.querySelector('.fullscreen-enter');
+                const exit = fullscreenBtn.querySelector('.fullscreen-exit');
+                if (enter) enter.hidden = on;
+                if (exit) exit.hidden = !on;
+            };
+            document.addEventListener('fullscreenchange', syncFs);
+            document.addEventListener('webkitfullscreenchange', syncFs);
+        }
     }
 
     window.addEventListener('keydown', function (e) {

@@ -71,7 +71,20 @@
       if (!actx) {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return null;
-        actx = new AC();
+        try {
+          actx = new AC({ latencyHint: 'interactive' });
+        } catch {
+          actx = new AC();
+        }
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
+        // Buffer silencioso: destrava o AudioContext na cadeia do gesto (Safari iOS).
+        try {
+          const buffer = actx.createBuffer(1, 1, actx.sampleRate || 22050);
+          const src = actx.createBufferSource();
+          src.buffer = buffer;
+          src.connect(actx.destination);
+          src.start(0);
+        } catch { /* best-effort */ }
       }
       if (actx.state === 'suspended') actx.resume().catch(() => {});
       return actx;
@@ -541,7 +554,8 @@ para perguntar como cada lab foi construído.`
     // pointerdown chama preventDefault para iniciar o arraste).
     let lastDown = { t: 0, x: 0, y: 0 };
     bar.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.win-controls') || e.button !== 0) return;
+      // Safari/iOS: toque pode chegar com button === -1.
+      if (e.target.closest('.win-controls') || (e.pointerType === 'mouse' && e.button !== 0)) return;
       const now = performance.now();
       if (now - lastDown.t < 380 && Math.hypot(e.clientX - lastDown.x, e.clientY - lastDown.y) < 8) {
         lastDown.t = 0;
@@ -561,7 +575,7 @@ para perguntar como cada lab foi construído.`
   let gestureRaf = 0;
 
   function startGesture(e, w, mode) {
-    if (compact || e.button !== 0) return;
+    if (compact || (e.pointerType === 'mouse' && e.button !== 0)) return;
     if (mode === 'move' && e.target.closest('.win-controls')) return;
     e.preventDefault();
     focusWindow(w);

@@ -869,7 +869,22 @@
     if (!audioContext) {
       const AudioCtor = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtor) return null;
-      try { audioContext = new AudioCtor(); } catch (error) { return null; }
+      try {
+        audioContext = new AudioCtor({ latencyHint: 'interactive' });
+      } catch (error) {
+        try { audioContext = new AudioCtor(); } catch { return null; }
+      }
+      try {
+        if (navigator.audioSession) navigator.audioSession.type = 'playback';
+      } catch { /* iOS 17+ opcional */ }
+      // iOS: buffer silencioso no gesto libera o contexto de vez.
+      try {
+        const silent = audioContext.createBuffer(1, 1, audioContext.sampleRate || 22050);
+        const src = audioContext.createBufferSource();
+        src.buffer = silent;
+        src.connect(audioContext.destination);
+        src.start(0);
+      } catch { /* best-effort */ }
     }
     if (audioContext.state === 'suspended') audioContext.resume()?.catch?.(() => {});
     return audioContext;
@@ -1416,7 +1431,10 @@
   document.querySelectorAll('[data-btn]').forEach((element) => {
     const code = element.dataset.btn;
     element.addEventListener('pointerdown', (event) => {
+      // Safari/iOS: toque pode chegar com button === -1.
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
       event.preventDefault();
+      audioUnlocked = true;
       // Best-effort: lança InvalidStateError se o ponteiro já terminou.
       try {
           element.setPointerCapture(event.pointerId);
@@ -1424,7 +1442,7 @@
           /* segue sem captura */
       }
       pressButton(element, code);
-    });
+    }, { passive: false });
     element.addEventListener('pointerup', (event) => {
       event.preventDefault();
       releaseButton(element, code);
@@ -1461,10 +1479,14 @@
     if (element) releaseButton(element, code);
   });
 
-  window.addEventListener('blur', () => {
-    for (const code of heldButtons) {
+  function releaseAllHeld() {
+    for (const code of [...heldButtons]) {
       releaseButton(document.querySelector(`[data-btn="${code}"]`), code, true);
     }
+  }
+  window.addEventListener('blur', releaseAllHeld);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) releaseAllHeld();
   });
 
   function resetDevice() {

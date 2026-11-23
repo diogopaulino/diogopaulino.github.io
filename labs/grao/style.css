@@ -24,6 +24,11 @@
     --danger: #fb923c;
 }
 
+html {
+    overflow-x: hidden;
+    overflow-x: clip;
+}
+
 body {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-image: none;
@@ -31,6 +36,8 @@ body {
     padding-right: max(1rem, env(safe-area-inset-right, 0px));
     padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
     padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 .ambient {

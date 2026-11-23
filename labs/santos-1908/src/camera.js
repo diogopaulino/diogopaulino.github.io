@@ -63,10 +63,12 @@ export function createCamera(ctx) {
     const sph = new THREE.Spherical();
 
     const onDown = (e) => {
+        e.preventDefault();
         state.drag = true;
         state.lastX = e.clientX;
         state.lastY = e.clientY;
         state.release = 0;
+        try { canvas.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
     };
     const onMove = (e) => {
         if (!state.drag) return;
@@ -80,11 +82,12 @@ export function createCamera(ctx) {
         if (state.drag) state.release = 0.001;
         state.drag = false;
     };
-    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointerdown', onDown, { passive: false });
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
     window.addEventListener('blur', onUp); // arrasto preso quando a janela perde o foco
+    document.addEventListener('visibilitychange', () => { if (document.hidden) onUp(); });
 
     const resolve = (ref, t, out) => (ref.ship ? toWorld(ref.ship, t, out) : out.set(ref[0], ref[1], ref[2]));
 

@@ -15,7 +15,7 @@ import { configureTextures } from '../../shared/gfx/textures.js';
 import { detectSoftwareGL as softwareGL } from '../../shared/gfx/core.js';
 import { STORAGE_KEY, QUALITY, QUEST, QUOTES, STAR_META } from './config.js?v=14';
 import { detectMobile, pick, formatTime } from './utils.js?v=13';
-import { Input } from './input.js?v=2';
+import { Input } from './input.js?v=3';
 import { GameAudio } from './audio.js';
 import { Hud } from './hud.js?v=14';
 import { World } from './world.js?v=18';
@@ -63,7 +63,7 @@ class Game {
         let key = this.settings.quality;
         if (key === 'auto') {
             const cores = navigator.hardwareConcurrency || 8;
-            const memory = navigator.deviceMemory || 8;
+            const memory = navigator.deviceMemory || 4;
             if (this.mobile || cores <= 4 || memory <= 4) key = 'low';
             else key = cores >= 8 && Math.min(innerWidth, innerHeight) >= 700 ? 'high' : 'medium';
         }
@@ -157,9 +157,20 @@ class Game {
 
         this.software = softwareGL(this.renderer);
         this.quality = this.qualityPreset();
-        this.maxPr = Math.min(window.devicePixelRatio || 1, this.quality.pr);
+        // iPhone DPR 3 + pós: começa no máximo 1,5 em ponteiro grosso.
+        const touchCap = this.mobile || matchMedia('(pointer: coarse)').matches ? 1.5 : this.quality.pr;
+        this.maxPr = Math.min(window.devicePixelRatio || 1, this.quality.pr, touchCap);
         this.pr = this.maxPr;
         this.renderer.setPixelRatio(this.pr);
+        this.canvas.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            if (this.state === 'play') this.pause();
+        });
+        this.canvas.addEventListener('webglcontextrestored', () => {
+            this.pr = this.maxPr;
+            this.renderer.setPixelRatio(this.pr);
+            this.resize?.();
+        });
         this.renderer.shadowMap.enabled = !!this.quality.shadows;
         this.renderer.shadowMap.type = THREE.PCFShadowMap;
         this.renderer.info.autoReset = false;

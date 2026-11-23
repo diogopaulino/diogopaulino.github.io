@@ -30,7 +30,7 @@ import { City, createSky, createRoad } from './world.js?v=17';
 import { Player } from './player.js?v=17';
 import { Traffic } from './traffic.js?v=17';
 import { Effects } from './effects.js?v=17';
-import { GameAudio } from './audio.js?v=17';
+import { GameAudio } from './audio.js?v=18';
 import { Input } from './input.js?v=17';
 import { Hud } from './hud.js?v=17';
 
@@ -164,8 +164,9 @@ class Game {
             return;
         }
 
-        // pixelRatio ≤ 2 sempre; o preset de qualidade baixa mais (celular = 1)
-        const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio, 2);
+        // Toque/Apple: teto 1,5 (DPR 3 + pós derruba o fps no iPhone).
+        const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+        const pr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio, coarse ? 1.5 : 2);
         this.renderer.setPixelRatio(pr);
         this.renderer.setSize(window.innerWidth, window.innerHeight, false);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -269,6 +270,10 @@ class Game {
             });
             // trocar de janela também pausa: sem isso a moto seguia sem controle até bater
             window.addEventListener('blur', autoPause);
+            this.canvas.addEventListener('webglcontextlost', (e) => {
+                e.preventDefault();
+                autoPause();
+            });
         } catch (err) {
             console.error(err);
             this.hud.showError(err?.message || 'Falha ao montar a avenida 3D.');
@@ -453,12 +458,12 @@ class Game {
             if (steerId !== null) return;
             steerId = e.pointerId;
             rect = zone.getBoundingClientRect();
-            zone.setPointerCapture?.(e.pointerId);
+            try { zone.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
             zone.classList.add('is-active');
             this.input.touchActive = true;
             readSteer(e);
             e.preventDefault();
-        });
+        }, { passive: false });
         zone.addEventListener('pointermove', (e) => { if (e.pointerId === steerId) readSteer(e); });
         for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) zone.addEventListener(type, endSteer);
 
@@ -466,12 +471,12 @@ class Game {
             let id = null;
             el.addEventListener('pointerdown', (e) => {
                 id = e.pointerId;
-                el.setPointerCapture?.(e.pointerId);
+                try { el.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
                 el.classList.add('is-held');
                 this.input.touchActive = true;
                 setter(true);
                 e.preventDefault();
-            });
+            }, { passive: false });
             const up = (e) => {
                 if (e.pointerId !== id) return;
                 id = null;

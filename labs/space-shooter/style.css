@@ -15,6 +15,7 @@
 html {
     background: var(--ink);
     overscroll-behavior: none;
+    overflow-x: hidden;
     overflow-x: clip;
 }
 
@@ -77,11 +78,19 @@ header .app-logo {
 }
 
 header .back-link,
-header .theme-toggle {
+header .theme-toggle,
+header .lab-icon-btn {
     color: rgba(255,255,255,.72);
     border-color: var(--line);
     background: rgba(255,255,255,.05);
     box-shadow: none;
+}
+
+header .lab-icon-btn:hover,
+header .lab-icon-btn[aria-pressed="true"] {
+    color: var(--neon-blue);
+    border-color: rgba(89, 243, 255, .55);
+    background: rgba(89, 243, 255, .1);
 }
 
 header .theme-toggle-thumb {
@@ -534,6 +543,7 @@ footer a {
 @media (max-width: 900px) {
     body {
         padding: 10px;
+        overflow-x: hidden;
         overflow-x: clip;
     }
 
@@ -775,6 +785,7 @@ footer a {
     body {
         padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px))
             max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+        overflow-x: hidden;
         overflow-x: clip;
     }
 

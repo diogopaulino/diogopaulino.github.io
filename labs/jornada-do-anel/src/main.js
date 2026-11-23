@@ -30,7 +30,7 @@
  */
 
 import * as THREE from 'three';
-import { createStage, PRESETS } from '../../shared/gfx/stage.js';
+import { createStage, PRESETS } from '../../shared/gfx/stage.js?v=18';
 import { pickTier } from '../../shared/gfx/core.js';
 import { preload } from '../../shared/gfx/assets.js';
 import { CHAPTERS, ATMOSPHERES, STORAGE_KEY, CAMERA, LOAD_TIMEOUT } from './config.js?v=32';
@@ -136,7 +136,8 @@ class Game {
         this.scene = stage.scene;
         this.camera = stage.camera;
         this.renderer = stage.renderer;
-        this.mobile = matchMedia('(pointer: coarse)').matches;
+        this.mobile = matchMedia('(pointer: coarse)').matches
+            || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
         this.hud.setTouch(this.mobile);
         stage.pipeline.params.fade = 1;
         // o palco rebaixou o tier por desempenho: alivia a grama do capítulo atual
@@ -304,10 +305,11 @@ class Game {
             knob.style.transform = 'translate(0,0)';
         };
         stick.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             stickId = e.pointerId;
             capturePointer(stick, e.pointerId);
             setFrom(e.clientX, e.clientY);
-        });
+        }, { passive: false });
         stick.addEventListener('pointermove', (e) => {
             if (stickId === e.pointerId) setFrom(e.clientX, e.clientY);
         });
@@ -322,11 +324,12 @@ class Game {
         let lx = 0;
         let ly = 0;
         lookZone?.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             lookId = e.pointerId;
             capturePointer(lookZone, e.pointerId);
             lx = e.clientX;
             ly = e.clientY;
-        });
+        }, { passive: false });
         lookZone?.addEventListener('pointermove', (e) => {
             if (lookId !== e.pointerId) return;
             // o toque gira mais por pixel que o mouse travado (tela pequena)
@@ -358,7 +361,7 @@ class Game {
             }
             this.input.touchJump = true;
             this.input.jumpPressed = true;
-        });
+        }, { passive: false });
         jump?.addEventListener('pointerup', jumpUp);
         jump?.addEventListener('pointercancel', jumpUp);
         jump?.addEventListener('lostpointercapture', jumpUp);

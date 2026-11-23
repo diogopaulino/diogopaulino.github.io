@@ -12,7 +12,7 @@ import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUnifo
 import { createTextures } from './textures.js?v=3';
 import { buildWorld } from './models.js?v=5';
 import { CrtOs } from './crt.js?v=3';
-import { DeskAudio } from './audio.js?v=2';
+import { DeskAudio } from './audio.js?v=3';
 
 const HOME_CAM = new THREE.Vector3(1.35, 1.22, 1.85);
 const HOME_TARGET = new THREE.Vector3(0.02, 0.96, -0.04);
@@ -314,7 +314,8 @@ class BeigeBox {
            OrbitControls no mesmo elemento, então dá para desligar a órbita
            antes que ela comece a girar a câmera. */
         canvas.addEventListener('pointerdown', (e) => {
-            if (!e.isPrimary || e.button !== 0 || !this.crt.power || this.crt.mode !== 'win') return;
+            // Safari/iOS: toque pode chegar com button === -1.
+            if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0) || !this.crt.power || this.crt.mode !== 'win') return;
             const uv = this.screenUv(e);
             if (!uv || !this.crt.pointerDown(uv.x, uv.y)) return;
             this.screenDrag = true;
@@ -396,8 +397,11 @@ class BeigeBox {
         const unlock = () => {
             this.audio.init();
             window.removeEventListener('pointerdown', unlock);
+            window.removeEventListener('touchstart', unlock);
         };
         window.addEventListener('pointerdown', unlock);
+        window.addEventListener('touchstart', unlock, { passive: true });
+        this.canvas.addEventListener('webglcontextlost', (e) => e.preventDefault());
     }
 
     /**
