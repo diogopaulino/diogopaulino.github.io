@@ -453,7 +453,7 @@ class Game {
             if (steerId !== null) return;
             steerId = e.pointerId;
             rect = zone.getBoundingClientRect();
-            zone.setPointerCapture?.(e.pointerId);
+            try { zone.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
             zone.classList.add('is-active');
             this.input.touchActive = true;
             readSteer(e);
@@ -466,7 +466,7 @@ class Game {
             let id = null;
             el.addEventListener('pointerdown', (e) => {
                 id = e.pointerId;
-                el.setPointerCapture?.(e.pointerId);
+                try { el.setPointerCapture?.(e.pointerId); } catch { /* ponteiro já solto */ }
                 el.classList.add('is-held');
                 this.input.touchActive = true;
                 setter(true);

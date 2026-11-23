@@ -62,8 +62,13 @@ export function createInput() {
 
   function bindHold(el, flag) {
     if (!el) return;
+    let heldId = null;
     const start = (ev) => {
+      // Safari/iOS: só mouse filtra botão auxiliar (toque pode vir com button === -1).
+      if (ev.pointerType === 'mouse' && ev.button !== 0) return;
       ev.preventDefault();
+      heldId = ev.pointerId;
+      try { el.setPointerCapture(ev.pointerId); } catch { /* ponteiro já solto */ }
       touch[flag] = true;
       el.classList.add('is-down');
       if (flag === 'jump') pulse.jump = true;
@@ -71,6 +76,8 @@ export function createInput() {
       if (flag === 'up') pulse.up = true;
     };
     const end = (ev) => {
+      if (heldId !== null && ev.pointerId !== heldId) return;
+      heldId = null;
       ev.preventDefault();
       touch[flag] = false;
       el.classList.remove('is-down');
@@ -78,7 +85,7 @@ export function createInput() {
     el.addEventListener('pointerdown', start);
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
-    el.addEventListener('pointerleave', end);
+    el.addEventListener('lostpointercapture', end);
   }
 
   return {

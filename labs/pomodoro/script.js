@@ -126,12 +126,27 @@
             if (!this.ctx) {
                 const Ctx = window.AudioContext || window.webkitAudioContext;
                 if (!Ctx) return null;
-                this.ctx = new Ctx();
+                try {
+                    this.ctx = new Ctx({ latencyHint: 'interactive' });
+                } catch {
+                    try { this.ctx = new Ctx(); } catch { return null; }
+                }
+                try {
+                    if (navigator.audioSession) navigator.audioSession.type = 'playback';
+                } catch { /* iOS 17+ opcional */ }
                 this.master = this.ctx.createGain();
                 this.master.gain.value = this.volume;
                 this.master.connect(this.ctx.destination);
+                // Buffer silencioso: desbloqueia a cadeia de gesto no Safari iOS.
+                try {
+                    const buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate || 22050);
+                    const src = this.ctx.createBufferSource();
+                    src.buffer = buffer;
+                    src.connect(this.master);
+                    src.start(0);
+                } catch { /* best-effort */ }
             }
-            if (this.ctx.state === 'suspended') this.ctx.resume();
+            if (this.ctx.state === 'suspended') void this.ctx.resume().catch(() => {});
             return this.ctx;
         }
 

@@ -869,7 +869,14 @@
     if (!audioContext) {
       const AudioCtor = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtor) return null;
-      try { audioContext = new AudioCtor(); } catch (error) { return null; }
+      try {
+        audioContext = new AudioCtor({ latencyHint: 'interactive' });
+      } catch (error) {
+        try { audioContext = new AudioCtor(); } catch { return null; }
+      }
+      try {
+        if (navigator.audioSession) navigator.audioSession.type = 'playback';
+      } catch { /* iOS 17+ opcional */ }
     }
     if (audioContext.state === 'suspended') audioContext.resume()?.catch?.(() => {});
     return audioContext;

@@ -24,7 +24,7 @@ import { aiThinkDelay, chooseAction } from './ai.js?v=5';
 import { HAND_PLAIN, HAND_RANK_CHART, LESSONS, liveTip } from './coach.js?v=5';
 import { renderCards, revealCards } from './cards.js?v=5';
 import { flyChips, renderChipStack } from './chips.js?v=4';
-import { isMuted, setMuted, sfxChip, sfxClick, sfxDeal, sfxFold, sfxWin } from './audio.js';
+import { isMuted, setMuted, sfxChip, sfxClick, sfxDeal, sfxFold, sfxWin, unlock as unlockAudio } from './audio.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -147,6 +147,14 @@ function init() {
         mute.setAttribute('aria-pressed', String(isMuted()));
         mute.textContent = isMuted() ? 'Mudo' : 'Som';
     }
+    // Safari iOS: libera o AudioContext na cadeia do primeiro gesto.
+    const unlockOnce = () => {
+        unlockAudio();
+        document.removeEventListener('pointerdown', unlockOnce, true);
+        document.removeEventListener('keydown', unlockOnce, true);
+    };
+    document.addEventListener('pointerdown', unlockOnce, true);
+    document.addEventListener('keydown', unlockOnce, true);
     renderAll();
     showIntro(true);
 }
