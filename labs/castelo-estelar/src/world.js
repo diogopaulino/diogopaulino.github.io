@@ -25,8 +25,8 @@ export const LAKE = { x: 6, z: 122, r: 104 };
 export const MOON_DIR = new THREE.Vector3(-0.5, 0.262, -0.83).normalize();
 const MOON_RADIUS = 0.058; // raio angular em radianos (~3,3°: lua "de cinema", 13× a real)
 
-const BRIDGE_A = { x: 124, z: 86 };
-const BRIDGE_B = { x: 27, z: 35, y: 9.6 };
+export const BRIDGE_A = { x: 124, z: 86 };
+export const BRIDGE_B = { x: 27, z: 35, y: 9.6 };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Relevo
@@ -678,6 +678,9 @@ export async function createKingdom(stage, onBuilt) {
     const star = castle.anchors.star.clone().setY(castle.anchors.star.y + PLATEAU_Y);
     return {
         terrain, lake, castle, forest, grass, bridge, hamlet, lamps, overlay, mountains, ramp, road,
+        /** Para a colisão do passeio: troncos ({x,z,s}), casas ({x,z,w,l,ry}) e o tabuleiro do viaduto. */
+        trees, houses,
+        deck: { ax: BRIDGE_A.x, az: BRIDGE_A.z, ay, bx: BRIDGE_B.x, bz: BRIDGE_B.z, by: BRIDGE_B.y + 0.15, width: 4.4 },
         /** Posição de mundo da estrela no topo da menagem. */
         star,
         donjon: { ...castle.anchors.donjon, top: castle.anchors.donjon.top + PLATEAU_Y, gallery: castle.anchors.donjon.gallery + PLATEAU_Y },

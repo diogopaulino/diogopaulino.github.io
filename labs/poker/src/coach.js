@@ -210,18 +210,22 @@ export function liveTip(match, legal) {
             };
         }
         const mine = r.hands?.[hero];
-        const theirs = r.hands?.[1 - hero];
+        const w = r.winners?.[0];
+        const best = w !== undefined && w !== hero ? r.hands?.[w] : null;
+        const sides = (r.pots || []).filter((p) => !p.refund).length > 1
+            ? ' Houve all-in: cada pote paralelo é disputado só por quem cobriu aquela aposta.'
+            : '';
         return {
             title: 'Showdown · cartas na mesa',
-            text: mine && theirs
-                ? `Você: ${mine.name} (${HAND_PLAIN[mine.category]}). IA: ${theirs.name}. As 5 cartas que decidiram acendem na mesa.`
-                : 'Cartas abertas — a melhor combinação de cinco leva o pote.'
+            text: (mine
+                ? `Você: ${mine.name} (${HAND_PLAIN[mine.category]}).${best ? ` ${match.players[w]?.name || 'IA'}: ${best.name}.` : ''} As 5 cartas que decidiram acendem na mesa.`
+                : 'Cartas abertas — a melhor combinação de cinco leva o pote.') + sides
         };
     }
 
     if (h.toAct !== hero) {
         return {
-            title: `${streetLabel} · vez da IA`,
+            title: `${streetLabel} · vez de ${match.players[h.toAct]?.name || 'IA'}`,
             text: 'A IA está pensando. Aposta grande costuma ser mão forte — ou blefe!'
         };
     }

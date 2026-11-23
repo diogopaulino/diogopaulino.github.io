@@ -6,10 +6,10 @@
  */
 
 import * as THREE from 'three';
-import { Level } from './Level.js?v=40';
-import { buildHomeInterior, addHomeColliders, HOME_MARKS } from '../world/Home.js?v=42';
-import { EnvironmentFX } from '../world/Environment.js?v=40';
-import { makeHero } from '../characters/cast.js?v=40';
+import { Level } from './Level.js?v=50';
+import { buildHomeInterior, addHomeColliders, HOME_MARKS } from '../world/Home.js?v=50';
+import { EnvironmentFX } from '../world/Environment.js?v=50';
+import { makeHero } from '../characters/cast.js?v=50';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 

@@ -10,7 +10,7 @@
 
 import * as THREE from 'three';
 import { loadModel } from '../../../shared/gfx/assets.js';
-import { Kit, block, wallGeo, shadowAll } from './Build.js?v=40';
+import { Kit, block, wallGeo, shadowAll } from './Build.js?v=50';
 
 export const CASTLE = { hx: 18, hz: 19, wall: 9, thick: 2 };
 

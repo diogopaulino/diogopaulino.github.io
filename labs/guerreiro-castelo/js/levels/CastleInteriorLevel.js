@@ -8,10 +8,10 @@
  */
 
 import * as THREE from 'three';
-import { Level } from './Level.js?v=40';
-import { buildDungeon, UP } from '../world/Dungeon.js?v=42';
-import { Guard } from '../characters/Guard.js?v=42';
-import { Kit, block } from '../world/Build.js?v=40';
+import { Level } from './Level.js?v=50';
+import { buildDungeon, UP } from '../world/Dungeon.js?v=50';
+import { Guard } from '../characters/Guard.js?v=50';
+import { Kit, block } from '../world/Build.js?v=50';
 
 export class CastleInteriorLevel extends Level {
     get id() {
@@ -119,7 +119,7 @@ export class CastleInteriorLevel extends Level {
         g.input.enabled = true;
         g.player.controller.setMode('walk');
         g.hud.showStealth(true, 0);
-        g.hud.showToast('C agacha e esconde. Fique fora do cone do guarda.', 6);
+        g.hud.showToast(g.hud.isTouch ? 'Botão Agachar esconde. Fique fora do cone do guarda.' : 'C agacha e esconde. Fique fora do cone do guarda.', 6);
         if (g.story.flags.cellOpen) this._openCell();
     }
 

@@ -2,25 +2,23 @@
     --g1: #7c5cff;
     --g2: #3ee0ff;
     --g3: #ffb347;
+    /* O lab é uma janela para o espaço: painéis ficam escuros nos dois temas
+       do site (vidro claro sobre o céu estrelado apagava o contraste). */
     --panel: rgba(8, 8, 20, 0.78);
-    --panel-solid: rgba(8, 8, 18, 0.94);
+    --panel-solid: rgba(10, 10, 22, 0.94);
     --border: rgba(255, 255, 255, 0.1);
     --text: rgba(255, 255, 255, 0.94);
-    --muted: rgba(255, 255, 255, 0.5);
+    --muted: rgba(255, 255, 255, 0.58);
     --glow: rgba(124, 92, 255, 0.4);
     --accent: linear-gradient(135deg, var(--g1), var(--g2));
     --on-canvas: rgba(255, 255, 255, 0.82);
     --on-canvas-border: rgba(255, 255, 255, 0.16);
+    --ok: #86efac;
+    --warn: #fcd34d;
+    --bad: #fca5a5;
     --dock-radius: 22px;
-}
-
-[data-theme="light"] {
-    --panel: rgba(255, 255, 255, 0.82);
-    --panel-solid: rgba(255, 255, 255, 0.94);
-    --border: rgba(0, 0, 0, 0.1);
-    --text: rgba(12, 12, 24, 0.92);
-    --muted: rgba(12, 12, 24, 0.5);
-    --glow: rgba(99, 70, 220, 0.28);
+    --hud-top: 70px;
+    color-scheme: dark;
 }
 
 * {
@@ -45,6 +43,7 @@ body {
     background: #04040c;
     color: var(--text);
     touch-action: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .container {
@@ -64,6 +63,21 @@ body {
     display: block;
     cursor: crosshair;
     touch-action: none;
+}
+
+#canvas[data-mode="pan"] {
+    cursor: grab;
+}
+
+#canvas[data-mode="erase"] {
+    cursor: cell;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+    outline: 2px solid #c4b5fd;
+    outline-offset: 2px;
 }
 
 header {
@@ -170,9 +184,10 @@ header .app-logo svg {
     display: block;
 }
 
+/* ---- HUD: cena, telemetria (prova de conservação) e velocidade ---- */
 .hud {
     position: absolute;
-    top: 72px;
+    top: calc(var(--hud-top) + env(safe-area-inset-top, 0px));
     left: 50%;
     transform: translateX(-50%);
     z-index: 8;
@@ -182,8 +197,15 @@ header .app-logo svg {
     gap: 6px;
     pointer-events: none;
     text-align: center;
-    max-width: min(92vw, 420px);
-    padding-top: env(safe-area-inset-top, 0px);
+    width: max-content;
+    max-width: min(calc(100vw - 20px), 560px);
+}
+
+.hud-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 18px;
 }
 
 .hud-scene {
@@ -195,18 +217,81 @@ header .app-logo svg {
     text-shadow: 0 0 22px var(--glow);
 }
 
-.hud-meta {
-    font-size: 0.62rem;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
+.hud-badge {
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: #061018;
+    background: var(--warn);
 }
 
-.warp {
+.hud-badge[data-kind="pause"] {
+    background: #c4b5fd;
+}
+
+.hud-badge[hidden] {
+    display: none;
+}
+
+.telemetry {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    margin: 0;
+}
+
+.tm {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(8, 8, 20, 0.62);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.tm dt {
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.tm dd {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 3.6em;
+    text-align: left;
+}
+
+.tm-drift[data-state="ok"] dd {
+    color: var(--ok);
+}
+
+.tm-drift[data-state="warn"] dd {
+    color: var(--warn);
+}
+
+.tm-drift[data-state="bad"] dd {
+    color: var(--bad);
+}
+
+.rate {
     pointer-events: auto;
     display: flex;
-    gap: 4px;
-    margin-top: 2px;
+    align-items: center;
+    gap: 2px;
     padding: 3px;
     border-radius: 999px;
     border: 1px solid var(--border);
@@ -215,63 +300,90 @@ header .app-logo svg {
     -webkit-backdrop-filter: blur(12px) saturate(160%);
 }
 
-.warp-btn {
-    min-width: var(--touch-target);
+.rate-btn {
+    min-width: var(--touch-target, 44px);
     /* 44px: o seletor de velocidade é usado em pleno movimento da simulação,
        errar o alvo custa o enquadramento que o usuário estava observando. */
-    min-height: var(--touch-target);
-    padding: 0 10px;
+    min-height: var(--touch-target, 44px);
     border: none;
     border-radius: 999px;
-    background: transparent;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 0.68rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-}
-
-.warp-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, opacity 0.2s;
 }
 
-.warp-btn.active {
-    background: var(--accent);
-    color: #061018;
+.rate-btn:hover:not(:disabled) {
+    background: rgba(124, 92, 255, 0.25);
 }
 
+.rate-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.rate-label {
+    min-width: 9.5em;
+    padding: 0 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #e0e7ff;
+    white-space: nowrap;
+}
+
+/* ---- Dica de início ---- */
 .hint {
     position: absolute;
-    top: 42%;
+    /* Acima do centro: o cenário (Sol, buraco negro) fica enquadrado no meio. */
+    top: clamp(230px, 32%, 330px);
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 6;
     pointer-events: none;
     text-align: center;
-    max-width: min(90vw, 440px);
-    animation: hintOut 4.5s ease forwards;
+    width: min(90vw, 440px);
+    animation: hintOut 7s ease forwards;
+}
+
+.hint.quick {
+    animation-duration: 3.2s;
+}
+
+.hint.gone {
+    animation: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0s 0.3s;
 }
 
 .hint p {
     margin: 0;
-    font-size: 0.9rem;
+    padding: 10px 16px;
+    border-radius: 14px;
+    background: rgba(8, 8, 20, 0.55);
+    font-size: 0.86rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.62);
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.8);
     text-shadow: 0 0 24px rgba(124, 92, 255, 0.45);
 }
 
+/* ---- Inspetor ---- */
 .inspect {
     position: absolute;
     left: 50%;
-    bottom: 168px;
+    bottom: calc(var(--dock-h, 170px) + 10px);
     transform: translateX(-50%);
     z-index: 16;
     display: flex;
     align-items: center;
     gap: 10px;
-    width: min(360px, calc(100% - 28px));
-    padding: 10px 10px 10px 12px;
+    width: min(440px, calc(100% - 20px));
+    padding: 8px 8px 8px 12px;
     border-radius: 16px;
     border: 1px solid var(--border);
     background: var(--panel-solid);
@@ -285,8 +397,8 @@ header .app-logo svg {
 }
 
 .inspect-swatch {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     flex-shrink: 0;
     box-shadow: 0 0 16px color-mix(in srgb, var(--g3) 40%, transparent);
@@ -309,16 +421,20 @@ header .app-logo svg {
 }
 
 .inspect-copy span {
-    font-size: 0.62rem;
-    letter-spacing: 0.04em;
+    font-size: 0.64rem;
+    letter-spacing: 0.02em;
     color: var(--muted);
-    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+}
+
+.inspect-orbit {
+    color: #c7d2fe !important;
 }
 
 .inspect-follow {
     flex-shrink: 0;
     min-height: 44px;
-    padding: 0 14px;
+    padding: 0 12px;
     border-radius: 12px;
     border: 1px solid rgba(124, 92, 255, 0.35);
     background: rgba(124, 92, 255, 0.16);
@@ -337,13 +453,33 @@ header .app-logo svg {
     border-color: transparent;
 }
 
+.inspect-close {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.inspect-close:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Dock ---- */
 .dock {
     position: absolute;
     left: 50%;
-    bottom: max(18px, env(safe-area-inset-bottom, 0px));
+    bottom: max(14px, env(safe-area-inset-bottom, 0px));
     transform: translateX(-50%);
     z-index: 15;
-    width: min(760px, calc(100% - 20px));
+    width: min(820px, calc(100% - 20px));
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -357,6 +493,7 @@ header .app-logo svg {
     scrollbar-width: none;
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
 }
 
 .scene-rail::-webkit-scrollbar {
@@ -398,12 +535,18 @@ header .app-logo svg {
     box-shadow: 0 6px 22px rgba(124, 92, 255, 0.28);
 }
 
+.scene-chip.random {
+    color: #f0abfc;
+    border-color: rgba(192, 38, 211, 0.3);
+    background: rgba(40, 8, 48, 0.72);
+}
+
 .scene-swatch {
     width: 14px;
     height: 14px;
     border-radius: 50%;
     background: var(--chip);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28), 0 0 10px var(--chip);
     flex-shrink: 0;
 }
 
@@ -412,7 +555,7 @@ header .app-logo svg {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 8px;
+    padding: 6px;
     border-radius: var(--dock-radius);
     border: 1px solid var(--border);
     background: var(--panel);
@@ -423,15 +566,18 @@ header .app-logo svg {
 
 .tool-group {
     display: flex;
-    gap: 5px;
+    gap: 4px;
     flex-wrap: nowrap;
 }
 
-.tool-group:last-child {
+.tool-group.actions {
     margin-left: auto;
+    padding-left: 8px;
+    border-left: 1px solid var(--border);
 }
 
 .tool-btn {
+    position: relative;
     width: 44px;
     height: 44px;
     min-width: 44px;
@@ -444,12 +590,21 @@ header .app-logo svg {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s, background 0.2s, color 0.2s, box-shadow 0.2s;
+    transition: transform 0.15s, background 0.2s, color 0.2s, box-shadow 0.2s, opacity 0.2s;
 }
 
-.tool-btn:hover {
+.tool-btn:hover:not(:disabled) {
     color: var(--text);
     background: rgba(255, 255, 255, 0.1);
+}
+
+.tool-btn:active:not(:disabled) {
+    transform: scale(0.94);
+}
+
+.tool-btn:disabled {
+    opacity: 0.32;
+    cursor: default;
 }
 
 .tool-btn.active {
@@ -458,10 +613,28 @@ header .app-logo svg {
     box-shadow: 0 4px 16px rgba(124, 92, 255, 0.3);
 }
 
-.tool-btn.accent {
-    color: #f0abfc;
-    background: rgba(192, 38, 211, 0.14);
-    border-color: rgba(192, 38, 211, 0.28);
+.tool-btn.play {
+    color: var(--text);
+    background: rgba(124, 92, 255, 0.18);
+    border-color: rgba(124, 92, 255, 0.35);
+}
+
+.tool-btn.play .icon-play {
+    display: none;
+}
+
+.tool-btn.play.paused {
+    color: #061018;
+    background: var(--accent);
+    border-color: transparent;
+}
+
+.tool-btn.play.paused .icon-play {
+    display: block;
+}
+
+.tool-btn.play.paused .icon-pause {
+    display: none;
 }
 
 .tool-btn[aria-expanded="true"] {
@@ -470,13 +643,16 @@ header .app-logo svg {
     background: rgba(124, 92, 255, 0.14);
 }
 
+/* ---- Ajustes ---- */
 .tune-panel {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 12px 16px;
     padding: 14px 16px;
-    max-height: min(46dvh, 360px);
+    max-height: min(46dvh, 380px);
     overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
     border-radius: 18px;
     border: 1px solid var(--border);
     background: var(--panel-solid);
@@ -488,22 +664,61 @@ header .app-logo svg {
     display: none;
 }
 
-.slider-row,
-.select-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+.seg-group {
+    grid-column: 1 / -1;
+    border: none;
+    min-width: 0;
 }
 
+.seg-group legend,
 .slider-row label,
 .select-group label {
     display: flex;
     justify-content: space-between;
+    width: 100%;
+    margin-bottom: 6px;
     font-size: 0.62rem;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--muted);
+}
+
+.seg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.seg-btn {
+    min-height: 40px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.seg-btn:hover {
+    color: var(--text);
+}
+
+.seg-btn.active {
+    color: #061018;
+    border-color: transparent;
+    background: var(--accent);
+}
+
+.slider-row,
+.select-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
 .slider-row label span {
@@ -517,7 +732,7 @@ input[type="range"] {
     width: 100%;
     /* 44px de alvo tocável; o trilho visível de 4px vive nos
        pseudo-elementos abaixo, então o desenho não muda. */
-    height: var(--touch-target);
+    height: var(--touch-target, 44px);
     border: none;
     background: transparent;
     outline: none;
@@ -561,6 +776,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 select {
+    min-height: 44px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--border);
     color: var(--text);
@@ -584,8 +800,8 @@ select option {
 .checkbox-grid {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 12px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 2px 12px;
 }
 
 .checkbox-label {
@@ -603,11 +819,12 @@ select option {
     appearance: none;
     width: 18px;
     height: 18px;
-    border: 1.5px solid var(--border);
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
     border-radius: 5px;
     background: rgba(255, 255, 255, 0.05);
     flex-shrink: 0;
     position: relative;
+    cursor: pointer;
 }
 
 .checkbox-label input:checked {
@@ -627,42 +844,68 @@ select option {
     font-weight: 700;
 }
 
-.slingshot-hint {
+.diag,
+.keys {
+    grid-column: 1 / -1;
+    font-size: 0.64rem;
+    line-height: 1.5;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.diag {
+    color: #c7d2fe;
+}
+
+/* ---- Estilingue ---- */
+.sling-hint {
     position: fixed;
     pointer-events: none;
     z-index: 12;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(8, 8, 20, 0.78);
     font-size: 0.68rem;
     font-weight: 700;
     color: #fde68a;
-    text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    max-width: calc(100vw - 20px);
+    overflow: hidden;
+    text-overflow: ellipsis;
     opacity: 0;
-    transform: translate(-50%, -140%);
+    transform: translate(-50%, -190%);
 }
 
-.slingshot-hint.visible {
+.sling-hint.visible {
     opacity: 1;
 }
 
+/* ---- Toast ---- */
 .toast {
     position: fixed;
     left: 50%;
-    bottom: 196px;
+    bottom: calc(var(--dock-h, 170px) + 12px);
     transform: translate(-50%, 8px);
     z-index: 30;
     padding: 10px 16px;
-    border-radius: 999px;
+    border-radius: 16px;
     border: 1px solid var(--border);
     background: var(--panel-solid);
     color: var(--text);
     font-size: 0.75rem;
     font-weight: 600;
+    line-height: 1.4;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s, transform 0.25s;
-    max-width: min(90vw, 360px);
+    width: max-content;
+    max-width: min(calc(100vw - 24px), 420px);
     text-align: center;
+}
+
+body:has(.inspect:not([hidden])) .toast {
+    bottom: calc(var(--dock-h, 170px) + 84px);
 }
 
 .toast.show {
@@ -702,96 +945,152 @@ body.fullscreen:hover header {
 }
 
 @keyframes hintOut {
-    0%, 70% { opacity: 1; }
+    0%, 75% { opacity: 1; }
     100% { opacity: 0; visibility: hidden; }
 }
 
+/* O rodapé "voltar para home" fica à esquerda do dock só onde sobra espaço. */
+@media (max-width: 1180px) {
+    footer {
+        display: none;
+    }
+}
+
 @media (max-width: 768px) {
+    :root {
+        --hud-top: 62px;
+    }
+
     header .app-logo {
         font-size: clamp(0.95rem, 4.2vw, 1.15rem);
     }
 
-    .hud {
-        top: 64px;
+    .tune-panel {
+        grid-template-columns: minmax(0, 1fr);
+        max-height: min(40dvh, 320px);
+    }
+
+    .tm {
+        padding: 3px 8px;
+    }
+}
+
+/* Estreito: ferramentas e controles de tempo em duas linhas (cada uma cabe em 355px). */
+@media (max-width: 580px) {
+    .dock {
+        width: calc(100% - 12px);
+        gap: 6px;
     }
 
     .dock-tools {
-        justify-content: flex-start;
-        flex-wrap: nowrap;
-        overflow: hidden;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px;
+        padding: 5px;
         border-radius: 18px;
     }
 
     .tool-group {
-        flex-wrap: nowrap;
+        width: 100%;
+        justify-content: space-between;
     }
 
-    .tool-group:first-child {
-        flex: 1;
-        min-width: 0;
-        overflow-x: auto;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
+    .tool-group.actions {
+        margin-left: 0;
+        padding-left: 0;
+        padding-top: 4px;
+        border-left: none;
+        border-top: 1px solid var(--border);
     }
 
-    .tool-group:first-child::-webkit-scrollbar {
-        display: none;
+    .tool-group.tools .tool-btn {
+        flex: 1 1 0;
+        width: auto;
+        max-width: 64px;
     }
 
-    .tool-group:last-child {
-        flex-shrink: 0;
-        margin-left: 6px;
+    .tool-group.actions .tool-btn {
+        flex: 1 1 0;
+        width: auto;
+        max-width: 64px;
     }
 
-    .tune-panel {
-        grid-template-columns: 1fr;
-        max-height: min(42dvh, 320px);
-    }
-
-    .inspect {
-        bottom: 178px;
-    }
-
-    footer {
-        display: none;
-    }
-
-    .toast {
-        bottom: 210px;
-    }
-}
-
-@media (max-width: 420px) {
-    .scene-chip span:not(.scene-swatch) {
-        max-width: 78px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    .scene-chip {
+        padding: 6px 12px 6px 9px;
+        font-size: 0.64rem;
     }
 
     .hint p {
         font-size: 0.8rem;
-        padding: 0 14px;
     }
 
-    .warp-btn {
-        min-width: var(--touch-target);
-        padding: 0 8px;
+    .telemetry {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, auto));
+        max-width: 360px;
+    }
+
+    .tm {
+        justify-content: space-between;
+    }
+
+    .tm dt {
+        font-size: 0.52rem;
+    }
+
+    .tm dd {
+        font-size: 0.66rem;
+        min-width: 3em;
+    }
+
+    .rate-label {
+        min-width: 8.2em;
+        font-size: 0.68rem;
     }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
+    :root {
+        --hud-top: 48px;
+    }
+
     header {
-        padding: max(0.4rem, env(safe-area-inset-top)) max(0.8rem, env(safe-area-inset-right)) 0.4rem max(0.8rem, env(safe-area-inset-left)) !important;
+        padding: max(0.35rem, env(safe-area-inset-top)) max(0.8rem, env(safe-area-inset-right)) 0.35rem max(0.8rem, env(safe-area-inset-left)) !important;
     }
 
+    /* HUD numa linha: cena · telemetria · velocidade. */
     .hud {
-        top: 48px;
-        gap: 3px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px 6px;
+        max-width: calc(100vw - max(24px, env(safe-area-inset-left) + env(safe-area-inset-right) + 24px));
     }
 
-    .hud-meta {
+    .hud-title {
         display: none;
+    }
+
+    .tm {
+        padding: 2px 7px;
+    }
+
+    .tm dt {
+        font-size: 0.5rem;
+    }
+
+    .tm dd {
+        font-size: 0.62rem;
+        min-width: 2.8em;
+    }
+
+    .rate {
+        padding: 1px;
+    }
+
+    .rate-label {
+        min-width: 7.6em;
+        font-size: 0.64rem;
     }
 
     .hint {
@@ -799,9 +1098,12 @@ body.fullscreen:hover header {
     }
 
     .inspect {
-        bottom: 92px;
-        width: min(300px, calc(100% - 120px));
-        padding: 6px 8px;
+        width: min(420px, calc(100% - 24px));
+        padding: 4px 6px 4px 10px;
+    }
+
+    .inspect-copy span {
+        font-size: 0.58rem;
     }
 
     .scene-rail {
@@ -811,36 +1113,61 @@ body.fullscreen:hover header {
     /* Em paisagem curta a fonte e o respiro encolhem, mas a altura tocável
        fica em 44px: o seletor de cena troca a simulação inteira. */
     .scene-chip {
-        min-height: var(--touch-target);
+        min-height: var(--touch-target, 44px);
         padding: 4px 10px 4px 8px;
-        font-size: 0.62rem;
-    }
-
-    .tool-btn {
-        width: var(--touch-target);
-        height: var(--touch-target);
-        border-radius: 12px;
+        font-size: 0.6rem;
     }
 
     .dock {
-        bottom: max(8px, env(safe-area-inset-bottom));
-        width: min(640px, calc(100% - 16px));
-        gap: 6px;
-    }
-
-    .dock-tools {
-        padding: 4px;
+        bottom: max(6px, env(safe-area-inset-bottom));
+        width: min(680px, calc(100% - 16px - env(safe-area-inset-left) - env(safe-area-inset-right)));
         gap: 4px;
     }
 
-    .tune-panel {
-        max-height: min(38dvh, 200px);
-        grid-template-columns: 1fr 1fr;
-        padding: 10px 12px;
+    .dock-tools {
+        flex-wrap: nowrap;
+        padding: 3px;
+        gap: 3px;
     }
 
-    footer {
-        display: none;
+    .tool-group {
+        width: auto;
+        gap: 2px;
+    }
+
+    .tool-group.actions {
+        margin-left: auto;
+        padding: 0 0 0 4px;
+        border-top: none;
+        border-left: 1px solid var(--border);
+    }
+
+    .tool-group.tools .tool-btn,
+    .tool-group.actions .tool-btn {
+        flex: 0 0 auto;
+        width: 44px;
+    }
+
+    .tool-btn {
+        border-radius: 12px;
+    }
+
+    /* Ajustes viram uma folha lateral sobre o canto direito, sem empurrar o
+       dock para cima do céu (sobra a metade esquerda do canvas visível). */
+    .tune-panel {
+        position: absolute;
+        right: 0;
+        bottom: calc(100% + 6px);
+        width: min(360px, 62%);
+        max-height: calc(100dvh - var(--dock-h, 110px) - 60px);
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+        padding: 10px 12px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .toast {
+        bottom: calc(var(--dock-h, 110px) + 8px);
     }
 }
 
@@ -848,8 +1175,15 @@ body.fullscreen:hover header {
     .hint,
     .toast,
     .scene-chip,
-    .tool-btn {
+    .tool-btn,
+    .icon-btn,
+    .rate-btn,
+    .seg-btn {
         animation: none;
         transition: none;
+    }
+
+    .hint {
+        animation: hintOut 7s steps(1, end) forwards;
     }
 }

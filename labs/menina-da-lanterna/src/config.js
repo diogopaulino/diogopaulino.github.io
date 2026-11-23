@@ -6,30 +6,57 @@
  *   fuel ∈ [0, 100]
  *   drain = 1.15 / s nos capítulos escuros, se não houver lampião aceso perto (< 3.4 m)
  *           (era 1,65: no modo infantil a chama cheia dura ~87 s em vez de ~60 s)
+ *   abrigo: perto de lampião aceso a chama não gasta e ainda REACENDE +6 / s
+ *           (lampião aceso é ponto seguro: nunca há escuro sem saída)
  *   flash custa 14 e empurra Sombrios num raio de 6.2 m
- *   vaga-lume restaura +16
+ *   vaga-lume restaura +16 e volta a brilhar 45 s depois de colhido
  */
 
 export const STORAGE_KEY = 'menina-da-lanterna-v1';
 
+/**
+ * Corpo e locomoção de Clara (criança de ~1,22 m, ~8 anos). Unidades SI.
+ *   Velocidade-alvo no plano: v* = |stick| · walk  (trote leve; stick a meio ≈ passo de 1,2 m/s)
+ *                             v* = sprint com Shift / botão "correr"
+ *     (adulto anda 1,4 m/s e corre 4–6 m/s; escalado pela altura, 2,4 e 4,2 m/s dão a
+ *      sensação de uma criança apressada sem deixar o vale de 300 m cansativo)
+ *   Aceleração exponencial:  v ← v + (v* − v)·(1 − e^(−k·dt)),  k = accel (ganha) ou decel (perde)
+ *     accel 8 → 90 % da velocidade em ~0,29 s · decel 11 → da corrida à parada em ~0,4 s
+ *   Ladeira (função de Tobler, 1993):  f = e^(−3,5·|g + 0,05|) / e^(−3,5·0,05),  g = dy/dx no rumo
+ *     f limitado a [0,7; 1,12]: subida de 15 % já custa ~30 % do passo, descida leve ajuda um pouco
+ *   gravity  m/s² (sem pulo: só segura o corpo colado em ladeira e ponte)
+ */
 export const PLAYER = {
-    walk: 3.85,
-    sprint: 6.35,
+    walk: 2.4,
+    sprint: 4.2,
+    accel: 8,
+    decel: 11,
     radius: 0.38,
     height: 1.22,
-    gravity: 18,
-    turnSpeed: 11,
+    gravity: 24,
+    terminal: 30,
+    turnSpeed: 10,
     invuln: 1.35,
     fuelMax: 100,
     fuelDrain: 1.15,
+    lampRegen: 6,
     flashCost: 14,
     flashTime: 0.55,
     flashRadius: 6.2,
     fireflyHeal: 16,
+    fireflyRespawn: 45,
     lampRange: 3.4
 };
 
+/**
+ * Câmera em órbita no ombro.
+ *   recenter: rad/s com que a órbita volta para trás de Clara quando ela anda e ninguém mexe
+ *             na câmera há `recenterDelay` s (escala com v/sprint; não roda quando ela anda
+ *             para a câmera — senão a câmera daria meia-volta)
+ */
 export const CAMERA = {
+    recenter: 1.6,
+    recenterDelay: 1.1,
     distance: 5.8,
     minDistance: 3.0,
     maxDistance: 10.5,

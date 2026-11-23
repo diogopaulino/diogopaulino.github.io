@@ -24,7 +24,7 @@
     <meta name="twitter:title" content="Neon Invaders — arcade espacial cyberpunk | Diogo Paulino">
     <meta name="twitter:description" content="Arcade espacial cyberpunk em canvas: destrua ondas inimigas, use power-ups e bata seu recorde com controles por teclado ou toque.">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=8">
+    <link rel="stylesheet" href="style.css?v=9">
     <link rel="stylesheet" href="/assets/fonts/press-start-2p/font.css">
     <script type="application/ld+json">
     {
@@ -127,8 +127,9 @@
                         <div class="eyebrow">ARCADE · 01</div>
                         <h1>NEON<br><span>INVADERS</span></h1>
                         <p class="lead">Destrua os invasores antes que eles cheguem lá embaixo!</p>
-                        <p class="how touch-only">Arraste o dedo na tela para mover a nave. Enquanto o dedo
-                            estiver na tela, ela atira.</p>
+                        <p class="how touch-only">Arraste o dedo na tela: a nave segue o movimento (sem ficar embaixo do dedo) e atira.</p>
+                        <p class="how how-power">Só o <strong>ponto branco</strong> leva dano · cápsulas
+                            <strong>W</strong> <strong>S</strong> <strong>R</strong> <strong>♥</strong> dão poder.</p>
                         <div class="quick-controls fine-only" aria-label="Controles">
                             <span><kbd>←</kbd><kbd>→</kbd> mover</span>
                             <span><kbd>ESPAÇO</kbd> disparar</span>
@@ -219,11 +220,22 @@
                     </div>
                 </div>
 
+                <div class="power-legend">
+                    <span class="panel-kicker">POWER-UPS</span>
+                    <ul>
+                        <li><b class="pw pw-w">W</b> Laser +1 (até III)</li>
+                        <li><b class="pw pw-s">S</b> Escudo: segura 1 tiro</li>
+                        <li><b class="pw pw-r">R</b> Turbo: 10 s de tiro rápido</li>
+                        <li><b class="pw pw-h">♥</b> Vida extra</li>
+                    </ul>
+                </div>
+
                 <div class="desktop-controls">
                     <span class="panel-kicker">CONTROLES</span>
                     <div><span><kbd>A</kbd><kbd>D</kbd></span><p>Mover nave</p></div>
                     <div><span><kbd>←</kbd><kbd>→</kbd></span><p>Mover nave</p></div>
                     <div><span><kbd>ESPAÇO</kbd></span><p>Disparar</p></div>
+                    <div><span><kbd>P</kbd><kbd>ESC</kbd></span><p>Pausar</p></div>
                 </div>
 
                 <button id="soundToggle" class="sound-toggle" type="button" aria-pressed="true">
@@ -237,7 +249,7 @@
     </div>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=8" defer></script>
+    <script src="script.js?v=9" defer></script>
 </body>
 
 </html>

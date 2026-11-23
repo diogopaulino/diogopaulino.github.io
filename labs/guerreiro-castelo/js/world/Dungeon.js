@@ -24,8 +24,8 @@
 
 import * as THREE from 'three';
 import { loadModel } from '../../../shared/gfx/assets.js';
-import { Kit, block, wallGeo, vaultGeo, ribGeo, columnGeo, shadowAll } from './Build.js?v=40';
-import { addTorch, EnvironmentFX, makeFire } from './Environment.js?v=40';
+import { Kit, block, wallGeo, vaultGeo, ribGeo, columnGeo, shadowAll } from './Build.js?v=50';
+import { addTorch, EnvironmentFX, makeFire } from './Environment.js?v=50';
 
 /* Adereços pequenos e muito densos (o baú tem ~95 mil triângulos) não projetam sombra:
    a sombra deles mal aparece e custava um passe inteiro a mais por luz (×6 na lareira). */

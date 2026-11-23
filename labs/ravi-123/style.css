@@ -247,3 +247,8 @@ html[data-fit="side"] #rotate-hint {
     max-width: 100%;
   }
 }
+
+/* Rodapé compartilhado: com #app fixo ele subia para o topo, sob o título,
+   e o link "voltar para home" ficava tocável — uma criança saía do jogo.
+   Some de verdade (o header continua com o caminho de volta). */
+.lab-foot { visibility: hidden; pointer-events: none; position: fixed; bottom: 0; left: 0; height: 0; overflow: hidden; }

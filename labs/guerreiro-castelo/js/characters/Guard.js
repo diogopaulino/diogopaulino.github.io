@@ -1,14 +1,15 @@
 /**
  * Guarda do castelo: `createHero` (preset guard) + GuardAI + cone de visão visível.
+ * Animação: golpe pela fase do swing da IA (antecipação legível), 'hit' ao cambalear.
  *
  * O cone é um setor de círculo no chão (raio = alcance da visão, abertura = ±ângulo),
  * filho do guarda, que muda de cor com o alerta: verde (calmo) → âmbar → vermelho.
  */
 
 import * as THREE from 'three';
-import { makeHero } from './cast.js?v=40';
-import { GuardAI } from '../ai/GuardAI.js?v=42';
-import { angleDamp } from '../utils/math.js';
+import { makeHero } from './cast.js?v=50';
+import { GuardAI } from '../ai/GuardAI.js?v=50';
+import { angleDamp } from '../utils/math.js?v=50';
 
 const CALM = new THREE.Color(0x7ad0a0);
 const WARN = new THREE.Color(0xffc24a);
@@ -51,21 +52,25 @@ export class Guard {
         this.facing = yaw;
         this.root.position.copy(this.position);
         this.root.rotation.y = this.facing;
-        this.ai.home.copy(this.position);
+        this.ai.home.x = x;
+        this.ai.home.y = y;
+        this.ai.home.z = z;
         this.ai.facing = yaw;
     }
 
-    takeHit(amount = 1) {
+    /** Golpe de Dico vindo de (fromX, fromZ): dano, empurrão de `push` m/s e cambaleio. */
+    takeHit(amount = 1, fromX = this.position.x, fromZ = this.position.z - 1, push = 3.8, game = null) {
         if (!this.alive) return;
         this.health -= amount;
+        /* dorminhoco acordado na marra: passa a ser guarda de verdade */
+        if (this.ai.state === 'SLEEP') this.ai.sleep = false;
+        this.ai.stagger(fromX, fromZ, push);
         if (this.health <= 0) {
             this.health = 0;
             this.alive = false;
             this.dieT = 0;
             this.cone.visible = false;
-        } else {
-            this.ai.state = 'ATTACK';
-            this.ai.alert = 1;
+            game?.hud?.showToast('Guarda nocauteado', 2);
         }
     }
 
@@ -74,8 +79,13 @@ export class Guard {
         a.phase = undefined;
         a.blink = 0;
         if (!this.alive) {
-            // nocauteado: cai e fica no chão (sem sangue)
+            // nocauteado: escorrega com o empurrão, cai e fica no chão (sem sangue)
             this.dieT += dt;
+            const k = Math.exp(-7 * dt);
+            this.ai.kvx *= k;
+            this.ai.kvz *= k;
+            this.ai._slide(game, dt);
+            this.root.position.copy(this.position);
             a.mode = 'die';
             this.hero.update(dt, a);
             return;
@@ -90,11 +100,15 @@ export class Guard {
         if (st === 'SLEEP') {
             a.mode = 'sit';
             a.blink = 1;
+        } else if (st === 'STAGGER') {
+            a.mode = 'hit';
+            a.phase = Math.min(1, this.ai.timer / 0.45);
         } else if (st === 'ATTACK') {
-            /* um golpe por ciclo de recarga: fase = tempo desde o último golpe / 0,6 s */
-            this.swingT = this.ai.attackCd > 0 ? Math.min(1, (1.55 - this.ai.attackCd) / 0.6) : 0;
-            a.mode = this.swingT < 1 ? 'attack' : 'idle';
-            if (this.swingT < 1) a.phase = this.swingT;
+            /* fase do golpe = tempo desde o início / 0,9 s → o corte (fase 0,3–0,5 do herói)
+               cai em ~0,27–0,45 s, junto do impacto da IA (0,42 s) */
+            const sw = this.ai.swingT;
+            a.mode = sw >= 0 ? 'attack' : 'block';
+            if (sw >= 0) a.phase = Math.min(1, sw / 0.9);
         } else if (this.speed > 2.5) a.mode = 'run';
         else if (this.speed > 0.2) a.mode = 'walk';
         else a.mode = 'idle';

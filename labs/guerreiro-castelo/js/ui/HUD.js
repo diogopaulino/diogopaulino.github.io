@@ -1,5 +1,8 @@
 /**
- * HUD cinematográfico: vida, objetivo, interação, diálogo, stealth, FPS.
+ * HUD cinematográfico: vida, objetivo, interação, diálogo, stealth, FPS (só com ?debug).
+ * Vida em corações com meio-coração (defesa tira 0,35; flecha no convés 0,5): cada
+ * coração mostra a fração que resta, arredondada a meio. Golpe recebido: flash vermelho
+ * nas bordas da tela (desligado com prefers-reduced-motion, fica só o tremor reduzido).
  */
 
 export class HUD {
@@ -23,8 +26,12 @@ export class HUD {
             loading: document.getElementById('loadingOverlay'),
             loadingFill: document.getElementById('loadingFill'),
             loadingPct: document.getElementById('loadingPct'),
-            fps: document.getElementById('fpsCounter')
+            fps: document.getElementById('fpsCounter'),
+            hurt: document.getElementById('hurtFlash')
         };
+        this.debug = new URLSearchParams(location.search).has('debug');
+        if (this.debug) document.body.dataset.debug = 'true';
+        this._hearts = [];
         this._toastT = 0;
         this._chapterT = 0;
         this.isTouch = Boolean(window.matchMedia?.('(pointer: coarse)').matches);
@@ -55,16 +62,41 @@ export class HUD {
     }
 
     setHealth(hp, max = 5) {
-        if (this.lastHp === hp) return;
-        this.lastHp = hp;
-        if (!this.el.hearts) return;
-        this.el.hearts.innerHTML = '';
-        for (let i = 0; i < max; i++) {
+        /* meio-coração: arredonda a vida para 0,5 */
+        const shown = Math.round(hp * 2) / 2;
+        if (this.lastHp === shown) return;
+        const lost = this.lastHp > shown;
+        this.lastHp = shown;
+        const box = this.el.hearts;
+        if (!box) return;
+        while (this._hearts.length < max) {
             const s = document.createElement('span');
-            s.className = 'heart' + (i < hp ? '' : ' is-empty');
+            s.className = 'heart';
             s.textContent = '❤';
-            this.el.hearts.appendChild(s);
+            box.appendChild(s);
+            this._hearts.push(s);
         }
+        for (let i = 0; i < this._hearts.length; i++) {
+            const frac = Math.max(0, Math.min(1, shown - i));
+            const h = this._hearts[i];
+            h.classList.toggle('is-empty', frac <= 0);
+            h.classList.toggle('is-half', frac > 0 && frac < 1);
+        }
+        box.setAttribute('aria-label', `Vida: ${shown} de ${max}`);
+        if (lost) {
+            box.classList.remove('is-hurt');
+            void box.offsetWidth;
+            box.classList.add('is-hurt');
+        }
+    }
+
+    /** Flash vermelho nas bordas ao levar um golpe. */
+    flashHurt() {
+        const el = this.el.hurt;
+        if (!el) return;
+        el.classList.remove('is-on');
+        void el.offsetWidth;
+        el.classList.add('is-on');
     }
 
     showObjective(text, urgent = false) {
@@ -178,7 +210,7 @@ export class HUD {
         }
 
         this._fpsT = (this._fpsT || 0) + dt;
-        if (this._fpsT > 0.5 && this.game.stage) {
+        if (this.debug && this._fpsT > 0.5 && this.game.stage) {
             this._fpsT = 0;
             this.setFps(Math.round(this.game.stage.fps));
         }

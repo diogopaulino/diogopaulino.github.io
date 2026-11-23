@@ -942,3 +942,121 @@ body[data-playing] .lab-foot { display: none; }
     .hud-top { padding-top: 3.6rem; }
     .stealth { top: 7.2rem; }
 }
+
+/* ---------------------------------------------------------------------------
+   Remaster: pausa sempre à mão, feedback de dano e meio-coração.
+   --------------------------------------------------------------------------- */
+
+/* Botão de pausa para mouse e toque (antes só existia no toque; no desktop era só Esc). */
+.hud-pause {
+    position: absolute;
+    right: calc(1rem + env(safe-area-inset-right, 0px));
+    top: calc(4.6rem + env(safe-area-inset-top, 0px));
+    z-index: 16;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(12, 16, 26, 0.55);
+    backdrop-filter: blur(4px);
+    color: #e8dcc4;
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.12s ease;
+}
+
+.hud-pause svg { fill: currentColor; }
+.hud-pause:hover { border-color: var(--gold); color: var(--gold); }
+.hud-pause:active { transform: scale(0.94); }
+.hud-pause:focus-visible,
+.primary-button:focus-visible,
+.ghost-button:focus-visible,
+.touch-btn:focus-visible,
+.touch-chip:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+}
+
+/* os painéis do topo abrem espaço para o botão de pausa em qualquer ponteiro */
+.hud-top { padding-right: 3.8rem; }
+
+.pause-objective {
+    margin: -0.4rem 0 1rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.pause-objective:empty { display: none; }
+
+/* contador de fps só na depuração (?debug) */
+.fps { display: none; }
+body[data-debug] .fps { display: inline; }
+
+/* golpe recebido: borda vermelha que some em 0,45 s */
+.hurt-flash {
+    position: absolute;
+    inset: 0;
+    z-index: 9;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(190, 30, 20, 0.55) 100%);
+}
+
+.hurt-flash.is-on { animation: hurt-flash 0.45s ease-out; }
+
+@keyframes hurt-flash {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.heart { display: inline-block; }
+
+.heart.is-half {
+    background: linear-gradient(90deg, #c94a3a 50%, rgba(201, 74, 58, 0.22) 50%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.hearts.is-hurt .heart { animation: heart-hit 0.4s ease; }
+
+@keyframes heart-hit {
+    0%, 100% { transform: scale(1); }
+    35% { transform: scale(1.25); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hurt-flash.is-on,
+    .hearts.is-hurt .heart { animation: none; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud-pause { top: calc(3.5rem + env(safe-area-inset-top, 0px)); }
+}
+
+/* pausa alinhada ao topo dos painéis em cada layout */
+@media (max-width: 720px) {
+    .hud-pause { top: calc(4.4rem + env(safe-area-inset-top, 0px)); }
+}
+@media (min-width: 721px) and (min-height: 521px) {
+    .hud-pause { top: calc(5.5rem + env(safe-area-inset-top, 0px)); }
+}
+
+/* Retrato com toque: a fala sobe para baixo dos painéis do topo. Embaixo ela ficava
+   entre o analógico, os botões e Correr/Agachar (cobria e era coberta). */
+@media (pointer: coarse) and (max-width: 768px) and (orientation: portrait) {
+    .dialogue {
+        top: calc(12.2rem + env(safe-area-inset-top, 0px));
+        bottom: auto;
+        width: min(36rem, calc(100% - 1.8rem));
+        padding: 0.55rem 0.9rem 0.5rem;
+        background: linear-gradient(180deg, rgba(8, 10, 16, 0.6), rgba(8, 10, 16, 0.45));
+        border: 1px solid rgba(212, 180, 90, 0.16);
+        backdrop-filter: blur(6px);
+    }
+    .toast { top: 50%; }
+}

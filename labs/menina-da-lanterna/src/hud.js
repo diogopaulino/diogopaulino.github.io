@@ -2,8 +2,8 @@
  * HUD, menus e overlays — tudo que é DOM.
  */
 
-import { CHAPTERS } from './config.js';
-import { formatTime } from './utils.js';
+import { CHAPTERS } from './config.js?v=22';
+import { formatTime } from './utils.js?v=22';
 
 const $ = (id) => document.getElementById(id);
 
@@ -66,6 +66,14 @@ export class Hud {
         this.el.loadingFill.style.width = `${Math.round(progress * 100)}%`;
     }
 
+    /** Carregamento passou de 40 s: avisa e oferece recarregar (o card nunca fica mudo). */
+    slowLoading() {
+        if (this.el.loading.hidden) return;
+        this.el.loadingText.textContent = 'A bruma está densa (conexão lenta). Ainda acendendo…';
+        const btn = document.getElementById('reloadButton');
+        if (btn) btn.hidden = false;
+    }
+
     hideLoading() {
         this.el.loading.hidden = true;
     }
@@ -82,6 +90,8 @@ export class Hud {
 
     setTouchVisible(v) {
         this.el.touch.hidden = !v;
+        // o CSS tira som/pausa do canto dos pads também em tablet largo (não só por largura)
+        document.body.dataset.touch = v ? 'true' : 'false';
     }
 
     setHearts(cur, max) {

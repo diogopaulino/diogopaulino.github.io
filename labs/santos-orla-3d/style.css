@@ -9,6 +9,7 @@
     --sea-deep: oklch(42% 0.08 230);
     --coral: oklch(62% 0.14 45);
     --palm: oklch(58% 0.12 145);
+    --sun: oklch(84% 0.14 78);
 
     --text: oklch(96% 0.01 90);
     --text-soft: oklch(82% 0.02 90);
@@ -124,6 +125,11 @@ button {
     pointer-events: auto;
 }
 
+/* em jogo o rodapé sai de cena (o header leva de volta a /labs/) */
+.game-shell.is-playing .lab-foot {
+    display: none;
+}
+
 /* ===== Labels no mundo ===== */
 .world-labels {
     position: absolute;
@@ -131,6 +137,10 @@ button {
     pointer-events: none;
     z-index: 12;
     overflow: hidden;
+}
+
+.world-labels[hidden] {
+    display: none;
 }
 
 .world-label {
@@ -142,16 +152,48 @@ button {
     background: color-mix(in oklab, var(--ink) 72%, transparent);
     border: 1px solid var(--line);
     backdrop-filter: blur(8px);
+    color: var(--text);
     font-size: clamp(0.7rem, 2.2vw, 0.8rem);
     white-space: nowrap;
     opacity: 0;
-    transition: opacity 0.25s var(--ease);
+    visibility: hidden;
+    transition: opacity 0.25s var(--ease), background 0.2s var(--ease);
     will-change: transform, opacity;
+    pointer-events: none;
 }
 
 .world-label b {
     font-weight: 600;
     letter-spacing: 0.01em;
+}
+
+.world-label .wl-short,
+.world-labels.is-map .world-label .wl-full {
+    display: none;
+}
+
+.world-labels.is-map .world-label .wl-short {
+    display: inline;
+}
+
+.world-label.is-done b::before {
+    content: '✓ ';
+    color: var(--palm);
+}
+
+/* mapa: rótulos viram botões de teleporte */
+.world-labels.is-map .world-label {
+    pointer-events: auto;
+    cursor: pointer;
+    min-height: 44px;
+    padding: 0.55rem 0.85rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.world-labels.is-map .world-label:hover,
+.world-labels.is-map .world-label:focus-visible {
+    background: color-mix(in oklab, var(--sea-deep) 80%, transparent);
 }
 
 /* ===== HUD ===== */
@@ -169,15 +211,15 @@ button {
 
 .hud-top {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.42fr);
     gap: 0.55rem;
-    max-width: min(920px, 100%);
+    max-width: min(640px, calc(100% - 8rem));
     margin: 0 auto;
 }
 
 .panel {
     pointer-events: auto;
-    padding: 0.65rem 0.8rem;
+    padding: 0.6rem 0.8rem;
     border-radius: var(--radius);
     background: var(--panel);
     border: 1px solid var(--line-soft);
@@ -192,6 +234,14 @@ button {
     text-transform: uppercase;
     color: var(--text-dim);
     margin-bottom: 0.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#beachName {
+    color: var(--sea);
+    font-weight: 700;
 }
 
 .panel strong {
@@ -213,14 +263,137 @@ button {
     white-space: nowrap;
 }
 
+/* ----- Objetivo: seta para o próximo ponto (gfx/guide) ----- */
+.guide {
+    position: absolute;
+    left: 50%;
+    top: calc(8.1rem + var(--safe-top));
+    translate: -50% 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    max-width: min(360px, calc(100% - 1.5rem));
+    padding: 0.35rem 0.95rem 0.35rem 0.4rem;
+    border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid color-mix(in oklab, var(--sun) 40%, transparent);
+    box-shadow: 0 10px 28px oklch(0% 0 0 / 0.38);
+    pointer-events: none;
+    animation: guide-in 0.4s var(--ease);
+}
+
+.guide[hidden] {
+    display: none;
+}
+
+.guide i {
+    position: relative;
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 45%, color-mix(in oklab, var(--sun) 28%, transparent), transparent 70%);
+    transition: transform 0.12s linear;
+}
+
+.guide i::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 4px;
+    translate: -50% 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-bottom: 24px solid var(--sun);
+    filter: drop-shadow(0 0 6px color-mix(in oklab, var(--sun) 70%, transparent));
+}
+
+.guide span {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.15;
+}
+
+.guide-eyebrow {
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.guide-eyebrow b {
+    color: var(--sun);
+}
+
+.guide [data-guide-name] {
+    font-size: 0.9rem;
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.guide [data-guide-dist] {
+    font-size: 0.78rem;
+    color: var(--text-soft);
+}
+
+@keyframes guide-in {
+    from { opacity: 0; translate: -50% -6px; }
+    to { opacity: 1; translate: -50% 0; }
+}
+
+/* ----- Toast de descoberta ----- */
+.toast {
+    position: absolute;
+    left: 50%;
+    top: calc(12rem + var(--safe-top));
+    translate: -50% 0;
+    margin: 0;
+    max-width: min(440px, calc(100% - 1.5rem));
+    padding: 0.6rem 1.1rem;
+    border-radius: 14px;
+    background: linear-gradient(120deg, color-mix(in oklab, var(--sun) 24%, var(--ink)), var(--panel-strong));
+    border: 1px solid color-mix(in oklab, var(--sun) 50%, transparent);
+    box-shadow: 0 14px 34px oklch(0% 0 0 / 0.42);
+    font-weight: 600;
+    font-size: clamp(0.82rem, 2.6vw, 0.95rem);
+    text-align: center;
+    pointer-events: none;
+}
+
+.toast[hidden] {
+    display: none;
+}
+
+.toast.is-in {
+    animation: toast-in 0.45s var(--ease);
+}
+
+.toast.is-out {
+    opacity: 0;
+    translate: -50% -8px;
+    transition: opacity 0.35s var(--ease), translate 0.35s var(--ease);
+}
+
+@keyframes toast-in {
+    from { opacity: 0; translate: -50% 10px; scale: 0.96; }
+    to { opacity: 1; translate: -50% 0; scale: 1; }
+}
+
 .intro-banner {
     position: absolute;
     left: 50%;
     top: 42%;
     transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
     margin: 0;
-    padding: 0.7rem 1.2rem;
-    border-radius: 999px;
+    padding: 0.75rem 1.2rem;
+    border-radius: 22px;
     background: var(--panel-strong);
     border: 1px solid var(--line);
     backdrop-filter: blur(12px);
@@ -228,7 +401,36 @@ button {
     font-size: clamp(1rem, 3.5vw, 1.35rem);
     text-align: center;
     max-width: min(92vw, 420px);
+    pointer-events: auto;
     animation: banner-in 0.6s var(--ease);
+}
+
+.intro-banner[hidden] {
+    display: none;
+}
+
+.skip-button {
+    min-height: 44px;
+    padding: 0.4rem 0.95rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-soft);
+    background: color-mix(in oklab, var(--ink) 50%, transparent);
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-soft);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.skip-button:hover {
+    color: var(--foam);
+    border-color: var(--line);
+}
+
+.is-touch .skip-button kbd {
+    display: none;
 }
 
 @keyframes banner-in {
@@ -255,7 +457,73 @@ button {
     font-size: 0.78rem;
     color: var(--text-soft);
     text-align: center;
-    max-width: min(92vw, 480px);
+    max-width: min(92vw, 520px);
+}
+
+/* ----- Onboarding (primeira vez) ----- */
+.coach {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -42%;
+    width: min(400px, calc(100% - 1.5rem));
+    max-height: min(78dvh, 460px);
+    overflow-y: auto;
+    padding: 1.05rem 1.15rem 1.1rem;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(165deg, oklch(20% 0.035 220 / 0.94), oklch(13% 0.03 230 / 0.94));
+    border: 1px solid var(--line);
+    box-shadow: 0 24px 60px oklch(0% 0 0 / 0.45);
+    pointer-events: auto;
+    z-index: 26;
+    animation: coach-in 0.5s var(--ease);
+}
+
+.coach[hidden] {
+    display: none;
+}
+
+.coach h2 {
+    margin: 0.35rem 0 0.6rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 4vw, 1.4rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.coach-list {
+    margin: 0 0 0.7rem;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.4rem;
+    font-size: 0.86rem;
+    color: var(--text-soft);
+}
+
+.coach-list--touch,
+.is-touch .coach-list--keys {
+    display: none;
+}
+
+.is-touch .coach-list--touch {
+    display: grid;
+}
+
+.coach-goal {
+    margin: 0 0 0.9rem;
+    font-size: 0.86rem;
+    color: var(--text);
+    line-height: 1.45;
+}
+
+.coach-goal b {
+    color: var(--sun);
+}
+
+@keyframes coach-in {
+    from { opacity: 0; translate: -50% -38%; }
+    to { opacity: 1; translate: -50% -42%; }
 }
 
 .hud-modes {
@@ -268,7 +536,7 @@ button {
     justify-content: center;
     gap: 0.35rem;
     pointer-events: auto;
-    max-width: min(96vw, 420px);
+    max-width: min(96vw, 440px);
     padding: 0.3rem;
     z-index: 25;
 }
@@ -293,23 +561,66 @@ button {
     backdrop-filter: blur(10px);
     display: grid;
     place-items: center;
-    font-size: 1rem;
+    color: var(--text-soft);
+    transition: background 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s, transform 0.15s var(--ease);
 }
 
-.icon-button[aria-pressed="false"] {
-    opacity: 0.55;
+.icon-button:hover {
+    color: var(--foam);
+    border-color: var(--line);
 }
 
-.fps, .mode-pill {
+.icon-button:active {
+    transform: scale(0.94);
+}
+
+.icon-button svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#soundButton .snd-off,
+#soundButton[aria-pressed="false"] .snd-wave {
+    display: none;
+}
+
+#soundButton[aria-pressed="false"] .snd-off {
+    display: inline;
+}
+
+#soundButton[aria-pressed="false"] {
+    opacity: 0.6;
+}
+
+.bike-button[aria-pressed="true"],
+.round-button[aria-pressed="true"] {
+    background: color-mix(in oklab, var(--coral) 55%, var(--ink));
+    border-color: color-mix(in oklab, var(--coral) 70%, transparent);
+    color: var(--foam);
+}
+
+.speed-pill,
+.fps {
     font-size: 0.72rem;
-    color: var(--text-dim);
-    padding: 0.2rem 0.45rem;
+    color: var(--text-soft);
+    padding: 0.25rem 0.55rem;
     border-radius: 8px;
     background: var(--panel);
+    border: 1px solid var(--line-soft);
+    white-space: nowrap;
+}
+
+.fps[hidden] {
+    display: none;
 }
 
 .chip {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0.4rem 0.85rem;
     border-radius: 999px;
     border: 1px solid var(--line-soft);
@@ -334,6 +645,10 @@ button {
 }
 
 /* ===== Touch ===== */
+.is-touch .hud-actions .bike-button {
+    display: none;
+}
+
 .touch-controls {
     position: absolute;
     left: 0;
@@ -342,9 +657,37 @@ button {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    padding: 0 max(0.8rem, var(--safe-left)) 0 max(0.8rem, var(--safe-right));
+    padding: 0 max(0.8rem, var(--safe-right)) 0 max(0.8rem, var(--safe-left));
     pointer-events: none;
     z-index: 19;
+}
+
+.touch-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+.touch-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.round-button {
+    pointer-events: auto;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: color-mix(in oklab, var(--ink) 55%, transparent);
+    backdrop-filter: blur(8px);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+    touch-action: manipulation;
 }
 
 .stick, .look-pad {
@@ -537,9 +880,7 @@ button {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
+    flex: none;
 }
 
 .menu-foot {
@@ -578,6 +919,7 @@ button {
 }
 
 .hotspot-btn {
+    flex: none;
     text-align: left;
     padding: 0.55rem 0.7rem;
     min-height: 44px;
@@ -600,6 +942,21 @@ button {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.hotspot-check {
+    display: none;
+}
+
+.hotspot-btn.is-done .hotspot-check {
+    display: inline-block;
+    width: 1em;
+    color: var(--palm);
+    font-style: normal;
+}
+
+.hotspot-btn.is-done .hotspot-check::before {
+    content: '✓';
 }
 
 .hotspot-btn:hover {
@@ -678,6 +1035,17 @@ kbd {
 .ghost-button {
     border: 1px solid var(--line-soft);
     color: var(--text-soft);
+    text-decoration: none;
+}
+
+.ghost-button:hover {
+    color: var(--foam);
+    border-color: var(--line);
+}
+
+.primary-button:active,
+.ghost-button:active {
+    transform: scale(0.97);
 }
 
 .card-actions {
@@ -699,21 +1067,42 @@ kbd {
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
     .hud-top {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 0.4rem;
+        max-width: none;
+        margin: 0 3.4rem 0 0;
     }
 
-    .clock-panel {
-        display: none;
+    .panel {
+        padding: 0.5rem 0.7rem;
+    }
+
+    .clock-panel,
+    #placeBlurb {
+        display: none !important;
+    }
+
+    .guide {
+        left: max(0.75rem, var(--safe-left));
+        translate: none;
+        top: calc(7rem + var(--safe-top));
+        max-width: calc(100% - 5.2rem);
+        animation: none;
+    }
+
+    .toast {
+        top: calc(10.6rem + var(--safe-top));
     }
 
     .hud-actions {
-        top: auto;
-        bottom: calc(9.5rem + var(--safe-bottom));
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        max-width: 46vw;
+        top: calc(3.2rem + var(--safe-top));
+    }
+
+    .speed-pill {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 0.2rem);
+        font-size: 0.66rem;
     }
 
     .menu-grid {
@@ -730,14 +1119,13 @@ kbd {
     }
 
     .hud-modes .chip {
-        min-height: 44px;
         padding: 0.35rem 0.7rem;
         font-size: 0.78rem;
         white-space: nowrap;
     }
 
     .hint-bar {
-        bottom: calc(15.2rem + var(--safe-bottom));
+        bottom: calc(14.6rem + var(--safe-bottom));
         font-size: 0.72rem;
         max-width: min(88vw, 320px);
     }
@@ -746,22 +1134,14 @@ kbd {
         bottom: calc(4.1rem + var(--safe-bottom));
     }
 
-    .hud-actions {
-        bottom: calc(11.2rem + var(--safe-bottom)) !important;
-    }
-
-    .fps {
-        display: none;
-    }
-
-    .stick, .look-pad {
-        width: 100px;
-        height: 100px;
+    .stick {
+        width: 104px;
+        height: 104px;
     }
 
     .look-pad {
         height: 88px;
-        width: 108px;
+        width: 112px;
     }
 
     .panel strong {
@@ -769,6 +1149,13 @@ kbd {
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
+    }
+}
+
+@media (max-width: 768px), (max-height: 520px) {
+    .world-labels.is-map .world-label {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.72rem;
     }
 }
 
@@ -781,22 +1168,48 @@ kbd {
     .hud-modes .chip {
         padding: 0.35rem 0.55rem;
         font-size: 0.74rem;
-        min-height: 44px;
     }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
+    .hud {
+        padding-top: calc(2.9rem + var(--safe-top));
+    }
+
     .hud-top {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        max-width: 56vw;
+        grid-template-columns: minmax(0, 1fr);
+        max-width: min(42vw, 320px);
         margin: 0;
     }
 
-    .spot-panel, .clock-panel {
-        display: none;
+    .clock-panel,
+    #placeBlurb {
+        display: none !important;
     }
 
-    /* paisagem curta: modos em linha no centro do rodapé, entre o stick e o pad de olhar */
+    .panel {
+        padding: 0.45rem 0.7rem;
+    }
+
+    .panel strong {
+        -webkit-line-clamp: 1;
+    }
+
+    .guide {
+        left: max(0.75rem, var(--safe-left));
+        translate: none;
+        top: calc(6.4rem + var(--safe-top));
+        max-width: min(42vw, 320px);
+        animation: none;
+    }
+
+    .toast {
+        top: auto;
+        bottom: calc(6.6rem + var(--safe-bottom));
+        max-width: calc(100vw - 17rem);
+    }
+
+    /* paisagem curta: modos em linha no centro do rodapé, entre o stick e os botões */
     .hud-modes {
         left: 50%;
         right: auto;
@@ -804,11 +1217,10 @@ kbd {
         bottom: calc(0.35rem + var(--safe-bottom));
         flex-direction: row;
         flex-wrap: nowrap;
-        max-width: calc(100vw - 13.5rem);
+        max-width: calc(100vw - 17rem);
     }
 
     .hud-modes .chip {
-        min-height: 44px;
         padding: 0.3rem 0.6rem;
         font-size: 0.76rem;
         white-space: nowrap;
@@ -816,19 +1228,24 @@ kbd {
 
     .hud-actions {
         top: calc(2.9rem + var(--safe-top));
-        bottom: auto !important;
-        max-width: none;
-        flex-direction: column;
-        flex-wrap: nowrap;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        max-width: 50vw;
     }
 
-    .fps, .mode-pill {
-        display: none;
+    .speed-pill {
+        position: static;
+        flex-basis: 100%;
+        text-align: right;
+        background: none;
+        border: 0;
+        padding: 0;
     }
 
     .hint-bar {
         bottom: calc(3.6rem + var(--safe-bottom));
-        max-width: calc(100vw - 14rem);
+        max-width: calc(100vw - 17rem);
     }
 
     .touch-controls {
@@ -836,20 +1253,51 @@ kbd {
     }
 
     .stick, .look-pad {
-        width: 84px;
-        height: 84px;
+        width: 88px;
+        height: 88px;
+    }
+
+    .round-button {
+        width: 48px;
+        height: 48px;
+        font-size: 0.6rem;
     }
 
     .hint-bar, .intro-banner {
         font-size: 0.85rem;
     }
 
+    .intro-banner {
+        top: 50%;
+        flex-direction: row;
+    }
+
+    .coach {
+        top: 52%;
+        width: min(460px, calc(100% - 15rem));
+        max-height: calc(100dvh - 4rem);
+    }
+
     .overlay-card {
         max-height: min(88dvh, 520px);
     }
 
+    .menu-head h1 {
+        font-size: 1.5rem;
+        margin: 0.2rem 0 0.3rem;
+    }
+
+    .menu-head .lede {
+        font-size: 0.85rem;
+    }
+
+    .facts-strip {
+        display: none;
+    }
+
     .menu-grid {
         grid-template-columns: 1fr 1fr;
+        margin-top: 0.8rem;
     }
 
     .hotspot-list {
@@ -860,5 +1308,12 @@ kbd {
 @media (pointer: fine) {
     .touch-controls {
         display: none !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
     }
 }

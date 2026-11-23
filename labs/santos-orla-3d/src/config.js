@@ -113,52 +113,56 @@ export const BEACHES = [
     { id: 'ponta', name: 'Ponta da Praia', x0: 220, x1: ORLA_HALF, vibe: 'aquário · canal do porto' }
 ];
 
-/** Hotspots navegáveis. (x, z) = onde o visitante chega; `y` = altura do rótulo. */
+/**
+ * Hotspots navegáveis = roteiro da orla. (x, z) = onde o visitante chega; `y` = altura do
+ * rótulo; `face` = yaw ao chegar (0 = mar, π = cidade). Descobre-se a ≤ DISCOVER_RADIUS m.
+ */
+export const DISCOVER_RADIUS = 14;
 export const LANDMARKS = [
     {
-        id: 'emissario',
+        id: 'emissario', short: 'Emissário', face: 0,
         name: 'Emissário / Parque Santini',
         blurb: 'Plataforma do emissário submarino: pista de skate e a escultura vermelha de Tomie Ohtake.',
         x: -318, z: 60, y: 9, kind: 'park'
     },
     {
-        id: 'urubuquecaba',
+        id: 'urubuquecaba', short: 'Urubuqueçaba', face: -0.8,
         name: 'Ilha Urubuqueçaba',
         blurb: 'Ilhota rochosa coberta de mata no extremo oeste — marco do José Menino.',
         x: -345, z: 106, y: 16, lx: -364, lz: 124, kind: 'rock'
     },
     {
-        id: 'bandeiras',
+        id: 'bandeiras', short: 'Bandeiras', face: 0,
         name: 'Praça das Bandeiras',
         blurb: 'Coração do Gonzaga: mastros com bandeiras e o trecho mais movimentado dos jardins.',
         x: -104, z: 14, y: 13, kind: 'district'
     },
     {
-        id: 'pinacoteca',
+        id: 'pinacoteca', short: 'Pinacoteca', face: Math.PI,
         name: 'Pinacoteca Benedito Calixto',
         blurb: 'Casarão branco de 1900 que sobreviveu entre as torres do Boqueirão.',
         x: -18, z: -4, y: 15, kind: 'building'
     },
     {
-        id: 'basilica',
+        id: 'basilica', short: 'Basílica', face: Math.PI,
         name: 'Basílica do Embaré',
         blurb: 'Santo Antônio do Embaré — neogótico de frente para o mar.',
         x: 86, z: -4, y: 40, kind: 'building'
     },
     {
-        id: 'fonte-sapo',
+        id: 'fonte-sapo', short: 'Fonte do Sapo', face: 0,
         name: 'Fonte do Sapo',
         blurb: 'Ponto clássico da Aparecida — encontro de famílias e patins.',
         x: 175, z: 16, y: 6, kind: 'fountain'
     },
     {
-        id: 'aquario',
+        id: 'aquario', short: 'Aquário', face: Math.PI,
         name: 'Aquário Municipal',
         blurb: 'Primeiro aquário do Brasil (1945), na Ponta da Praia.',
         x: 306, z: 38.5, y: 12, kind: 'building'
     },
     {
-        id: 'deck',
+        id: 'deck', short: 'Deck', face: 0,
         name: 'Deck do Pescador',
         blurb: 'Vista para o canal do porto, os navios e a Fortaleza da Barra.',
         x: 338, z: 52, y: 6, kind: 'deck'
@@ -229,12 +233,54 @@ export const DAY_STOPS = [
 /** Declinação solar usada (graus): −18 ≈ fim de janeiro, alto verão em Santos. */
 export const SUN_DECLINATION = -18;
 
+/**
+ * Locomoção a pé (unidades SI). Referências: caminhada urbana confortável ≈ 1,4 m/s
+ * (5 km/h); trote/corrida leve de orla ≈ 4,2 m/s (15 km/h).
+ *   v ← v + clamp(v* − v, ±a·dt)      a = accel se |v*| > |v|, senão decel (m/s²)
+ *   cadência: a fase do ciclo de marcha avança 2π a cada `cycleWalk` m (2 passos);
+ *   na corrida a passada abre até `cycleRun` m → ~180 passos/min a 4,2 m/s.
+ */
 export const WALK = {
-    speed: 2.5,        // m/s — passo apressado, para a orla render
-    runMult: 2.9,      // corrida ≈ 7,2 m/s
-    turnSpeed: 2.2,
+    speed: 1.4,         // m/s — caminhada (5 km/h)
+    runSpeed: 4.2,      // m/s — corrida leve (15 km/h)
+    accel: 3.2,         // m/s² — arrancada a pé (~0,45 s até 1,4 m/s)
+    runAccel: 4.0,      // m/s² — arrancada correndo (~1 s até 4,2 m/s)
+    decel: 6.0,         // m/s² — frear/parar a pé (~0,6 g)
+    turnSpeed: 2.4,     // rad/s — giro no teclado (≈ 140°/s)
+    radius: 0.32,       // m — raio do corpo para colisão
     spawnZ: 0,
-    stepsPerMeter: 1.45 // cadência: fase do ciclo avança 2π a cada ~1,4 m
+    cycleWalk: 1.38,    // m por ciclo (2 passos de 0,69 m)
+    cycleRun: 2.8,      // m por ciclo correndo
+    stepsPerMeter: 1.45 // cadência dos pedestres da cidade (life.js)
+};
+
+/**
+ * Bicicleta compartilhada (modelo longitudinal + bicicleta cinemática):
+ *   m·dv/dt = F_pedal − F_rolamento − F_arrasto − F_freio
+ *   F_pedal = P / max(v, v₀)     (potência constante; v₀ evita força infinita parado)
+ *   F_rolamento = c_rr·m·g        (asfalto 0,008; areia fofa 0,1 → anda a passo de gente)
+ *   F_arrasto = ½·ρ·CdA·v²        (ρ = 1,2 kg/m³, CdA = 0,6 m² ciclista sentado)
+ * Equilíbrio: 100 W → ~5,6 m/s (20 km/h); 300 W (sprint) → ~8,2 m/s (29 km/h).
+ * Direção: ω = v·tan(δ)/L, com δ_max caindo com a velocidade (curvas abertas rápido);
+ *   inclinação visual φ = atan(v·ω/g). Abaixo de 1,2 m/s dá para "girar a bike na mão".
+ */
+export const BIKE = {
+    mass: 90,           // kg (ciclista + bicicleta)
+    power: 100,         // W pedalando
+    sprintPower: 300,   // W com Shift / botão correr
+    v0: 1.0,            // m/s (F_pedal parado = P/v₀ → arrancada ~1,1 m/s²)
+    crr: 0.008,
+    crrSand: 0.1,       // areia fofa: ~1,1 m/s pedalando, ~3,4 m/s no sprint
+    coastBrake: 0.5,    // m/s² — freio leve quando solta o pedal (sem embalar indefinidamente)
+    cda: 0.6,
+    rho: 1.2,
+    brake: 4.5,         // m/s² — freio (≈ 0,45 g)
+    reverse: 0.8,       // m/s — empurrar a bike para trás
+    wheelbase: 1.06,    // m
+    steerMax: 0.62,     // rad em baixa velocidade
+    steerMin: 0.16,     // rad a 9 m/s
+    radius: 0.5,        // m — colisão
+    color: 0xf07a22     // laranja das bikes compartilhadas
 };
 
 export const INTRO = {

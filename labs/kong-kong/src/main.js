@@ -1,8 +1,8 @@
-import { VIEW_W, VIEW_H } from './config.js?v=4';
-import { KongAudio } from './audio.js?v=4';
-import { createInput } from './input.js?v=4';
-import { KongGame } from './game.js?v=4';
-import { LEVELS } from './levels.js?v=4';
+import { VIEW_W, VIEW_H, STEP } from './config.js?v=5';
+import { KongAudio } from './audio.js?v=5';
+import { createInput } from './input.js?v=5';
+import { KongGame } from './game.js?v=5';
+import { LEVELS } from './levels.js?v=5';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -237,11 +237,21 @@ document.addEventListener('visibilitychange', () => {
 let lastAnnounce = '';
 let last = performance.now();
 
+let accumulator = 0;
+
 function frame(now) {
-  // dt limitado: uma aba que volta ou um frame lento não "teleportam" a física.
-  const dt = Math.min(0.033, Math.max(0, (now - last) / 1000));
+  // Passo fixo (STEP = 1/120 s) com acumulador: a física é a mesma em 60 Hz, 120 Hz
+  // ou num frame perdido. dt limitado a 0,1 s: uma aba que volta não "teleporta" nada.
+  const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
   last = now;
-  game.update(dt);
+  accumulator += dt;
+  let steps = 0;
+  while (accumulator >= STEP && steps < 12) {
+    game.update(STEP);
+    accumulator -= STEP;
+    steps++;
+  }
+  if (steps >= 12) accumulator = 0;
   ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
   game.render(ctx);
 

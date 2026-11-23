@@ -276,6 +276,9 @@ window.addEventListener('keydown', (event) => {
     if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
         event.preventDefault();
         if (game.state === 'playing') game.pressJump();
+        // Pausado: o preventDefault acima impede o Espaço de "clicar" o botão Continuar
+        // focado, então o próprio atalho retoma (antes o Espaço não fazia nada na pausa).
+        else if (game.state === 'paused') togglePause();
         else if (game.state === 'ready' || game.state === 'over') startGame();
         else if (game.state === 'won' && !overlay.hidden) startGame();
         return;

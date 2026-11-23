@@ -16,9 +16,9 @@
 import * as THREE from 'three';
 import { createCourse, createTerrain, createPath, createGrass, createForest, scatter, scatterModel } from '../../../shared/gfx/terrain.js';
 import { fbm2, smoothstep, lerp } from '../../../shared/gfx/core.js';
-import { buildCastle, addCastleColliders } from './Castle.js?v=40';
-import { Kit, block, wallGeo, makeCrag, shadowAll } from './Build.js?v=40';
-import { addTorch, EnvironmentFX } from './Environment.js?v=40';
+import { buildCastle, addCastleColliders } from './Castle.js?v=50';
+import { Kit, block, wallGeo, makeCrag, shadowAll } from './Build.js?v=50';
+import { addTorch, EnvironmentFX } from './Environment.js?v=50';
 import { loadModel } from '../../../shared/gfx/assets.js';
 
 const R = 82;

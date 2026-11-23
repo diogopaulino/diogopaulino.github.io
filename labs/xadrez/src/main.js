@@ -4,25 +4,47 @@ import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
  * Cena PBR, seleção por raycast, animações em arco e o mestre comentando.
  */
 
-import { Chess, START_FEN, PIECE_NAME, PIECE_HOW, alg, parseAlg } from './engine.js?v=5';
+import { Chess, START_FEN, PIECE_NAME, PIECE_HOW, alg, parseAlg } from './engine.js?v=6';
 
-import { LESSONS, PUZZLES, commentOnMove, loadProgress, saveProgress } from './coach.js?v=5';
+import { LESSONS, PUZZLES, commentOnMove, loadProgress, saveProgress } from './coach.js?v=6';
 import { createTextures } from './textures.js?v=3';
 import { PieceFactory } from './pieces.js?v=3';
 import {
     buildWorld, setupLights, setupEnvironment, setupPostProcess, applyShadowQuality,
     squareToWorld, worldToSquare, placeMark, traySlot, BOARD_Y, TRAY_Y
 } from './world.js?v=4';
-import { SalonAudio } from './audio.js';
+import { SalonAudio } from './audio.js?v=2';
 
 const STORAGE = 'xadrez-settings';
+// Partida em andamento (cpu, dois jogadores, livre): sobrevive a recarregar a aba.
+const SAVE_KEY = 'xadrez-partida';
+/**
+ * Relógio opcional (ritmo "minutos + incremento", como no xadrez online):
+ *   - o tempo de quem tem a vez escorre em tempo real (performance.now);
+ *   - quem joga ganha o incremento depois do lance (Fischer);
+ *   - o relógio só começa depois do 1º lance das brancas (como no lichess);
+ *   - pausa no menu, com a aba oculta e no fim da partida;
+ *   - tempo zerado perde — exceto se o adversário não tem material para dar
+ *     mate (só rei, ou rei + uma peça menor): aí é empate (FIDE 6.9).
+ */
+const CLOCKS = {
+    off: null,
+    '3+2': { base: 3 * 60e3, inc: 2e3 },
+    '5+3': { base: 5 * 60e3, inc: 3e3 },
+    '10+5': { base: 10 * 60e3, inc: 5e3 },
+    '15+10': { base: 15 * 60e3, inc: 10e3 }
+};
+// Pausa natural antes do lance da máquina: resposta instantânea parece robô.
+const THINK_MIN_MS = 520;
+const THINK_JITTER_MS = 520;
 const LEVEL_LABEL = { facil: 'fácil', iniciante: 'iniciante', praticante: 'praticante', clube: 'clube' };
 // Fim de partida em palavras simples (o resultado aparece para crianças também).
 const DRAW_WHY = {
     afogamento: 'Afogamento: quem tinha a vez não tinha nenhum lance, mas o rei não estava em xeque.',
     'repetição': 'A mesma posição apareceu três vezes.',
     '50 lances': 'Foram 50 lances de cada lado sem captura nem lance de peão.',
-    'material insuficiente': 'Ninguém tem peças suficientes para dar xeque-mate.'
+    'material insuficiente': 'Ninguém tem peças suficientes para dar xeque-mate.',
+    tempo: 'O tempo acabou, mas quem sobrou no relógio não tem peças para dar xeque-mate.'
 };
 const GLYPH = {
     w: { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕', k: '♔' },
@@ -48,6 +70,15 @@ function pickQuality(mode) {
     if (isMobile()) return navigator.hardwareConcurrency >= 6 ? QUALITY.medium : QUALITY.low;
     if ((window.devicePixelRatio || 1) >= 2 && window.innerWidth >= 1400) return QUALITY.high;
     return QUALITY.medium;
+}
+
+/** Promessa com prazo: carregamento lento nunca deixa a tela de carga eterna. */
+function withTimeout(promise, ms) {
+    let timer;
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), ms); })
+    ]).finally(() => clearTimeout(timer));
 }
 
 function easeInOut(t) {
@@ -98,6 +129,9 @@ class Atelier {
         if (this.diagnostics) window.__atelier = this;
         this.generation = 0;
         this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this.clock = null;
+        this.flagged = null;
+        this.thinking = false;
 
         this.bindUi();
         this.boot().catch(err => this.fail(err));
@@ -106,11 +140,11 @@ class Atelier {
     loadSettings() {
         try {
             return {
-                quality: 'auto', theme: 'classic', level: 'facil',
+                quality: 'auto', theme: 'classic', level: 'facil', clock: 'off',
                 muted: false, ...JSON.parse(localStorage.getItem(STORAGE) || '{}')
             };
         } catch {
-            return { quality: 'auto', theme: 'classic', level: 'facil', muted: false };
+            return { quality: 'auto', theme: 'classic', level: 'facil', clock: 'off', muted: false };
         }
     }
 
@@ -132,7 +166,9 @@ class Atelier {
         if (load) load.hidden = true;
         if (overlay) overlay.hidden = false;
         const t = document.getElementById('errorText');
-        if (t && err) t.textContent = String(err.message || err);
+        if (t && err) t.textContent = `${String(err.message || err)} Tente de novo ou use um navegador com aceleração de hardware ligada.`;
+        document.body.dataset.state = 'error';
+        document.getElementById('errorRetry')?.focus();
     }
 
     bindUi() {
@@ -143,10 +179,12 @@ class Atelier {
         });
         document.getElementById('learnButton')?.addEventListener('click', () => { document.getElementById('modeSelect').value = 'academy'; this.start(); });
         document.getElementById('settingsBtn')?.addEventListener('click', () => {
+            this.tickClock();
             this.cancelWork();
             this.rebuildPieces();
             document.getElementById('modeSelect').value = this.mode;
             document.getElementById('resumeButton').hidden = false;
+            document.getElementById('resumeButton').firstChild.textContent = 'Continuar partida ';
             document.getElementById('startLabel').textContent = 'Nova partida';
             document.getElementById('intro').hidden = false;
             document.body.dataset.state = 'intro';
@@ -190,24 +228,34 @@ class Atelier {
         document.querySelectorAll('.promo-btn').forEach((btn) => {
             btn.addEventListener('click', () => this.finishPromo(btn.dataset.promo));
         });
-        ['qualitySelect', 'themeSelect', 'levelSelect', 'modeSelect'].forEach((id) => {
+        ['qualitySelect', 'themeSelect', 'levelSelect', 'modeSelect', 'clockSelect'].forEach((id) => {
             const el = document.getElementById(id);
             if (!el) return;
             if (id === 'qualitySelect') el.value = this.settings.quality;
             if (id === 'themeSelect') el.value = this.settings.theme;
             if (id === 'levelSelect') el.value = this.settings.level;
+            if (id === 'clockSelect') el.value = CLOCKS[this.settings.clock] !== undefined ? this.settings.clock : 'off';
             el.addEventListener('change', () => {
                 if (id === 'qualitySelect') this.settings.quality = el.value;
                 if (id === 'themeSelect') this.settings.theme = el.value;
                 if (id === 'levelSelect') this.settings.level = el.value;
+                if (id === 'clockSelect') this.settings.clock = el.value;
                 this.saveSettings();
             });
         });
+        document.getElementById('errorRetry')?.addEventListener('click', () => location.reload());
+        // Aba oculta/janela sem foco: relógio para e arraste preso é solto.
+        const pauseAll = () => { this.tickClock(); this.cancelDrag?.(); this.pointerIds?.clear(); };
+        document.addEventListener('visibilitychange', () => { if (document.hidden) pauseAll(); else this.resumeClock(); });
+        window.addEventListener('blur', () => { if (this.drag?.active) this.cancelDrag(); this.pointerIds?.clear(); });
+        window.addEventListener('pagehide', () => this.saveGame());
         window.addEventListener('keydown', (e) => {
             if (e.target.closest('select, input, textarea, button') || e.altKey) return;
             if (document.body.dataset.state === 'intro' && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) {
                 e.preventDefault();
-                this.start(e.code === 'Escape' && this.started);
+                // Com partida salva/em andamento, Enter continua (nunca descarta sem querer).
+                const canResume = !document.getElementById('resumeButton').hidden;
+                this.start(canResume && (e.code !== 'Escape' || this.started));
                 return;
             }
             if (document.body.dataset.state !== 'play' || this.pendingPromo || !document.getElementById('resultOverlay').hidden) return;
@@ -290,7 +338,8 @@ class Atelier {
         this.postProcess = setupPostProcess(BABYLON, this.scene, this.quality);
 
         this.factory = new PieceFactory(this.scene, tex, this.quality);
-        try { await this.factory.loadSculpted(); } catch { /* Geometrias locais procedurais continuam disponíveis. */ }
+        // Rede lenta não prende a mesa: 12 s e seguem as peças procedurais.
+        try { await withTimeout(this.factory.loadSculpted(), 12000); } catch { /* Geometrias locais procedurais continuam disponíveis. */ }
         if (this.settings.theme === 'crystal') this.factory.setTheme('crystal');
 
         this.setLoad(0.8, 'Posicionando as peças no tabuleiro…');
@@ -307,8 +356,10 @@ class Atelier {
         new ResizeObserver(() => { this.engine.resize(); this.fitCameraFov(); }).observe(this.canvas);
 
         this.applyQuality();
-        await this.scene.whenReadyAsync();
+        // HDR ou shader que nunca termina não deixa a barra de carga eterna.
+        try { await withTimeout(this.scene.whenReadyAsync(), 15000); } catch { /* segue: a cena termina de compilar em segundo plano */ }
         this.fillLists();
+        this.restoreGame();
         this.setLoad(1, 'O atelier está pronto.');
         document.getElementById('loadingOverlay').hidden = true;
         document.getElementById('intro').hidden = false;
@@ -384,6 +435,7 @@ class Atelier {
 
     start(resume = false) {
         if (document.body.dataset.state !== 'intro') return;
+        const firstShow = !this.started;
         this.applyQuality();
         this.audio.init();
         this.audio.setEnabled(!this.settings.muted);
@@ -406,10 +458,15 @@ class Atelier {
         this.engine.resize();
         this.fitCameraFov();
         // Enquadra depois do resize: o palco muda de tamanho ao trocar o menu pelo HUD.
-        if (!resume) this.cameraView('play');
+        if (!resume || firstShow) this.cameraView('play');
+        this.started = true;
         const mode = document.getElementById('modeSelect')?.value || 'cpu';
         if (!resume) this.setMode(mode);
-        else { this.renderHud(); if (this.mode === 'cpu' && !this.isHumanTurn() && !this.game.status().over) this.queueAi(); }
+        else {
+            this.renderHud();
+            this.resumeClock();
+            if (this.mode === 'cpu' && !this.isHumanTurn() && !this.gameStatus().over) this.queueAi();
+        }
         this.started = true;
         this.canvas.focus({ preventScroll: true });
     }
@@ -480,9 +537,12 @@ class Atelier {
         this.expect = null;
         this.busy = false;
         this.pendingPromo = null;
+        this.flagged = null;
+        this.setupClock();
         this.clearMarks();
         this.rebuildPieces();
         this.renderHud();
+        this.saveGame();
     }
 
     loadLesson(i) {
@@ -804,7 +864,7 @@ class Atelier {
     playIsOver() {
         // As lições de rei, bispo e cavalo usam material insuficiente de
         // propósito. Continuam interativas mesmo sem possibilidade de mate.
-        return !['academy', 'free'].includes(this.mode) && this.game.status().over;
+        return !['academy', 'free'].includes(this.mode) && this.gameStatus().over;
     }
 
     finishPromo(promo) {
@@ -836,9 +896,13 @@ class Atelier {
         const rookSrc = move.flag === 'k' ? (from === 4 ? 7 : 63) : move.flag === 'q' ? (from === 4 ? 0 : 56) : -1;
         const rookMesh = rookSrc >= 0 ? this.pieceAt(rookSrc) : null;
 
+        this.tickClock();
+        if (this.flagged) return; // a bandeira caiu antes do lance chegar
         this.game.play(move);
         const mover = this.game.side === 'w' ? 'b' : 'w';
         this.history.push({ san, color: mover });
+        this.pressClock(mover);
+        this.saveGame();
 
         this.selected = -1;
         this.hover = -1;
@@ -928,7 +992,8 @@ class Atelier {
     }
 
     afterMove(san, move, captured) {
-        const st = this.game.status();
+        const st = this.gameStatus();
+        if (st.over) this.stopClock();
         if (st.check) this.audio.check();
         if (st.over && st.reason === 'xeque-mate') this.audio.win();
 
@@ -986,9 +1051,9 @@ class Atelier {
 
     cancelWork() {
         this.generation++;
-        this.worker?.terminate();
-        this.worker = null;
-        clearTimeout(this.aiTimeout);
+        this.stopSearch();
+        clearTimeout(this.aiDelay);
+        this.thinking = false;
         this.cancelDrag();
         this.anims.splice(0).forEach(a => a.resolve());
         this.busy = false;
@@ -997,43 +1062,78 @@ class Atelier {
         document.getElementById('resultOverlay').hidden = true;
     }
 
-    // A busca roda fora da UI. Reiniciar ou trocar a lição invalida a resposta.
-    searchMove(level, callback) {
+    /**
+     * A busca roda fora da UI (Web Worker). Reiniciar ou trocar a lição
+     * invalida a resposta (generation). Se o worker não abrir, morrer ou
+     * passar de 8 s, a busca roda aqui mesmo num nível leve (≤ 0,3 s) e, em
+     * último caso, sai um lance legal ao acaso: a vez nunca fica presa.
+     */
+    searchMove(level, callback, minDelay = 0) {
         const generation = this.generation;
-        this.worker?.terminate();
+        const t0 = performance.now();
+        this.stopSearch();
         this.busy = true;
-        try {
-            this.worker = new Worker(new URL('./ai-worker.js?v=5', import.meta.url), { type: 'module' });
-            const failed = () => {
-                this.worker?.terminate(); this.worker = null;
-                clearTimeout(this.aiTimeout); this.busy = false;
-                this.renderHud();
-                this.coach('Cálculo interrompido', 'Tente uma dica novamente ou desfaça o lance para continuar.', '');
-            };
-            this.worker.onerror = failed;
-            this.aiTimeout = setTimeout(failed, 15000);
-            this.worker.onmessage = ({ data }) => {
+        this.thinking = minDelay > 0; // só o lance da máquina tem pausa; a dica não
+        let done = false;
+        const finish = (move) => {
+            if (done || generation !== this.generation) return;
+            done = true;
+            this.stopSearch();
+            const wait = this.reducedMotion ? 0 : Math.max(0, minDelay - (performance.now() - t0));
+            this.aiDelay = setTimeout(() => {
                 if (generation !== this.generation) return;
-                clearTimeout(this.aiTimeout);
-                this.worker?.terminate(); this.worker = null; this.busy = false;
-                const move = data.move && this.game.findMove(data.move.from, data.move.to, data.move.promo);
+                this.busy = false;
+                this.thinking = false;
                 if (move) callback(move);
                 else this.renderHud();
+            }, wait);
+        };
+        const local = async () => {
+            if (done || generation !== this.generation) return;
+            this.stopSearch();
+            let move = null;
+            try {
+                const { pickMove } = await import('./ai.js?v=6');
+                if (done || generation !== this.generation) return;
+                const m = pickMove(new Chess(this.game.fen()), level === 'clube' ? 'praticante' : level, Math.random, { budgetMs: 300 });
+                move = m && this.game.findMove(m.from, m.to, m.promo || 'q');
+            } catch { /* cai no sorteio abaixo */ }
+            if (!move) {
+                const all = this.game.legalMoves();
+                move = all[Math.floor(Math.random() * all.length)] || null;
+            }
+            finish(move);
+        };
+        try {
+            const worker = new Worker(new URL('./ai-worker.js?v=6', import.meta.url), { type: 'module' });
+            this.worker = worker;
+            worker.onerror = (e) => { e.preventDefault?.(); local(); };
+            worker.onmessageerror = () => local();
+            worker.onmessage = ({ data }) => {
+                const m = data?.move && this.game.findMove(data.move.from, data.move.to, data.move.promo || 'q');
+                if (m) finish(m); else local();
             };
-            this.worker.postMessage({ fen: this.game.fen(), level });
-        } catch { this.busy = false; this.coach('IA indisponível', 'Recarregue a página para tentar novamente.', ''); }
+            this.aiTimeout = setTimeout(local, 8000);
+            worker.postMessage({ fen: this.game.fen(), level });
+        } catch { local(); }
+    }
+
+    stopSearch() {
+        clearTimeout(this.aiTimeout);
+        this.worker?.terminate();
+        this.worker = null;
     }
 
     queueAi() {
         this.coach('A máquina pensa', 'Analisando a posição…', 'Você pode ajustar a câmera enquanto espera.');
-        this.searchMove(this.level, move => this.commit(move));
+        this.searchMove(this.level, move => this.commit(move), THINK_MIN_MS + Math.random() * THINK_JITTER_MS);
         this.renderHud();
     }
 
     hint() {
         if (this.busy || this.pendingPromo) return;
         if (this.expect) { this.flashHint(); return; }
-        if (this.game.status().over) return;
+        if (this.gameStatus().over) return;
         this.searchMove('praticante', mv => {
             this.selected = mv.from;
             this.legal = this.game.legalMovesFrom(mv.from);
@@ -1155,8 +1255,11 @@ class Atelier {
         this.selected = -1;
         this.hover = -1;
         this.legal = [];
+        this.flagged = null;
+        if (this.clock) { this.clock.started = this.game.stack.length > 0; this.clock.last = performance.now(); }
         this.rebuildPieces();
         this.renderHud();
+        this.saveGame();
         this.coach('Desfeito', 'O último lance voltou. O tabuleiro não guarda rancor.', '');
     }
 
@@ -1236,7 +1339,7 @@ class Atelier {
     }
 
     renderHud() {
-        const st = this.game.status();
+        const st = this.gameStatus();
         if (['academy', 'free'].includes(this.mode) && st.moves.length) st.over = false;
         document.getElementById('opponentName').textContent = this.mode === 'cpu' ? `Máquina · ${LEVEL_LABEL[this.level] || this.level}` : this.mode === 'academy' ? `Lição ${this.lessonIndex + 1} de ${LESSONS.length}` : this.mode === 'puzzles' ? `Desafio ${this.puzzleIndex + 1} de ${PUZZLES.length}` : this.mode === 'free' ? 'Tabuleiro livre' : 'Dois jogadores';
         const line = document.getElementById('statusLine');
@@ -1246,7 +1349,9 @@ class Atelier {
         } else if (st.over) {
             line.textContent = st.reason === 'xeque-mate'
                 ? `Xeque-mate · ${this.winnerLabel()}`
-                : `Empate · ${st.reason}`;
+                : st.reason === 'tempo' && st.result !== '½-½'
+                    ? `Tempo esgotado · ${this.winnerLabel()}`
+                    : `Empate · ${st.reason}`;
             line.classList.toggle('is-check', st.reason === 'xeque-mate');
         } else if (this.mode === 'cpu' && this.game.side === this.player) {
             // Frases curtas para quem está aprendendo: o que fazer agora.
@@ -1260,11 +1365,12 @@ class Atelier {
                 : `${this.game.side === 'w' ? 'Brancas' : 'Pretas'} jogam`;
             line.classList.toggle('is-check', st.check);
         }
-        if (this.worker && this.mode === 'cpu') line.textContent = 'A máquina pensa…';
+        if (this.thinking && this.mode === 'cpu' && !st.over) line.textContent = 'A máquina pensa…';
         document.getElementById('undoBtn').disabled = !this.game.stack.length || !!this.pendingPromo;
         document.getElementById('hintBtn').disabled = this.busy || st.over || !!this.pendingPromo;
         this.renderCaptured();
         this.renderMoves();
+        this.renderClock();
     }
 
     renderCaptured() {
@@ -1302,7 +1408,7 @@ class Atelier {
 
     /** Quem venceu, do ponto de vista de quem está jogando. */
     winnerLabel() {
-        const winner = this.game.side === 'w' ? 'b' : 'w';
+        const winner = this.flagged ? (this.flagged === 'w' ? 'b' : 'w') : this.game.side === 'w' ? 'b' : 'w';
         if (this.mode === 'cpu') return winner === this.player ? 'você venceu' : 'a máquina venceu';
         return winner === 'w' ? 'brancas vencem' : 'pretas vencem';
     }
@@ -1315,6 +1421,20 @@ class Atelier {
     }
 
     showResult(st) {
+        if (st.reason === 'tempo' && st.result !== '½-½') {
+            const won = this.mode === 'cpu' && this.flagged !== this.player;
+            const lost = this.mode === 'cpu' && this.flagged === this.player;
+            const ov = document.getElementById('resultOverlay');
+            ov.hidden = false;
+            ov.dataset.outcome = won ? 'win' : lost ? 'loss' : 'mate';
+            document.getElementById('resultKicker').innerHTML = '<i></i> Tempo esgotado';
+            document.getElementById('resultTitle').textContent = won ? 'Você venceu!' : lost ? 'Seu tempo acabou' : (this.flagged === 'w' ? 'Pretas vencem' : 'Brancas vencem');
+            document.getElementById('resultText').textContent = lost
+                ? 'O relógio zerou antes do lance. Tente um ritmo mais longo nos Ajustes — ou jogue sem relógio.'
+                : `O relógio ${this.flagged === 'w' ? 'das brancas' : 'das pretas'} chegou a zero.`;
+            document.getElementById('resultAgain').focus();
+            return;
+        }
         const mate = st.reason === 'xeque-mate';
         const won = mate && this.mode === 'cpu' && this.game.side !== this.player;
         const lost = mate && this.mode === 'cpu' && this.game.side === this.player;
@@ -1326,6 +1446,176 @@ class Atelier {
             ? `${won ? 'O rei preto' : lost ? 'Seu rei' : 'O rei'} ficou em xeque sem ter para onde fugir.${lost ? ' Tente o nível fácil ou peça uma Dica.' : ''}`
             : DRAW_WHY[st.reason] || this.endLine(st);
         document.getElementById('resultAgain').focus();
+    }
+
+    /** Estado da partida, incluindo queda de bandeira (tempo). */
+    gameStatus() {
+        if (this.flagged) {
+            const other = this.flagged === 'w' ? 'b' : 'w';
+            const draw = !this.canMate(other);
+            return {
+                over: true,
+                result: draw ? '½-½' : (other === 'w' ? '1-0' : '0-1'),
+                reason: 'tempo', check: false, moves: []
+            };
+        }
+        return this.game.status();
+    }
+
+    /** Material com que ainda é possível dar mate (FIDE 6.9, simplificado). */
+    canMate(color) {
+        let minors = 0;
+        for (const p of this.game.board) {
+            if (!p || p.c !== color || p.t === 'k') continue;
+            if (p.t === 'n' || p.t === 'b') minors += 1;
+            else return true;
+        }
+        return minors >= 2;
+    }
+
+    clockApplies() {
+        return this.mode === 'cpu' || this.mode === 'local';
+    }
+
+    setupClock() {
+        const cfg = this.clockApplies() ? CLOCKS[this.settings.clock] : null;
+        clearInterval(this.clockTimer);
+        this.clockTimer = null;
+        this.clock = cfg ? { w: cfg.base, b: cfg.base, inc: cfg.inc, base: cfg.base, started: false, last: performance.now() } : null;
+        document.body.dataset.clock = this.clock ? 'on' : 'off';
+        this.renderClock();
+    }
+
+    /** Desconta o tempo corrido de quem tem a vez (chamado antes de mudar de estado). */
+    tickClock() {
+        const c = this.clock;
+        if (!c) return;
+        const t = performance.now();
+        const running = c.started && !this.flagged && document.body.dataset.state === 'play' && !document.hidden && !this.game.status().over;
+        if (running) {
+            const side = this.game.side;
+            c[side] = Math.max(0, c[side] - (t - c.last));
+            if (c[side] <= 0) this.flag(side);
+        }
+        c.last = t;
+    }
+
+    resumeClock() {
+        if (!this.clock) return;
+        this.clock.last = performance.now();
+        if (!this.clockTimer) {
+            this.clockTimer = setInterval(() => { this.tickClock(); this.renderClock(); }, 200);
+        }
+        this.renderClock();
+    }
+
+    stopClock() {
+        this.tickClock();
+        clearInterval(this.clockTimer);
+        this.clockTimer = null;
+        this.renderClock();
+    }
+
+    /** Depois do lance: incremento para quem jogou; o 1º lance das brancas liga o relógio. */
+    pressClock(mover) {
+        const c = this.clock;
+        if (!c || this.flagged) return;
+        if (c.started) c[mover] += c.inc;
+        c.started = true;
+        c.last = performance.now();
+        this.resumeClock();
+    }
+
+    flag(side) {
+        if (this.flagged) return;
+        this.flagged = side;
+        clearInterval(this.clockTimer);
+        this.clockTimer = null;
+        this.cancelWork();
+        this.selected = -1;
+        this.legal = [];
+        this.refreshMarks();
+        this.audio.check();
+        this.renderHud();
+        this.saveGame();
+        this.showResult(this.gameStatus());
+    }
+
+    renderClock() {
+        const box = document.getElementById('clocks');
+        if (!box) return;
+        box.hidden = !this.clock;
+        if (!this.clock) return;
+        const fmt = (ms) => {
+            const s = Math.ceil(ms / 1000);
+            if (ms < 10e3) return (Math.max(0, ms) / 1000).toFixed(1);
+            return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+        };
+        const over = this.flagged || this.game.status().over;
+        for (const side of ['w', 'b']) {
+            const el = box.querySelector(`[data-side="${side}"]`);
+            if (!el) continue;
+            const ms = this.clock[side];
+            el.querySelector('b').textContent = fmt(ms);
+            el.classList.toggle('is-active', !over && this.game.side === side && this.clock.started);
+            el.classList.toggle('is-low', ms < 20e3);
+            el.querySelector('span').textContent = this.mode === 'cpu'
+                ? (side === this.player ? 'Você' : 'Máquina')
+                : (side === 'w' ? 'Brancas' : 'Pretas');
+        }
+    }
+
+    /** Guarda a partida (só modos de partida). Falha de storage é ignorada. */
+    saveGame() {
+        if (!this.started || !['cpu', 'local', 'free'].includes(this.mode)) return;
+        try {
+            if (!this.game.stack.length) { localStorage.removeItem(SAVE_KEY); return; }
+            const moves = this.game.stack.map((u) => [u.from, u.to, u.promo || '']);
+            this.tickClock();
+            localStorage.setItem(SAVE_KEY, JSON.stringify({
+                v: 1, mode: this.mode, level: this.level, moves,
+                clock: this.clock ? { w: this.clock.w, b: this.clock.b, inc: this.clock.inc, base: this.clock.base, started: this.clock.started } : null,
+                flagged: this.flagged, at: Date.now()
+            }));
+        } catch { /* modo privado ou cota cheia: segue sem salvar */ }
+    }
+
+    /** Reconstrói a partida salva lance a lance (só lances legais entram). */
+    restoreGame() {
+        let data;
+        try { data = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch { data = null; }
+        if (!data || data.v !== 1 || !Array.isArray(data.moves) || !data.moves.length) return;
+        if (!['cpu', 'local', 'free'].includes(data.mode)) return;
+        const g = new Chess();
+        const history = [];
+        for (const [from, to, promo] of data.moves) {
+            const m = g.findMove(from, to, promo || 'q');
+            if (!m) break;
+            history.push({ san: g.san(m), color: g.side });
+            g.play(m);
+        }
+        if (!history.length) return;
+        this.mode = data.mode;
+        this.level = LEVEL_LABEL[data.level] ? data.level : this.level;
+        this.game = g;
+        this.history = history;
+        this.flagged = data.flagged === 'w' || data.flagged === 'b' ? data.flagged : null;
+        this.clock = data.clock && Number.isFinite(data.clock.w) && Number.isFinite(data.clock.b)
+            ? { ...data.clock, last: performance.now() } : null;
+        document.body.dataset.clock = this.clock ? 'on' : 'off';
+        document.body.dataset.mode = this.mode;
+        ['modePlay', 'modeAcademy', 'modePuzzles'].forEach((id) => document.getElementById(id)?.setAttribute('aria-pressed', String(id === 'modePlay')));
+        const modeSelect = document.getElementById('modeSelect');
+        if (modeSelect) modeSelect.value = this.mode;
+        const levelSelect = document.getElementById('levelSelect');
+        if (levelSelect) levelSelect.value = this.level;
+        this.rebuildPieces();
+        this.renderHud();
+        this.speakMode();
+        const resume = document.getElementById('resumeButton');
+        resume.hidden = false;
+        resume.firstChild.textContent = `Continuar partida (${Math.ceil(history.length / 2)}º lance) `;
+        document.getElementById('startLabel').textContent = 'Nova partida';
     }
 
     frame(dt) {

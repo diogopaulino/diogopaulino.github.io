@@ -7,6 +7,7 @@ export const QUEST_ORDER = [
     { id: 'talk_crew', text: 'Fale com seus companheiros' },
     { id: 'horizon', text: 'Observe o horizonte' },
     { id: 'check_helm', text: 'Verifique o leme' },
+    { id: 'teco_play', text: 'Chame Teco para perto' },
     { id: 'free_helm', text: 'Liberte o leme' },
     { id: 'steer_rock', text: 'Desvie da rocha' },
     { id: 'reach_castle', text: 'Chegue até o castelo' },

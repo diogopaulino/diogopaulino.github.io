@@ -4,7 +4,7 @@
 // (Down -> Up), and zero-allocation gesture detection.
 // ==========================================================================
 
-import { INPUT_BUFFER, DASH_WINDOW } from './constants.js';
+import { INPUT_BUFFER, DASH_WINDOW } from './constants.js?v=23';
 
 export class InputBuffer {
   constructor() {

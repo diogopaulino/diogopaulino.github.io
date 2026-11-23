@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/cormorant-garamond/font.css">
     <link rel="stylesheet" href="/assets/fonts/nunito/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
 
     <script type="importmap">
     {
@@ -184,6 +184,7 @@
                 <h1>A Menina da Lanterna</h1>
                 <p id="loadingText">Acendendo o pavio…</p>
                 <div class="loading-bar"><i id="loadingFill"></i></div>
+                <button id="reloadButton" class="ghost-button" type="button" hidden>Recarregar a página</button>
             </div>
         </div>
 
@@ -206,19 +207,20 @@
 
                     <section class="menu-section howto" aria-labelledby="howtoTitle">
                         <h2 id="howtoTitle">Como jogar</h2>
-                        <p class="howto-goal">Ajude Clara a acender a noite em 5 capítulos. Siga a <b class="howto-arrow" aria-hidden="true">➤</b> <b>seta dourada</b> até o próximo passo e, quando chegar perto, aperte <kbd>E</kbd> ou toque no aviso.</p>
+                        <p class="howto-goal">Ajude Clara a acender a noite em 5 capítulos. Siga a <b class="howto-arrow" aria-hidden="true">➤</b> <b>seta dourada</b> e as <b>fagulhas no chão</b> até o próximo passo e, quando chegar perto, aperte <kbd>E</kbd> ou toque no aviso.</p>
                         <div class="keys keys--board">
                             <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou setas: andar</span>
                             <span><kbd>E</kbd> acender, falar e pegar</span>
                             <span><kbd>Espaço</kbd> pulso da lanterna (espanta sombras)</span>
                             <span><kbd>Shift</kbd> correr · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
+                            <span>Mouse: clique para olhar em volta · roda: distância</span>
                         </div>
                         <div class="keys keys--touch">
                             <span><b>Bolinha</b> à esquerda: andar</span>
                             <span><b>Arraste</b> a tela: olhar em volta</span>
                             <span><b>usar</b> ou o aviso: acender e falar · <b>✦</b> espanta sombras</span>
                         </div>
-                        <p class="howto-note">Vaga-lumes enchem a chama. Se a noite vencer, o capítulo recomeça.</p>
+                        <p class="howto-note">Vaga-lumes enchem a chama e lampiões acesos a reacendem. Se a noite vencer, Clara volta à última luz que acendeu.</p>
                     </section>
 
                     <details class="menu-section menu-disclosure" open>
@@ -256,10 +258,12 @@
             <div class="overlay-card compact-card">
                 <p class="eyebrow"><i></i> A chama espera</p>
                 <h2>A noite<br>está pausada.</h2>
+                <p class="lede pause-lede">Siga a seta e as fagulhas douradas. Chama fraca? Fique perto de um lampião aceso.</p>
                 <div class="card-actions">
                     <button id="resumeButton" class="primary-button" type="button">
                         <span>Continuar</span><i aria-hidden="true">→</i>
                     </button>
+                    <button id="restartButton" class="ghost-button" type="button">Recomeçar capítulo</button>
                     <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao mapa</button>
                 </div>
             </div>
@@ -318,7 +322,7 @@
 
     <script src="/labs/shared.js?v=16" defer></script>
     <script type="module" src="../shared/gfx/check-webgl.js"></script>
-    <script type="module" src="src/main.js?v=21"></script>
+    <script type="module" src="src/main.js?v=22"></script>
 </body>
 
 </html>

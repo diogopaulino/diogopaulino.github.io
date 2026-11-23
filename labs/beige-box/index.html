@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/ibm-plex-mono/font.css">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
 
     <script type="importmap">
     {
@@ -102,6 +102,8 @@
             <template data-slot="actions">
                 <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
                     title="Som (M)" aria-label="Alternar som">♪</button>
+                <button id="keyboardButton" class="icon-button icon-button--kbd" type="button"
+                    title="Digitar no PC" aria-label="Abrir teclado para digitar no PC"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M6.5 14h11"/></svg></button>
                 <button id="resetCamera" class="icon-button" type="button" title="Resetar câmera (R)"
                     aria-label="Resetar câmera">◎</button>
             </template>
@@ -125,8 +127,12 @@
                 <strong id="tooltipTitle">—</strong>
                 <span id="tooltipHint">clique para interagir</span>
             </div>
-            <p class="hint-bar">Arraste para orbitar · scroll para zoom · clique para mexer</p>
+            <p class="hint-bar" id="hintBar">Arraste para orbitar · scroll para zoom · clique para mexer · arraste janelas pela barra azul</p>
         </div>
+
+        <label class="sr-only" for="dosInput">Digitar no computador</label>
+        <input id="dosInput" class="dos-input" type="text" autocomplete="off" autocapitalize="characters"
+            autocorrect="off" spellcheck="false" enterkeyhint="send" inputmode="text">
 
         <div id="loadingOverlay" class="overlay loading-overlay">
             <div class="loading-card">
@@ -151,7 +157,7 @@
     </main>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="src/main.js?v=5"></script>
+    <script type="module" src="src/main.js?v=6"></script>
 </body>
 
 </html>

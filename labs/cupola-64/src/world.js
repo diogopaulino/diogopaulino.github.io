@@ -18,9 +18,9 @@ import { createOcean } from '../../shared/gfx/ocean.js';
 import { createSunRig } from '../../shared/gfx/rig.js';
 import { createTreeKit, createPalmKit, createShrubKit, instanceKit, updateWind } from '../../shared/gfx/flora.js';
 import { seeded, fbm2 } from '../../shared/gfx/core.js';
-import { ISLAND } from './config.js?v=13';
+import { ISLAND } from './config.js?v=14';
 import { heightAt, surfaceAt, HEIGHT_GLSL, clamp } from './utils.js?v=13';
-import { createTerrain, normalAt, splatAt } from './terrain.js?v=14';
+import { createTerrain, normalAt, splatAt } from './terrain.js?v=15';
 import {
     createCastle,
     createCannon,
@@ -29,7 +29,7 @@ import {
     createLedge,
     createSkyIsland,
     createCaveEntrance
-} from './models.js?v=14';
+} from './models.js?v=15';
 
 // cede a vez ao navegador entre etapas pesadas (a barra de carregamento anda de verdade)
 const nextFrame = () => new Promise((r) => setTimeout(r, 0));

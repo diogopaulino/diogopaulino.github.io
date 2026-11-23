@@ -1,37 +1,48 @@
 /**
  * Engine principal do jogo (three.js r185 sobre o palco compartilhado labs/shared/gfx/stage.js).
  * Orquestra ciclo de renderização, física, IA, áudio, HUD e transições de fases.
+ *
+ * Tempo: o palco já limita dt a 1/20 s (sem salto de física depois de um engasgo) e para
+ * de desenhar com a aba oculta. Hitstop: `hitstop(s)` desacelera a simulação a 6 % por
+ * alguns centésimos no impacto de um golpe — a câmera segue no tempo real (o tremor continua).
+ *
+ * Nunca preso:
+ *   aba oculta / janela sem foco → pausa e solta todas as teclas
+ *   chão seguro: a cada 0,4 s com Dico no chão guarda a posição (referencial do nível);
+ *   caiu 20 m abaixo dela, saiu do mapa (y < −30) ou ficou 4 s em queda livre → volta
+ *   para o último chão seguro, sem perder vida (modo gentil)
+ *   vida zerou → reinicia do último checkpoint com a vida cheia
  */
 
 import * as THREE from 'three';
 import { createStage } from '../../../shared/gfx/stage.js';
 import { preload } from '../../../shared/gfx/assets.js';
 import { pickTier } from '../../../shared/gfx/core.js';
-import { QUALITY } from './QualitySettings.js?v=40';
-import { AudioManager } from './AudioManager.js';
-import { InputManager } from './InputManager.js?v=43';
-import { CollisionWorld } from '../world/CollisionWorld.js?v=40';
-import { WeatherSystem } from '../world/WeatherSystem.js?v=40';
-import { Ocean } from '../world/Sea.js?v=40';
-import { StormController } from '../world/StormController.js?v=40';
-import { ArrowSystem } from '../world/ArrowSystem.js?v=40';
-import { InteractionSystem } from '../game/InteractionSystem.js?v=40';
-import { CutsceneManager } from '../game/CutsceneManager.js?v=42';
-import { DialogueManager } from '../game/DialogueManager.js?v=40';
-import { QuestManager } from '../game/QuestManager.js?v=42';
-import { CombatSystem } from '../game/CombatSystem.js?v=33';
-import { CheckpointManager } from '../game/CheckpointManager.js';
-import { StoryDirector } from '../game/StoryDirector.js?v=43';
-import { SceneManager, CHECKPOINT_STAGE } from './SceneManager.js?v=47';
-import { ThirdPersonCamera } from '../player/ThirdPersonCamera.js?v=40';
-import { Player } from '../player/Player.js?v=42';
-import { Teco } from '../characters/Teco.js?v=40';
-import { Camila } from '../characters/Camila.js?v=40';
-import { HUD } from '../ui/HUD.js?v=43';
-import { Menu } from '../ui/Menu.js?v=46';
-import { PauseMenu } from '../ui/PauseMenu.js?v=47';
-import { ObjectiveMarker } from '../ui/ObjectiveMarker.js?v=49';
-import { SETTINGS_KEY } from './assets.js';
+import { QUALITY } from './QualitySettings.js?v=50';
+import { AudioManager } from './AudioManager.js?v=50';
+import { InputManager } from './InputManager.js?v=50';
+import { CollisionWorld } from '../world/CollisionWorld.js?v=50';
+import { WeatherSystem } from '../world/WeatherSystem.js?v=50';
+import { Ocean } from '../world/Sea.js?v=50';
+import { StormController } from '../world/StormController.js?v=50';
+import { ArrowSystem } from '../world/ArrowSystem.js?v=50';
+import { InteractionSystem } from '../game/InteractionSystem.js?v=50';
+import { CutsceneManager } from '../game/CutsceneManager.js?v=50';
+import { DialogueManager } from '../game/DialogueManager.js?v=50';
+import { QuestManager } from '../game/QuestManager.js?v=50';
+import { CombatSystem } from '../game/CombatSystem.js?v=50';
+import { CheckpointManager } from '../game/CheckpointManager.js?v=50';
+import { StoryDirector } from '../game/StoryDirector.js?v=50';
+import { SceneManager, CHECKPOINT_STAGE } from './SceneManager.js?v=50';
+import { ThirdPersonCamera } from '../player/ThirdPersonCamera.js?v=50';
+import { Player } from '../player/Player.js?v=50';
+import { Teco } from '../characters/Teco.js?v=50';
+import { Camila } from '../characters/Camila.js?v=50';
+import { HUD } from '../ui/HUD.js?v=50';
+import { Menu } from '../ui/Menu.js?v=50';
+import { PauseMenu } from '../ui/PauseMenu.js?v=50';
+import { ObjectiveMarker } from '../ui/ObjectiveMarker.js?v=50';
+import { SETTINGS_KEY } from './assets.js?v=50';
 
 /** Tudo que os cenários usam, baixado atrás da tela de carregamento. */
 const MODELS = [
@@ -60,6 +71,15 @@ export class Game {
         this.inventory = { keys: 0, cellKey: false };
         this.stageId = null;
         this.time = 0;
+        this._hitstop = 0;
+        this._safe = new THREE.Vector3();
+        this._safeParent = null;
+        this._safeT = 0;
+    }
+
+    /** Congela a simulação por `t` s (impacto de golpe). */
+    hitstop(t) {
+        this._hitstop = Math.max(this._hitstop, t);
     }
 
     async init() {
@@ -112,6 +132,11 @@ export class Game {
             if (document.hidden && this.running && !this.paused && !this.loading) this.pauseMenu.toggle(true);
         };
         document.addEventListener('visibilitychange', this._onVisibility);
+        /* Janela perdeu o foco (alt-tab, notificação, ligação): também pausa. */
+        this._onBlur = () => {
+            if (this.running && !this.paused && !this.loading && !this._failing) this.pauseMenu.toggle(true);
+        };
+        window.addEventListener('blur', this._onBlur);
 
         // Atores principais
         this.player = new Player(this.collision);
@@ -204,6 +229,9 @@ export class Game {
         if (token !== this._loadToken) return;
         this.loading = false;
         this._failing = false;
+        this._safeParent = null;
+        this._airT = 0;
+        this.input.release();
         if (checkpoint !== 'menu') this.hud.showLevelName(stageId);
         if (overlay) {
             overlay.style.transition = 'opacity 0.9s ease';
@@ -285,28 +313,36 @@ export class Game {
 
         if (this.input.consume('advance')) {
             if (this.dialogue.active) {
+                /* fala de cena (bloqueante): Espaço só avança; fala solta no meio da ação
+                   avança E pula, como antes — não rouba o pulo do jogador */
+                if (this.dialogue.blocking) this.input.move.jump = false;
                 this.dialogue.advance();
             } else if (this.cutscenes.blocking) {
                 /* Espaço / Enter / botão ⤴ pulam a câmera cinematográfica. */
                 this.cutscenes.skip();
+                this.input.move.jump = false;
             }
         }
 
         const lookDelta = this.input.consumeLook();
         const zoomDelta = this.input.consumeZoom();
 
+        /* hitstop: a simulação anda a 6 % por alguns centésimos; câmera e HUD no tempo real */
+        const sdt = this._hitstop > 0 ? dt * 0.06 : dt;
+        this._hitstop = Math.max(0, this._hitstop - dt);
+
         // Passo e movimento do jogador
-        const step = p.update(dt, this.input, this.cameraRig.yaw);
+        const step = p.update(sdt, this.input, this.cameraRig.yaw);
         if (step) {
             this.audio.footstep(p.crouching);
         }
 
         // Companheiros
-        this.teco.update(dt, this);
-        this.camila.update(dt, this);
+        this.teco.update(sdt, this);
+        this.camila.update(sdt, this);
 
         // Fases (movem navio/plataformas antes da câmera)
-        this.sceneMgr.update(dt);
+        this.sceneMgr.update(sdt);
 
         // Câmera
         this.cameraRig.update(dt, p, lookDelta, zoomDelta, p.sprinting);
@@ -321,13 +357,13 @@ export class Game {
         }
 
         // Combate & Projéteis
-        this.combat.update(dt, this);
-        this.arrows.update(dt, this);
+        this.combat.update(sdt, this);
+        this.arrows.update(sdt, this);
 
         // Clima & Ambiente
         this.storm.update(dt, this);
         this.weather.update(dt);
-        this.collision.update(dt);
+        this.collision.update(sdt);
         this.cutscenes.update(dt);
         this.dialogue.update(dt);
         this.audio.update(dt);
@@ -335,9 +371,39 @@ export class Game {
 
         /* Derrota fora das flechas (guarda, tigre): reinicia do checkpoint. */
         if (!p.alive && !this._failing) this.failCheckpoint('Dico caiu…');
-        /* Rede de segurança: atravessou o chão (fresta de colisão) → volta ao checkpoint
-           em vez de cair para sempre. Todos os níveis têm o chão acima de y = −30. */
-        else if (p.position.y < -30 && !this._failing) this.failCheckpoint('Ops!');
+        else if (!this._failing) this._safetyNet(dt);
+    }
+
+    /**
+     * Rede de segurança contra fresta de colisão e queda no vazio: devolve Dico ao último
+     * chão seguro do mesmo nível (ou ao checkpoint, se não houver um).
+     */
+    _safetyNet(dt) {
+        const p = this.player;
+        const parent = p.root.parent;
+        if (p.controller.mode !== 'walk') return;
+        this._airT = p.grounded ? 0 : (this._airT || 0) + dt;
+        if (p.grounded) {
+            this._safeT += dt;
+            if (this._safeT > 0.4 || this._safeParent !== parent) {
+                this._safeT = 0;
+                this._safe.copy(p.position);
+                this._safeParent = parent;
+            }
+            return;
+        }
+        const lost = p.position.y < -30 || (this._safeParent === parent && p.position.y < this._safe.y - 20) || this._airT > 4;
+        if (!lost) return;
+        if (this._safeParent === parent) {
+            p.position.copy(this._safe);
+            p.controller.vx = p.controller.vz = p.controller.vy = 0;
+            p.sync();
+            this._airT = 0;
+            this.cameraRig.snapToPlayer(p);
+            this.hud.showToast('De volta ao chão firme.', 2.2);
+        } else {
+            this.failCheckpoint('Ops!');
+        }
     }
 
     start() {

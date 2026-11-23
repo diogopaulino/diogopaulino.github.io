@@ -3,7 +3,7 @@
  */
 
 import * as THREE from 'three';
-import { damp } from '../utils/math.js';
+import { damp } from '../utils/math.js?v=50';
 
 export const MonkeyState = {
     IDLE: 'IDLE',
@@ -42,7 +42,7 @@ export class MonkeyAI {
     command(path, { climb = false, scared = false, celebrate = false, onComplete = null } = {}) {
         this.path = path.map((p) => (p.clone ? p.clone() : new THREE.Vector3(p.x, p.y, p.z)));
         this.pathI = 0;
-        /* Teco ficou para trás (Dico corre a 9 m/s): chega num pulo antes de cumprir a ordem */
+        /* Teco ficou para trás (Dico corre a até 6,6 m/s): chega num pulo antes de cumprir a ordem */
         const pl = this.teco.game?.player;
         if (pl && this.teco.position.distanceTo(pl.position) > 9) {
             this.teco.position.set(pl.position.x + 0.8, pl.position.y, pl.position.z + 0.8);

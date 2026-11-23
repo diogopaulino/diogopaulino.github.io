@@ -1876,3 +1876,92 @@ body {
 .overlay-card h1,
 .overlay-card h2 { letter-spacing: 0; }
 .size-chip { min-height: 44px; }
+
+/* —— Mesa com 1 a 3 rivais ——
+   Os assentos dos rivais nascem em main.js (buildSeats) dentro de
+   #opponents. Com 1 rival o assento é o mesmo de antes (linha centrada);
+   com 2–3 eles se espalham pelo arco de cima, compactos. */
+.opponents {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: clamp(0.4rem, 3vw, 2.4rem);
+  min-width: 0;
+  z-index: 3;
+}
+.opponents .seat { min-width: 0; }
+.opponents:not([data-count="1"]) .seat {
+  flex: 1 1 0;
+  max-width: 15rem;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.opponents:not([data-count="1"]) .seat .hole-cards { --card-w: clamp(30px, 3.6vw, 46px); --card-h: calc(var(--card-w) * 1.42); order: -1; }
+.opponents:not([data-count="1"]) .seat-info { min-width: 0; max-width: 100%; }
+.opponents:not([data-count="1"]) .seat-name { font-size: clamp(0.92rem, 2.4vw, 1.12rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.opponents:not([data-count="1"]) .seat-stack { font-size: 0.76rem; }
+.opponents:not([data-count="1"]) .bet-zone { min-height: 0; flex-direction: row; gap: 0.3rem; }
+.opponents:not([data-count="1"]) .bet-zone .chip-stack:empty + .seat-bet { opacity: 0.5; }
+/* Arco: os assentos das pontas descem um pouco, como numa mesa oval. */
+.opponents[data-count="3"] .seat:first-child,
+.opponents[data-count="3"] .seat:last-child { margin-top: clamp(0.4rem, 3vw, 1.6rem); }
+
+/* Última ação de cada rival, para ler a rodada sem abrir o histórico. */
+.seat-act {
+  min-height: 1.2em;
+  margin: 0.15rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.seat-act:empty { visibility: hidden; }
+.seat-act[data-type="fold"] { color: rgba(255, 255, 255, 0.55); }
+.seat-act[data-type="allin"] { color: #ff9a7a; }
+.seat.is-allin .seat-name::after { content: ' · all-in'; font-size: 0.62em; color: #ff9a7a; font-family: Outfit, system-ui, sans-serif; letter-spacing: 0.04em; }
+.seat.is-out { opacity: 0.3; filter: grayscale(1); }
+.seat.is-out .seat-stack::after { content: ' · fora'; font-size: 0.8em; }
+.seat.is-thinking .seat-name::before {
+  content: '';
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--gold);
+  vertical-align: middle;
+  animation: pulse 0.9s ease-in-out infinite;
+}
+.field-note { font-size: 0.85em; opacity: 0.75; }
+.intro-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 0.7rem; }
+
+@media (max-width: 768px) {
+  .opponents { gap: 0.3rem; }
+  .opponents:not([data-count="1"]) .seat .hole-cards { --card-w: clamp(26px, 7.4vw, 36px); }
+  .opponents:not([data-count="1"]) .seat-name { font-size: 0.86rem; }
+  .opponents:not([data-count="1"]) .seat-stack { font-size: 0.68rem; }
+  .opponents:not([data-count="1"]) .seat-bet { font-size: 0.62rem; }
+  .opponents:not([data-count="1"]) .hand-name { font-size: 0.6rem; max-width: 100%; }
+  .opponents:not([data-count="1"]) .seat-info { min-width: 0; }
+  .opponents[data-count="3"] .seat:first-child,
+  .opponents[data-count="3"] .seat:last-child { margin-top: 0.5rem; }
+  .seat-act { font-size: 0.6rem; letter-spacing: 0.03em; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .opponents { grid-column: 1; flex-direction: column; align-items: stretch; gap: 0.25rem; }
+  .opponents:not([data-count="1"]) .seat { flex-direction: row; flex: 0 0 auto; gap: 0.3rem; align-items: center; max-width: none; }
+  .opponents:not([data-count="1"]) .seat .hole-cards { --card-w: 21px; order: 0; flex: none; }
+  .opponents:not([data-count="1"]) .seat-info { flex: 1 1 auto; text-align: left; }
+  .opponents:not([data-count="1"]) .seat-info .dealer-btn { left: auto; right: 0; }
+  .table-scene:has(.opponents:not([data-count="1"])) { grid-template-columns: minmax(0, 1.3fr) minmax(0, 2fr) minmax(0, 0.95fr); }
+  .table-scene:has(.opponents:not([data-count="1"])) .board { --card-w: clamp(28px, 4.8vw, 44px); gap: 0.25rem; }
+  .opponents:not([data-count="1"]) .bet-zone { display: none; }
+  .opponents:not([data-count="1"]) .seat-name { font-size: 0.78rem; }
+  .opponents:not([data-count="1"]) .seat-stack { font-size: 0.62rem; margin: 0; }
+  .opponents[data-count="3"] .seat:first-child,
+  .opponents[data-count="3"] .seat:last-child { margin-top: 0; }
+  .opponents .hand-name, .opponents .seat-act { font-size: 0.56rem; margin: 0; }
+}

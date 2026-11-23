@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
   <link rel="stylesheet" href="/assets/fonts/space-mono/font.css">
   <link rel="stylesheet" href="/labs/shared.css?v=15">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=4">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -79,206 +79,199 @@
 
 <body>
   <div class="container maestro-container">
-    <header data-lab-header data-fullscreen data-title="Partitura: Maestro Quest" class="compact-header">
+    <header data-lab-header data-fullscreen data-title="Partitura: Maestro Quest">
       <template data-slot="logo">
-        <span class="logo-icon">𝄞</span> Partitura: Maestro Quest
+        <div class="app-logo"><span class="logo-icon" aria-hidden="true">🎼</span> Partitura</div>
       </template>
     </header>
 
-    <!-- 1. HUD ULTRA-COMPACTA DE STATUS (BARRA 1 LINHA NO DESKTOP) -->
-    <section class="hud-strip" id="dashboard-card">
-      <div class="hud-left-rank">
-        <span class="avatar-mini" title="Nível do Maestro">🎩</span>
-        <span class="level-title-mini" id="maestro-level-title">Nível 1: Aprendiz</span>
-        <div class="xp-bar-mini" title="Progresso para o próximo nível">
-          <div class="xp-bar-fill" id="xp-bar" style="width: 0%;"></div>
-          <span class="xp-text-mini" id="xp-text">0 / 100 XP</span>
+    <!-- 1. HUD: nível, XP, combo, sequência de dias, moedas, troféus -->
+    <section class="hud-strip" aria-label="Seu progresso">
+      <div class="hud-rank">
+        <span class="hud-level" id="maestro-level-badge" aria-hidden="true">1</span>
+        <div class="hud-rank-text">
+          <span class="hud-kicker">Maestro Quest</span>
+          <span class="hud-title" id="maestro-level-title">Nível 1: Aprendiz da Clave</span>
+          <div class="xp-bar" role="progressbar" aria-label="XP para o próximo nível" aria-valuemin="0"
+            aria-valuemax="100" aria-valuenow="0" id="xp-progress">
+            <div class="xp-bar-fill" id="xp-bar"></div>
+          </div>
+          <span class="xp-text" id="xp-text">0 / 100 XP</span>
         </div>
       </div>
-
-      <div class="hud-right-stats">
-        <div class="pill-mini combo-pill" id="combo-box" title="Sequência de Acertos">
-          <span>🔥</span> <strong id="combo-count">x1</strong>
-        </div>
-        <div class="pill-mini" title="Dias seguidos praticando">
-          <span>⚡</span> <strong id="streak-days">1</strong> <small>d</small>
-        </div>
-        <div class="pill-mini" title="Notas de Ouro acumuladas">
-          <span>🪙</span> <strong id="coin-count">0</strong>
-        </div>
-        <button class="btn-trophies-mini" id="btn-open-badges" aria-label="Abrir Conquistas">
-          🏆 Troféus
+      <div class="hud-stats">
+        <span class="stat-pill combo-pill" id="combo-box" title="Acertos seguidos">
+          <span aria-hidden="true">🔥</span><strong id="combo-count">x0</strong><span class="sr-only">de combo</span>
+        </span>
+        <span class="stat-pill" title="Dias seguidos praticando">
+          <span aria-hidden="true">📅</span><strong id="streak-days">1</strong><small>d</small>
+        </span>
+        <span class="stat-pill" title="Notas de ouro">
+          <span aria-hidden="true">🪙</span><strong id="coin-count">0</strong>
+        </span>
+        <button class="btn-trophies" id="btn-open-badges" type="button" aria-haspopup="dialog">
+          <span aria-hidden="true">🏆</span> Troféus
         </button>
       </div>
     </section>
 
-    <!-- 2. DECK CONTROLE CENTRAL (ABAS + CONTROLES ÁUDIO) -->
-    <section class="control-deck">
-      <nav class="mode-tabs" role="tablist">
-        <button class="tab-btn active" data-mode="quiz" role="tab" aria-selected="true">🎮 Desafio</button>
-        <button class="tab-btn" data-mode="scales" role="tab" aria-selected="false">📈 Escalas</button>
-        <button class="tab-btn" data-mode="ear" role="tab" aria-selected="false">🎧 Treino Auditivo</button>
-        <button class="tab-btn" data-mode="arcade" role="tab" aria-selected="false">⚡ 60 Segundos</button>
+    <!-- 2. Modos + ajustes -->
+    <section class="control-deck" aria-label="Modo e ajustes">
+      <nav class="mode-tabs" role="tablist" aria-label="Modos de treino">
+        <button class="tab-btn active" data-mode="quiz" role="tab" aria-selected="true" type="button">
+          <span aria-hidden="true">🎯</span> Leitura</button>
+        <button class="tab-btn" data-mode="ear" role="tab" aria-selected="false" type="button">
+          <span aria-hidden="true">🎧</span> Ouvido</button>
+        <button class="tab-btn" data-mode="arcade" role="tab" aria-selected="false" type="button">
+          <span aria-hidden="true">⚡</span> 60s</button>
+        <button class="tab-btn" data-mode="scales" role="tab" aria-selected="false" type="button">
+          <span aria-hidden="true">📈</span> Escalas</button>
       </nav>
 
       <div class="deck-controls">
-        <select id="clef-select" class="neon-select compact-sel clef-selector" title="Selecionar Clave"
-          aria-label="Clave">
-          <option value="treble" selected>𝄞 Clave de Sol (Agudo / Mão Dir.)</option>
-          <option value="bass">𝄢 Clave de Fá (Grave / Mão Esq.)</option>
-          <option value="both">𝄡 Reveber Ambas!</option>
-        </select>
-
-        <select id="instrument-select" class="neon-select compact-sel" title="Escolha do Instrumento"
-          aria-label="Instrumento">
-          <option value="piano" selected>🎹 Piano (Reverb)</option>
-          <option value="synth">⚡ Synth Néon</option>
-          <option value="guitar">🎸 Guitarra & Pluck</option>
-          <option value="celesta">✨ Celesta Mágica</option>
-        </select>
-
-        <button class="toggle-btn-mini guide-toggle" id="toggle-hint-btn" title="Exibe gabarito das notas sob a pauta">
-          💡 Guia: <strong id="hint-status">OFF</strong>
+        <label class="field">
+          <span class="field-label">Clave</span>
+          <select id="clef-select" class="neon-select" aria-label="Clave">
+            <option value="treble" selected>Sol (agudos)</option>
+            <option value="bass">Fá (graves)</option>
+            <option value="both">Sol + Fá</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-label">Timbre</span>
+          <select id="instrument-select" class="neon-select" aria-label="Instrumento">
+            <option value="piano" selected>Piano</option>
+            <option value="guitar">Violão</option>
+            <option value="celesta">Celesta</option>
+            <option value="synth">Synth</option>
+          </select>
+        </label>
+        <button class="toggle-btn" id="toggle-hint-btn" type="button" aria-pressed="false"
+          title="Mostra o nome da nota sob a pauta">
+          <span aria-hidden="true">💡</span> Guia <strong id="hint-status">off</strong>
         </button>
-        <button class="toggle-btn-mini notation-btn" id="toggle-notation-btn" title="Mudar entre Dó-Ré-Mi e C-D-E">
-          <span id="notation-mode-display">Dó Ré Mi ⇄ C D E</span>
+        <button class="toggle-btn" id="toggle-notation-btn" type="button"
+          title="Alternar entre Dó-Ré-Mi e C-D-E">
+          <span id="notation-mode-display">Dó Ré Mi</span>
         </button>
       </div>
     </section>
 
-    <!-- 3. TOOLBARS CONDICIONAIS COM ALTURA REDUZIDA -->
-    <div class="mode-toolbar compact-toolbar hidden" id="toolbar-scales">
-      <div class="scale-selector-row">
-        <select id="scale-select" class="neon-select scale-picker" aria-label="Escala musical">
-          <option value="C-major">Dó Maior (Clássicas Teclas Brancas)</option>
-          <option value="G-major">Sol Maior (Com Fá Sustenido ♯)</option>
-          <option value="F-major">Fá Maior (Clave de Fá com Si Bemol ♭)</option>
-          <option value="A-minor">Lá Menor Natural (Melancólica)</option>
-          <option value="C-penta">Dó Pentatônica (5 Notas para Solo)</option>
-          <option value="C-blues">Dó Blues (A mítica Blue Note! 🎸)</option>
-        </select>
-        <div class="scale-direction-btns">
-          <button id="btn-play-scale" class="action-btn-mini glow-btn">▶ Subir (Ascendente)</button>
-          <button id="btn-play-scale-desc" class="action-btn-mini glow-btn-alt">◀ Descer (Descendente)</button>
+    <!-- 3. Barras de modo -->
+    <div class="mode-toolbar hidden" id="toolbar-scales">
+      <div class="scale-row">
+        <label class="field field-grow">
+          <span class="field-label">Escala</span>
+          <select id="scale-select" class="neon-select" aria-label="Escala musical">
+            <option value="C-major">Dó maior</option>
+            <option value="G-major">Sol maior (1♯)</option>
+            <option value="F-major">Fá maior (1♭, clave de Fá)</option>
+            <option value="A-minor">Lá menor natural</option>
+            <option value="C-penta">Dó pentatônica</option>
+            <option value="C-blues">Dó blues</option>
+          </select>
+        </label>
+        <div class="scale-actions">
+          <button id="btn-play-scale" class="action-btn primary" type="button">▲ Subir</button>
+          <button id="btn-play-scale-desc" class="action-btn" type="button">▼ Descer</button>
+          <button id="btn-stop-scale" class="action-btn" type="button" disabled>■ Parar</button>
         </div>
       </div>
-      <div class="theory-card-mini" id="scale-theory-desc">
-        💡 <strong>Dó Maior:</strong> Escala base da música ocidental, sem sustenidos ou bemóis!
+      <p class="theory-card" id="scale-theory-desc"></p>
+    </div>
+
+    <div class="mode-toolbar hidden" id="toolbar-arcade">
+      <div class="arcade-row">
+        <span class="timer-digits" id="timer-display" aria-live="off">60s</span>
+        <span class="arcade-score">Pontos <strong id="arcade-score">0</strong></span>
+        <span class="arcade-best">Recorde <strong id="arcade-highscore">0</strong></span>
+        <button id="btn-start-arcade" class="action-btn primary pulse-btn" type="button">⚡ Iniciar</button>
       </div>
     </div>
 
-    <div class="mode-toolbar compact-toolbar hidden" id="toolbar-arcade">
-      <div class="arcade-hud-row">
-        <span class="timer-digits" id="timer-display">60s</span>
-        <span class="score-lbl">Pontos: <strong id="arcade-score">0</strong></span>
-        <span class="high-score">🏆 Recorde: <span id="arcade-highscore">0</span></span>
-        <button id="btn-start-arcade" class="action-btn-mini pulse-btn">⚡ Iniciar Desafio</button>
-      </div>
-    </div>
-
-    <!-- 4. PALCO PRINCIPAL DA PARTITURA E FEEDBACK INTEGRADO -->
+    <!-- 4. Pauta -->
     <main class="studio-workspace">
-      <div class="staff-display-card" id="staff-card-wrapper">
-        <div class="staff-header-mini">
-          <span id="clef-active-indicator" class="clef-badge treble-badge">𝄞 Agudo (Clave de Sol)</span>
-          <span id="mode-instruction-text" class="instruction-span">Toque a nota na pauta para pontuar!</span>
+      <div class="staff-display-card mode-treble-clef" id="staff-card-wrapper">
+        <div class="staff-header">
+          <span id="clef-active-indicator" class="clef-badge">Clave de Sol</span>
+          <span id="mode-instruction-text" class="instruction-span">Qual é esta nota?</span>
+          <button type="button" class="replay-btn" id="btn-replay" hidden>
+            <span aria-hidden="true">🔁</span> Ouvir de novo
+          </button>
         </div>
 
-        <div class="staff-svg-wrapper">
-          <svg id="staff-canvas" viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg">
-            <!-- Renderizado via script.js -->
-          </svg>
+        <div class="staff-paper">
+          <svg id="staff-canvas" viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg" role="img"
+            aria-label="Pauta musical"></svg>
         </div>
 
-        <div class="feedback-bar-integrated" id="feedback-display">
-          <span class="feedback-icon" id="feedback-icon">✨</span>
-          <span class="feedback-text" id="feedback-text">Qual é esta nota na partitura?</span>
+        <div class="feedback-bar" id="feedback-display" role="status" aria-live="polite">
+          <span class="feedback-icon" id="feedback-icon" aria-hidden="true">💡</span>
+          <span class="feedback-text" id="feedback-text">Qual é esta nota na pauta?</span>
         </div>
+
+        <button type="button" id="audio-status" class="audio-status" data-state="idle">
+          <span class="audio-status-dot" aria-hidden="true"></span>
+          <span class="audio-status-text">Toque uma nota para ligar o som.</span>
+        </button>
       </div>
 
-      <!-- 5. CONSOLE DE ÁUDIO & INSTRUMENTO INTEGRADO -->
-      <section class="synth-console">
-        <!-- Pad de Botões Rápidos de Nota -->
+      <!-- 5. Respostas -->
+      <section class="synth-console" aria-label="Responder">
         <div class="trigger-pads-row" id="note-buttons-container">
-          <button class="trigger-pad" data-note="C" data-color="red">
-            <span class="pad-names"><strong class="note-name">Dó</strong> (<span class="note-cifra">C</span>)</span>
-            <span class="note-octave-hint" id="hint-oct-C">Oitava 4</span>
-          </button>
-          <button class="trigger-pad" data-note="D" data-color="orange">
-            <span class="pad-names"><strong class="note-name">Ré</strong> (<span class="note-cifra">D</span>)</span>
-            <span class="note-octave-hint" id="hint-oct-D">Oitava 4</span>
-          </button>
-          <button class="trigger-pad" data-note="E" data-color="yellow">
-            <span class="pad-names"><strong class="note-name">Mi</strong> (<span class="note-cifra">E</span>)</span>
-            <span class="note-octave-hint" id="hint-oct-E">Oitava 4</span>
-          </button>
-          <button class="trigger-pad" data-note="F" data-color="green">
-            <span class="pad-names"><strong class="note-name">Fá</strong> (<span class="note-cifra">F</span>)</span>
-            <span class="note-octave-hint" id="hint-oct-F">Oitava 4</span>
-          </button>
-          <button class="trigger-pad" data-note="G" data-color="cyan">
-            <span class="pad-names"><strong class="note-name">Sol</strong> (<span class="note-cifra">G</span>)</span>
-            <span class="note-octave-hint" id="hint-oct-G">Oitava 4</span>
-          </button>
-          <button class="trigger-pad" data-note="A" data-color="blue">
-            <span class="pad-names"><strong class="note-name">Lá</strong> (<span class="note-cifra">A</span>)</span>
-            <span class="note-octave-hint" id="hint-oct-A">Oitava 4</span>
-          </button>
-          <button class="trigger-pad" data-note="B" data-color="purple">
-            <span class="pad-names"><strong class="note-name">Si</strong> (<span class="note-cifra">B</span>)</span>
-            <span class="note-octave-hint" id="hint-oct-B">Oitava 4</span>
-          </button>
+          <button class="trigger-pad" data-note="C" type="button"><kbd>1</kbd><strong class="note-name">Dó</strong><span class="note-cifra">C</span></button>
+          <button class="trigger-pad" data-note="D" type="button"><kbd>2</kbd><strong class="note-name">Ré</strong><span class="note-cifra">D</span></button>
+          <button class="trigger-pad" data-note="E" type="button"><kbd>3</kbd><strong class="note-name">Mi</strong><span class="note-cifra">E</span></button>
+          <button class="trigger-pad" data-note="F" type="button"><kbd>4</kbd><strong class="note-name">Fá</strong><span class="note-cifra">F</span></button>
+          <button class="trigger-pad" data-note="G" type="button"><kbd>5</kbd><strong class="note-name">Sol</strong><span class="note-cifra">G</span></button>
+          <button class="trigger-pad" data-note="A" type="button"><kbd>6</kbd><strong class="note-name">Lá</strong><span class="note-cifra">A</span></button>
+          <button class="trigger-pad" data-note="B" type="button"><kbd>7</kbd><strong class="note-name">Si</strong><span class="note-cifra">B</span></button>
         </div>
 
-        <!-- Teclado de Cauda Virtual Otimizado -->
         <div class="virtual-keyboard-deck">
           <div class="keyboard-top-info">
-            <div class="zone-badges-group">
-              <span class="zone-badge left-hand-zone" id="zone-left">Mão Esq. (Grave / Fá)</span>
-              <span class="zone-badge right-hand-zone" id="zone-right">Mão Dir. (Aguda / Sol)</span>
-            </div>
-            <span class="kb-shortcut-hint">💡 Teclado Físico: Teclas <strong>A S D F G H J K</strong> tocam as notas ao vivo!</span>
+            <span class="zone-badge" id="zone-left">Mão esq. · Fá</span>
+            <span class="zone-badge" id="zone-right">Mão dir. · Sol</span>
+            <span class="kb-shortcut-hint">Teclado: <kbd>1</kbd>–<kbd>7</kbd> respondem · <kbd>A</kbd>–<kbd>K</kbd> tocam ·
+              <kbd>R</kbd> repete</span>
           </div>
-          <div class="piano-wrapper-compact">
-            <div class="piano-keyboard" id="piano-keyboard">
-              <!-- Teclas renderizadas por JS -->
-            </div>
+          <div class="piano-wrapper-compact" id="piano-scroll">
+            <div class="piano-keyboard" id="piano-keyboard" aria-label="Teclado de piano"></div>
           </div>
         </div>
       </section>
     </main>
 
-    <!-- MODAL TROFÉUS -->
+    <!-- Modal de troféus -->
     <div class="modal-backdrop hidden" id="modal-badges">
-      <div class="modal-card glass-modal">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="badges-title">
         <header class="modal-header">
-          <h2>🏆 Conquistas & Ementa Musical</h2>
-          <button class="close-btn" id="btn-close-badges">✕</button>
+          <h2 id="badges-title">🏆 Conquistas</h2>
+          <button class="close-btn" id="btn-close-badges" type="button" aria-label="Fechar">✕</button>
         </header>
         <div class="modal-body">
-          <p class="modal-desc">Seus troféus e pontuações máximas são resguardados no seu <code>localStorage</code> automaticamente!</p>
+          <p class="modal-desc">Seu progresso fica salvo neste navegador.</p>
           <div class="stats-summary-grid">
             <div class="stat-box"><span class="box-num" id="stat-total-correct">0</span><span class="box-label">Acertos</span></div>
             <div class="stat-box"><span class="box-num" id="stat-accuracy">100%</span><span class="box-label">Precisão</span></div>
-            <div class="stat-box"><span class="box-num" id="stat-max-combo">0</span><span class="box-label">Maior Combo 🔥</span></div>
-            <div class="stat-box"><span class="box-num" id="stat-max-arcade">0</span><span class="box-label">Recorde 60s ⚡</span></div>
+            <div class="stat-box"><span class="box-num" id="stat-max-combo">0</span><span class="box-label">Maior combo</span></div>
+            <div class="stat-box"><span class="box-num" id="stat-max-arcade">0</span><span class="box-label">Recorde 60s</span></div>
           </div>
           <div class="badges-grid" id="badges-grid-container"></div>
         </div>
         <footer class="modal-footer">
-          <button class="action-btn-mini btn-primary" id="btn-reset-data">🔄 Zerar Progresso</button>
+          <button class="action-btn danger" id="btn-reset-data" type="button">Zerar progresso</button>
         </footer>
       </div>
     </div>
 
-    <!-- TOAST -->
-    <div id="toast-container" class="toast-container"></div>
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
-    <footer data-lab-footer data-home-href="/" class="compact-footer"></footer>
+    <footer data-lab-footer data-home-href="/"></footer>
   </div>
 
   <script src="/labs/shared.js?v=16" defer></script>
-  <script src="script.js?v=3" defer></script>
+  <script src="script.js?v=4" defer></script>
 </body>
 
 </html>

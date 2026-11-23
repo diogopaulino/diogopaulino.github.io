@@ -5,9 +5,9 @@
  */
 
 import * as THREE from 'three';
-import { Level } from './Level.js?v=40';
-import { getIsland, ISLAND_MARKS } from '../world/Island.js?v=40';
-import { createCreature } from '../characters/cast.js?v=40';
+import { Level } from './Level.js?v=50';
+import { getIsland, ISLAND_MARKS } from '../world/Island.js?v=50';
+import { createCreature } from '../characters/cast.js?v=50';
 
 const _p = new THREE.Vector3();
 

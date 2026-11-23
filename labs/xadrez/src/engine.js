@@ -99,9 +99,32 @@ export class Chess {
         this.load(fen);
     }
 
-    /** Chave de repetição: FEN sem os contadores de meio-lance e lance. */
+    /**
+     * Chave de repetição: FEN sem os contadores de meio-lance e lance.
+     * FIDE 9.2: a casa en passant só distingue posições quando a captura
+     * en passant é de fato possível. Sem um peão adversário ao lado (ou com
+     * a captura ilegal por cravada), a chave omite a casa — senão a repetição
+     * logo depois de um avanço duplo nunca seria contada.
+     */
     positionKey() {
-        return this.fen().split(' ').slice(0, 4).join(' ');
+        const parts = this.fen().split(' ');
+        if (this.ep >= 0 && !this._epPlayable()) parts[3] = '-';
+        return parts.slice(0, 4).join(' ');
+    }
+
+    _epPlayable() {
+        const dir = this.side === 'w' ? -1 : 1;
+        const f = fileOf(this.ep);
+        const r = rankOf(this.ep) + dir;
+        for (const df of [-1, 1]) {
+            if (!inBoard(f + df, r)) continue;
+            const from = sq(f + df, r);
+            const p = this.board[from];
+            if (!p || p.t !== 'p' || p.c !== this.side) continue;
+            const m = { from, to: this.ep, promo: null, captured: this.board[sq(f, r)], flag: 'e', epCap: sq(f, r) };
+            if (this._legal(m)) return true;
+        }
+        return false;
     }
 
     /** Quantas vezes a posição atual já apareceu (inclui a atual). */
@@ -576,22 +599,24 @@ export class Chess {
         return { over: false, result: '*', reason: check ? 'xeque' : '', check, moves };
     }
 
+    /**
+     * Material insuficiente (FIDE 5.2.2 — nenhum mate possível por qualquer
+     * sequência legal): R×R, R+C×R, R+B×R e qualquer número de bispos (de
+     * um ou dos dois lados) todos em casas da mesma cor.
+     */
     _insufficient() {
-        const pcs = this.board.filter(Boolean);
-        if (pcs.length === 2) return true;
-        if (pcs.length === 3) {
-            return pcs.some((p) => p.t === 'n' || p.t === 'b');
+        let knights = 0;
+        let bishopColors = 0; // bit 1 = casa clara, bit 2 = casa escura
+        let minors = 0;
+        for (let i = 0; i < 64; i++) {
+            const p = this.board[i];
+            if (!p || p.t === 'k') continue;
+            if (p.t === 'n') { knights += 1; minors += 1; continue; }
+            if (p.t === 'b') { bishopColors |= ((fileOf(i) + rankOf(i)) & 1) ? 1 : 2; minors += 1; continue; }
+            return false; // peão, torre ou dama: ainda dá mate
         }
-        if (pcs.length === 4) {
-            const bishops = pcs.filter((p) => p.t === 'b');
-            if (bishops.length === 2) {
-                const sqs = [];
-                this.board.forEach((p, i) => { if (p?.t === 'b') sqs.push(i); });
-                const color = (i) => (fileOf(i) + rankOf(i)) & 1;
-                return color(sqs[0]) === color(sqs[1]);
-            }
-        }
-        return false;
+        if (minors <= 1) return true;
+        return knights === 0 && bishopColors !== 3;
     }
 
     findMove(from, to, promo = 'q') {

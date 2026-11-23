@@ -13,7 +13,7 @@
  */
 
 import * as THREE from 'three';
-import { clamp, damp } from '../utils/math.js';
+import { clamp, damp } from '../utils/math.js?v=50';
 
 export class StormController {
     constructor(game, quality) {

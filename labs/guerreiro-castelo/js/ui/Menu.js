@@ -2,8 +2,8 @@
  * Menu principal, overlay de controles, opções de qualidade e volume.
  */
 
-import { QUALITY } from '../core/QualitySettings.js';
-import { SETTINGS_KEY } from '../core/assets.js';
+import { QUALITY } from '../core/QualitySettings.js?v=50';
+import { SETTINGS_KEY } from '../core/assets.js?v=50';
 
 export class Menu {
     constructor(game) {
@@ -17,7 +17,11 @@ export class Menu {
         document.getElementById('btnContinue')?.addEventListener('click', () => game.continueGame());
         document.getElementById('btnControls')?.addEventListener('click', () => this.showControls(true));
         document.getElementById('btnSettings')?.addEventListener('click', () => this.showSettings(true));
-        document.getElementById('btnCloseControls')?.addEventListener('click', () => this.showControls(false));
+        document.getElementById('btnCloseControls')?.addEventListener('click', () => {
+            this.showControls(false);
+            /* aberto pela pausa: volta para a pausa */
+            if (game.paused) game.pauseMenu.show(true);
+        });
         document.getElementById('btnCloseSettings')?.addEventListener('click', () => {
             this.showSettings(false);
             /* aberto pela pausa: volta para a pausa (antes o jogo ficava pausado sem menu) */

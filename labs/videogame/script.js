@@ -714,9 +714,12 @@ const App = {
             if (id !== this.launchId) return;
             this.launchId++;
             this.ui.loader.classList.add('hidden');
-            console.error('Erro ao carregar jogo:', error);
             this.currentCore = null;
             const remote = typeof rom === 'string' && /^https?:\/\//.test(rom);
+            // Falha de rede numa ROM remota é esperada (biblioteca fora do ar) e já vira
+            // mensagem amigável na tela: aviso no console, não erro.
+            const networkFail = remote && /fetch|network|load/i.test(error?.message || '');
+            (networkFail ? console.warn : console.error)('Erro ao carregar jogo:', error);
             if (remote && /fetch|network|load/i.test(error?.message || '')) this.setLibraryOnline(false);
             this.showScreenError(this.getFriendlyErrorMessage(error, remote));
         } finally {

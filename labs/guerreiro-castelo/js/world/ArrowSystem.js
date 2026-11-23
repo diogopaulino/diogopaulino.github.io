@@ -1,8 +1,13 @@
 /**
  * Flechas dos arqueiros: balística simples com rastro luminoso.
  *
- *   v ← v + g·dt (g = 18 m/s² para baixo),  p ← p + v·dt,  a flecha aponta para v
- * Acerta o jogador se passar a menos de 0,65 m do centro do corpo (0,9 m acima dos pés).
+ *   v ← v + g·dt (g = 9,81 m/s² para baixo),  p ← p + v·dt,  a flecha aponta para v
+ * Arco longo de guerra: 40–50 m/s na saída. `aim()` resolve o ângulo de tiro baixo que
+ * acerta um alvo (balística sem arrasto):
+ *   tan θ = (v² − √(v⁴ − g·(g·d² + 2·h·v²))) / (g·d)
+ * (d = distância horizontal, h = desnível). Fora de alcance → 45° (alcance máximo).
+ * Acerta o jogador se o trecho voado no quadro passar a menos de 0,65 m do centro do corpo
+ * (0,9 m acima dos pés) — teste varrido, sem "atravessar" o alvo em quadros lentos.
  * Crava no chão (`groundFn(x, z)`, padrão: nível do mar) ou onde `blockFn(p)` disser (casco
  * do navio, muralha) e some depois de 2 s. Tudo em coordenadas de mundo.
  *
@@ -21,7 +26,7 @@ const _pl = new THREE.Vector3();
 export class ArrowSystem {
     constructor(scene) {
         this.scene = scene;
-        this.gravity = 18;
+        this.gravity = 9.81;
         this.onHitPlayer = null;
         this.groundFn = null;
         this.blockFn = null;
@@ -71,6 +76,24 @@ export class ArrowSystem {
     /** Mantido por compatibilidade com os níveis antigos. */
     setColliders() {}
 
+    /**
+     * Direção de tiro (em `out`, unitária) para acertar `target` saindo de `origin` a
+     * `speed` m/s, pelo arco baixo. Não aloca.
+     */
+    aim(origin, target, speed, out) {
+        const dx = target.x - origin.x;
+        const dz = target.z - origin.z;
+        const h = target.y - origin.y;
+        const d = Math.hypot(dx, dz) || 0.001;
+        const g = this.gravity;
+        const v2 = speed * speed;
+        const disc = v2 * v2 - g * (g * d * d + 2 * h * v2);
+        const tan = disc >= 0 ? (v2 - Math.sqrt(disc)) / (g * d) : 1;
+        const cos = 1 / Math.sqrt(1 + tan * tan);
+        out.set((dx / d) * cos, tan * cos, (dz / d) * cos);
+        return out;
+    }
+
     fire(origin, direction, speed = 28) {
         const a = this.free.pop();
         if (!a) return null;
@@ -105,9 +128,16 @@ export class ArrowSystem {
 
             a.vel.y -= this.gravity * dt;
             const pos = a.root.position;
+            _p.copy(pos);
             pos.addScaledVector(a.vel, dt);
 
-            if (pos.distanceToSquared(_pl) < 0.65 * 0.65) {
+            /* teste varrido: a 45 m/s a flecha anda 0,75 m por quadro — mais que o raio de
+               acerto. Distância do jogador ao SEGMENTO percorrido neste quadro. */
+            _v.subVectors(pos, _p);
+            const segL2 = _v.lengthSq() || 1e-6;
+            const u = Math.max(0, Math.min(1, ((_pl.x - _p.x) * _v.x + (_pl.y - _p.y) * _v.y + (_pl.z - _p.z) * _v.z) / segL2));
+            _p.addScaledVector(_v, u);
+            if (_p.distanceToSquared(_pl) < 0.65 * 0.65) {
                 this.onHitPlayer?.(1);
                 this._release(i);
                 continue;

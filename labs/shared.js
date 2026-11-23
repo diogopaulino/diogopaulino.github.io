@@ -493,13 +493,23 @@
             const autoPause = !options || options.autoPause !== false;
             let id = null;
             let wantsRun = false;
+            let loggedError = false;
 
             function tick(now) {
                 if (!wantsRun || document.hidden) {
                     id = null;
                     return;
                 }
-                onFrame(now);
+                // Uma exceção num quadro não pode matar o laço (o jogo congelaria
+                // sem saída). Registra a primeira e segue no próximo quadro.
+                try {
+                    onFrame(now);
+                } catch (err) {
+                    if (!loggedError) {
+                        loggedError = true;
+                        console.error('[LabRuntime] erro no quadro:', err);
+                    }
+                }
                 id = wantsRun && !document.hidden ? requestAnimationFrame(tick) : null;
             }
 

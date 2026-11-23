@@ -40,20 +40,20 @@ body {
 }
 
 /* Game Boy Styling
-   O console é desenhado numa base fixa de 320x540 e escalado com transform:
+   O console é desenhado numa base fixa de 360x640 e escalado com transform:
    assim cresce no desktop e encolhe no celular sem refazer a matemática interna.
    O margin-bottom compensa a altura que o scale tira (ou soma) do fluxo. */
 .game-boy {
     margin: auto;
     /* Center in container */
     --device-scale: 1;
-    --device-base-height: 540px;
+    --device-base-height: 640px;
     transform: scale(var(--device-scale));
     transform-origin: top center;
     margin-bottom: calc((var(--device-scale) - 1) * var(--device-base-height));
     background-color: var(--gb-body);
-    width: 320px;
-    height: 540px;
+    width: 360px;
+    height: 640px;
     border-radius: 10px 10px 40px 10px;
     padding: 20px;
     box-shadow:
@@ -69,9 +69,9 @@ body {
 .screen-border {
     background-color: var(--gb-screen-border);
     width: 100%;
-    height: 240px;
+    height: 350px;
     border-radius: 10px 10px 30px 10px;
-    padding: 18px 30px 6px;
+    padding: 14px 18px 6px 22px;
     position: relative;
     box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.3);
     display: flex;
@@ -108,25 +108,33 @@ body {
     touch-action: none;
     cursor: pointer;
     background-color: var(--gb-screen-bg);
-    width: 90%;
-    height: 90%;
+    width: 95%;
+    height: 95%;
     box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.2);
     display: flex;
     justify-content: center;
-    padding: 2px;
-    image-rendering: pixelated;
+    gap: 4px;
+    padding: 4px;
     position: relative;
     overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
+/* Poço do tabuleiro entre as duas colunas de informação. */
 .game-area {
+    flex: 0 0 auto;
+    height: 100%;
+    border-left: 2px solid var(--gb-pixel-dark);
     border-right: 2px solid var(--gb-pixel-dark);
-    padding-right: 2px;
+    padding: 0 2px;
     display: flex;
+    position: relative;
 }
 
 /* O tabuleiro tem 10 colunas por 20 linhas: manter aspect-ratio 1/2 é o que
-   garante células quadradas — esticar a largura deforma as peças. */
+   garante células quadradas — esticar a largura deforma as peças. O buffer do
+   canvas é redimensionado no JS para o tamanho real × devicePixelRatio. */
 #tetris {
     height: 100%;
     width: auto;
@@ -134,30 +142,87 @@ body {
     display: block;
 }
 
-.sidebar {
-    flex: 0 0 auto;
-    min-width: 56px;
+.side {
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    padding-left: 4px;
+    gap: 7px;
     font-family: 'Press Start 2P', monospace;
-    /* Need a pixel font ideally */
-    font-size: 8px;
-    line-height: 1.2;
+    font-size: 7px;
+    line-height: 1.25;
     color: var(--gb-pixel-dark);
+}
+
+.side-right {
+    justify-content: space-between;
+}
+
+.panel {
+    border: 2px solid var(--gb-pixel-dark);
+    padding: 3px 2px 2px;
+    box-shadow: 1px 1px 0 rgba(15, 56, 15, 0.25);
+}
+
+.panel .label {
+    text-align: center;
+}
+
+.stat .value {
+    font-size: 7px;
+    overflow-wrap: anywhere;
 }
 
 .label {
     font-size: 7px;
     font-weight: bold;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
     opacity: 0.75;
+    letter-spacing: 0.3px;
 }
 
-#next {
-    width: 36px;
-    height: 36px;
+.mini {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 2.4;
+}
+
+.mini-queue {
+    aspect-ratio: 4 / 10;
+}
+
+/* Nome da jogada (TETRIS!, T-SPIN DUPLO, COMBO 3) sobre o poço. */
+.action-text {
+    position: absolute;
+    left: 50%;
+    top: 34%;
+    translate: -50% 0;
+    margin: 0;
+    padding: 4px 5px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    line-height: 1.6;
+    text-align: center;
+    white-space: pre-line;
+    color: var(--gb-screen-bg);
+    background: var(--gb-pixel-dark);
+    box-shadow: 2px 2px 0 rgba(15, 56, 15, 0.3);
+    pointer-events: none;
+    opacity: 0;
+    width: max-content;
+    max-width: 96%;
+}
+
+.action-text.show {
+    animation: action-pop 1.25s steps(6, end) forwards;
+}
+
+@keyframes action-pop {
+    0% { opacity: 0; transform: translateY(6px); }
+    12% { opacity: 1; transform: translateY(0); }
+    80% { opacity: 1; transform: translateY(-3px); }
+    100% { opacity: 0; transform: translateY(-8px); }
 }
 
 /* Overlay de estado (pronto / pausa / fim de jogo) sobre a tela do console. */
@@ -212,6 +277,15 @@ body {
     .lcd-btn-go {
         animation: none;
     }
+
+    .action-text.show {
+        animation: action-fade 1.25s linear forwards;
+    }
+}
+
+@keyframes action-fade {
+    0%, 85% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 [data-theme="dark"] .screen-overlay {
@@ -234,9 +308,16 @@ body {
     display: none;
 }
 
-.overlay-modes {
+.overlay-modes,
+.overlay-row {
     display: flex;
-    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.overlay-row {
+    margin-top: 6px;
 }
 
 /* Botões desenhados no LCD. O console é escalado por `--device-scale`; dividir
@@ -595,8 +676,8 @@ body {
    direita. Encolher o formato retrato deixaria o tabuleiro ilegível. */
 @media (max-height: 520px) and (orientation: landscape) {
     .game-boy {
-        width: 560px;
-        height: 300px;
+        width: 640px;
+        height: 330px;
         flex-direction: row;
         align-items: center;
         gap: 18px;
@@ -606,8 +687,9 @@ body {
 
     .screen-border {
         flex: 1;
+        min-width: 0;
         height: 100%;
-        padding: 14px 16px 4px;
+        padding: 10px 14px 4px 20px;
     }
 
     .controls {
@@ -654,14 +736,13 @@ body {
     }
 
     .game-boy {
-        width: min(320px, 100%);
+        width: min(360px, 100%);
     }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
     .game-boy {
-        width: min(560px, 100%);
-        max-width: 100%;
+        width: min(640px, 100%);
     }
 }
 
@@ -669,4 +750,167 @@ body {
    a área ampliada dele não rouba o toque da parte de baixo de “JOGAR DE NOVO”. */
 .lcd-btn-small::after {
     top: 0;
+}
+
+/* --- Ajustes (DAS/ARR) ----------------------------------------------------
+   Fora do console: é uma janela do site, não do Game Boy. Segue o tema. */
+.settings {
+    margin: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    max-width: min(420px, calc(100vw - 24px));
+    width: 100%;
+    max-height: min(92dvh, 640px);
+}
+
+.settings::backdrop {
+    background: rgba(2, 6, 12, 0.55);
+    backdrop-filter: blur(4px);
+}
+
+.settings[open] .settings-card {
+    animation: settings-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes settings-in {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+}
+
+.settings-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px clamp(16px, 4vw, 24px) 18px;
+    border-radius: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 24px 60px var(--shadow-xl);
+    font-family: 'Outfit', system-ui, sans-serif;
+    max-height: min(92dvh, 640px);
+    overflow-y: auto;
+}
+
+.settings-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0;
+    padding: 0;
+    grid-template-columns: none;
+}
+
+.settings-head h2 {
+    font-size: clamp(1.1rem, 4vw, 1.3rem);
+    font-weight: 700;
+}
+
+.settings-close,
+.settings-btn {
+    appearance: none;
+    font: inherit;
+    cursor: pointer;
+    min-height: 44px;
+    border-radius: 12px;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.settings-close {
+    width: 44px;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.settings-close:hover {
+    background: var(--accent-muted);
+}
+
+.setting {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 12px;
+    align-items: center;
+}
+
+.setting-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.setting-name small {
+    display: block;
+    font-weight: 400;
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+}
+
+.setting input[type="range"] {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-height: 32px;
+    accent-color: var(--accent);
+}
+
+.setting output {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.setting select {
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-body);
+    color: var(--text-primary);
+    font: inherit;
+}
+
+.setting-check {
+    grid-template-columns: auto minmax(0, 1fr);
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.setting-check input {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--accent);
+}
+
+.settings-foot {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin: 4px 0 0;
+    padding: 0;
+}
+
+.settings-btn {
+    padding: 0 20px;
+    border: 0;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+.settings-btn.ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-strong);
+}
+
+.settings-btn:active {
+    transform: scale(0.97);
+}
+
+.settings :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
 }

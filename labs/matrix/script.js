@@ -80,7 +80,24 @@
     let messageStreams = [];
     let messageTimer = 2;
     let paused = false;
+    let needsDraw = true; // pausado, só repinta quando algo muda (bateria agradece)
     let lastTime = 0;
+    // Qualidade adaptativa: se o frame não fecha em ~40 fps, a resolução interna
+    // cai em degraus (nunca abaixo de 1 px de canvas por px de CSS).
+    let qualityScale = 1;
+    let perfAccum = 0;
+    let perfFrames = 0;
+    let perfStrikes = 0;
+
+    // prefers-reduced-motion: sem abertura automática, sem cintilação e chuva
+    // a 45% da velocidade (o efeito continua, só não agride).
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let motionScale = reducedMotionQuery.matches ? 0.45 : 1;
+    if (reducedMotionQuery.addEventListener) {
+        reducedMotionQuery.addEventListener('change', function (e) {
+            motionScale = e.matches ? 0.45 : 1;
+        });
+    }
     let fpsAccum = 0;
     let fpsFrames = 0;
     let scanPattern = null;
@@ -120,6 +137,7 @@
         } catch (err) {
             /* localStorage pode estar indisponível em navegação privada. */
         }
+        needsDraw = true;
     }
 
     /* ------------------------------------------------------------------ */
@@ -254,7 +272,7 @@
     /* ------------------------------------------------------------------ */
 
     function resize() {
-        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2) * qualityScale);
         width = Math.max(1, Math.round(window.innerWidth * dpr));
         height = Math.max(1, Math.round(window.innerHeight * dpr));
 
@@ -269,6 +287,7 @@
         buildAtlas();
         buildLayers();
         buildOverlays();
+        needsDraw = true;
     }
 
     function buildOverlays() {
@@ -298,7 +317,7 @@
     function update(dt) {
         for (let l = 0; l < layers.length; l++) {
             const layer = layers[l];
-            const step = layer.speedMul * settings.speed * dt;
+            const step = layer.speedMul * settings.speed * motionScale * dt;
 
             for (let s = 0; s < layer.streams.length; s++) {
                 const stream = layer.streams[s];
@@ -348,7 +367,7 @@
 
         for (let i = messageStreams.length - 1; i >= 0; i--) {
             const stream = messageStreams[i];
-            stream.y += stream.speed * settings.speed * dt;
+            stream.y += stream.speed * settings.speed * motionScale * dt;
             if (stream.y - stream.chars.length > layer.rows) {
                 messageStreams.splice(i, 1);
             }
@@ -408,7 +427,7 @@
         const rows = layer.rows;
         const grid = layer.grid;
         const hasPulses = pulses.length > 0;
-        const flicker = settings.flicker;
+        const flicker = settings.flicker && motionScale === 1;
 
         for (let s = 0; s < layer.streams.length; s++) {
             const stream = layer.streams[s];
@@ -530,19 +549,44 @@
 
     function frame(now) {
         if (!lastTime) lastTime = now;
-        const dt = Math.min((now - lastTime) / 1000, 0.05);
+        const raw = (now - lastTime) / 1000;
+        const dt = Math.min(raw, 0.05);
         lastTime = now;
+
+        // Pausado: nada muda, então nada é desenhado (antes repintava 60×/s).
+        if (paused && !needsDraw) return;
 
         fpsAccum += dt;
         fpsFrames++;
         if (fpsAccum >= 0.5) {
-            ui.fps.textContent = Math.round(fpsFrames / fpsAccum);
+            ui.fps.textContent = paused ? '—' : Math.round(fpsFrames / fpsAccum);
             fpsAccum = 0;
             fpsFrames = 0;
         }
 
-        if (!paused) update(dt);
+        if (!paused) {
+            update(dt);
+            adaptQuality(raw);
+        }
         draw();
+        needsDraw = false;
+    }
+
+    /** Mede ~2 s de frames; três janelas seguidas abaixo de 40 fps baixam a resolução. */
+    function adaptQuality(raw) {
+        if (raw > 0.25 || qualityScale <= 0.5 || dpr <= 1) return; // ignora voltas de aba
+        perfAccum += raw;
+        perfFrames++;
+        if (perfAccum < 2) return;
+        const fps = perfFrames / perfAccum;
+        perfAccum = 0;
+        perfFrames = 0;
+        perfStrikes = fps < 40 ? perfStrikes + 1 : 0;
+        if (perfStrikes >= 3) {
+            perfStrikes = 0;
+            qualityScale = Math.max(0.5, qualityScale - 0.25);
+            resize();
+        }
     }
 
     /* ------------------------------------------------------------------ */
@@ -963,6 +1007,28 @@
     document.addEventListener('fullscreenchange', onFullscreenChange);
     document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
+    /* Pausa (Espaço, botão do header ou toque no selo) */
+
+    const pauseBtn = document.getElementById('pauseBtn');
+    const pauseBadge = document.getElementById('pauseBadge');
+
+    function setPaused(on) {
+        paused = on;
+        needsDraw = true;
+        lastTime = 0;
+        document.body.classList.toggle('is-paused', on);
+        pauseBadge.hidden = !on;
+        pauseBtn.setAttribute('aria-pressed', String(on));
+        pauseBtn.setAttribute('aria-label', on ? 'Continuar a chuva' : 'Pausar a chuva');
+        pauseBtn.title = on ? 'Continuar (Espaço)' : 'Pausar (Espaço)';
+        pauseBtn.classList.toggle('is-active', on);
+        pauseBtn.querySelector('.ic-pause').hidden = on;
+        pauseBtn.querySelector('.ic-play').hidden = !on;
+    }
+
+    pauseBtn.addEventListener('click', function () { setPaused(!paused); });
+    pauseBadge.addEventListener('click', function () { setPaused(false); });
+
     /* Pulso ao clicar */
 
     function addPulse(clientX, clientY) {
@@ -975,6 +1041,7 @@
             life: 1
         });
         if (pulses.length > 5) pulses.shift();
+        needsDraw = true;
     }
 
     canvas.addEventListener('pointerdown', function (event) {
@@ -984,7 +1051,10 @@
     /* Teclado */
 
     document.addEventListener('keydown', function (event) {
-        if (event.target instanceof HTMLInputElement) return;
+        if (event.target instanceof HTMLInputElement || event.ctrlKey || event.metaKey || event.altKey) return;
+        // Espaço/Enter num botão focado devem acionar o botão, não pausar.
+        const k = event['key'];
+        if ((k === ' ' || k === 'Enter') && event.target.closest && event.target.closest('button')) return;
 
         const key = event.key.toLowerCase();
 
@@ -1015,7 +1085,8 @@
                 document.getElementById('random').click();
                 break;
             case ' ':
-                paused = !paused;
+            case 'p':
+                setPaused(!paused);
                 event.preventDefault();
                 break;
             default:
@@ -1060,7 +1131,16 @@
     syncUI();
     resize();
 
-    if (settings.sound) Sound.start();
+    // Áudio só depois de um gesto (política de autoplay): arma o zumbido salvo.
+    if (settings.sound) {
+        const armSound = function () {
+            window.removeEventListener('pointerdown', armSound);
+            window.removeEventListener('keydown', armSound);
+            if (settings.sound) Sound.start();
+        };
+        window.addEventListener('pointerdown', armSound);
+        window.addEventListener('keydown', armSound);
+    }
 
     let introSeen = false;
     try {
@@ -1070,7 +1150,7 @@
         /* sessionStorage pode estar indisponível. */
     }
 
-    if (!introSeen) runBoot();
+    if (!introSeen && !reducedMotionQuery.matches) runBoot();
 
     if (window.LabRuntime) {
         window.LabVisibility?.whenVisible(() => { lastTime = 0; });

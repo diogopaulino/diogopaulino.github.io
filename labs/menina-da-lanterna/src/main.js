@@ -5,23 +5,37 @@
  * Modo infantil (regras de perdão):
  *   vida          5 corações · Sombrio que encosta foge por 3 s, a Noite fica tonta 2,5 s (npcs.js)
  *   escuro        sem chama (fuel ≤ 4) e longe de lampião: −1 coração a cada 5 s
- *   derrota       "Acender de novo" recomeça o capítulo com as lembranças e a chama
- *                 de quando Clara entrou nele
+ *   derrota       "Acender de novo" devolve Clara ao último ponto de luz (lampião, raiz,
+ *                 conversa…) com corações e chama cheios — o que já foi aceso continua aceso.
+ *                 "Recomeçar capítulo" (pausa) volta ao começo do capítulo, com as
+ *                 lembranças e a chama de quando Clara entrou nele
  *   bússola       seta no HUD aponta o próximo passo (guide.js, _guideTarget)
- *   dica          30 s sem se aproximar do alvo → repete a dica do capítulo
+ *   rastro        fagulhas no chão correm de Clara até o próximo passo (trail.js)
+ *   chama fraca   fuel < 25 longe de lampião: bússola e rastro trocam o alvo pelo abrigo
+ *                 mais perto (vaga-lume ou lampião aceso, que reacende a chama); o modo só
+ *                 sai quando a chama passa de 45 (histerese: a seta não pisca no limiar)
+ *   dica          30 s sem se aproximar do alvo → repete a dica; 12 s → o rastro brilha mais
  *   "Pular"       encerra a abertura do capítulo e o nascer do sol final
+ *   desencalhe    corpo dentro de colisor → ponto livre mais perto (player.js)
+ *   robustez      exceção no quadro não derruba o laço; carregamento com aviso e botão de
+ *                 recarregar após 40 s; áudio que não destrava não segura o "Jogar"
+ *
+ * Desempenho por tier (config.js → QUALITY): PointLights repartidas entre os lampiões
+ * mais próximos (3/5/6) e sombra em cubo da lanterna (0/512/1024). Em aparelho de toque
+ * a sombra da lanterna fica em no máximo 512 e o pixelRatio em no máximo 1,5.
  */
 
 import * as THREE from 'three';
-import { createStage } from '../../shared/gfx/stage.js';
-import { CHAPTERS, QUALITY, STORAGE_KEY, PLAYER, STORY, ROOT_ORDER, ROOT_NAMES } from './config.js?v=21';
-import { clamp, detectTouch, formatTime, lerp, damp, smoothstep } from './utils.js?v=21';
-import { Input } from './input.js?v=21';
-import { GameAudio } from './audio.js?v=21';
-import { Hud, statsBlock } from './hud.js?v=21';
-import { Player } from './player.js?v=21';
-import { createValley } from './world.js?v=21';
-import { nearestInteractable } from './npcs.js?v=21';
+import { createStage, STAGE_TIERS } from '../../shared/gfx/stage.js';
+import { CHAPTERS, QUALITY, STORAGE_KEY, PLAYER, STORY, ROOT_ORDER, ROOT_NAMES } from './config.js?v=22';
+import { clamp, detectTouch, formatTime, lerp, damp, smoothstep } from './utils.js?v=22';
+import { Input } from './input.js?v=22';
+import { GameAudio } from './audio.js?v=22';
+import { Hud, statsBlock } from './hud.js?v=22';
+import { Player } from './player.js?v=22';
+import { createValley } from './world.js?v=22';
+import { nearestInteractable } from './npcs.js?v=22';
+import { LightTrail } from './trail.js?v=22';
 import { Guide } from '../../shared/gfx/guide.js?v=1';
 
 const LOOK = new THREE.Vector3();
@@ -63,8 +77,16 @@ class Game {
         this.skipEl = document.getElementById('skipButton');
         this.hintT = 0;
         this.bestGoalD = Infinity;
-        /** Progresso ao entrar no capítulo (o "Acender de novo" volta para cá). */
+        /** Progresso ao entrar no capítulo ("Recomeçar capítulo" volta para cá). */
         this.checkpoint = { memories: 0, score: 0, caught: 0, lampsTotal: 0, elapsed: 0 };
+        /** Último ponto de luz: onde "Acender de novo" devolve Clara depois de uma derrota. */
+        this.respawnPoint = { x: 0, z: 0 };
+        /** Próximo passo (bússola + rastro), recalculado a 10 Hz. */
+        this.goalTarget = null;
+        this.goalScratch = { x: 0, z: 0, name: '', near: 2 };
+        this.lowFuel = false;
+        this.frameErrors = 0;
+        this.starting = false;
     }
 
     loadSettings() {
@@ -85,12 +107,18 @@ class Game {
 
     async init() {
         this.hud.setLoading(0.06, 'Acendendo o pavio…');
+        // carregamento nunca infinito: aos 40 s o card mostra "conexão lenta" e um botão de recarregar
+        const watchdog = setTimeout(() => this.hud.slowLoading(), 40000);
         this.touch = detectTouch();
         this.hud.setTouch(this.touch);
+        // celular/tablet: tela densa já é nítida a 1,5×; acima disso só esquenta o aparelho.
+        // (STAGE_TIERS é o orçamento do kit; mexemos só na cópia desta página, antes do palco nascer)
+        if (this.touch) for (const t of Object.values(STAGE_TIERS)) t.pixelRatio = Math.min(t.pixelRatio, 1.5);
         const choice = ['low', 'medium', 'high'].includes(this.settings.quality) ? this.settings.quality : 'auto';
         // palco: renderer + céu físico + lua com sombra + pós (AO, bloom, névoa de altura, grade)
         this.stage = createStage({ canvas: this.canvas, tier: choice, preset: 'noite-lua', fov: 50, near: 0.2 });
         if (!this.stage) {
+            clearTimeout(watchdog);
             this.hud.showError('Este laboratório precisa de WebGL 2. Tente um navegador atualizado ou reative a aceleração de hardware.');
             return;
         }
@@ -99,9 +127,11 @@ class Game {
         this.camera = stage.camera;
         this.quality = QUALITY[stage.tier];
         stage.onTier((t) => {
+            // o palco caiu de tier por fps: grama mais rala e a lanterna perde a sombra em cubo
+            // (6 passadas por quadro) já no medium em aparelho de toque
             this.quality = QUALITY[t];
             this.valley?.grass.setDensity(t === 'low' ? 0.45 : 0.75);
-            if (t === 'low' && this.player) this.player.light.castShadow = false;
+            if (this.player) this.player.light.castShadow = this._lanternShadowSize() > 0;
         });
 
         this.input = new Input(this.canvas);
@@ -110,7 +140,9 @@ class Game {
         await new Promise((r) => requestAnimationFrame(() => r()));
 
         this.valley = await createValley(stage, this.quality, (p, text) => this.hud.setLoading(p, text));
-        this.player = new Player(this.scene, this.valley, { shadow: this.quality.lanternShadow > 0, shadowSize: this.quality.lanternShadow || 256, detail: stage.tier === 'low' ? 1 : 2 });
+        const shadowSize = this._lanternShadowSize();
+        this.player = new Player(this.scene, this.valley, { shadow: shadowSize > 0, shadowSize: shadowSize || 512, detail: stage.tier === 'low' ? 1 : 2 });
+        this.trail = new LightTrail(this.valley.glows, 10);
         await this.player.equip();
         this.player.root.visible = false;
         this._patchShadowPasses();
@@ -129,7 +161,9 @@ class Game {
             await new Promise((r) => requestAnimationFrame(() => r()));
         }
         this._applyAtmos(1);
-        await stage.warmup();
+        // compilar shaders pode travar em driver ruim: 10 s depois segue e compila sob demanda
+        await Promise.race([stage.warmup(), wait(10000)]);
+        clearTimeout(watchdog);
         this.hud.setLoading(1, 'A chama espera.');
         this.hud.hideLoading();
         this._refreshChapterList();
@@ -143,6 +177,12 @@ class Game {
         this.state = 'menu';
         this.hud.setState('menu');
         stage.start((dt) => this._frame(dt));
+    }
+
+    /** Lado do mapa de sombra em cubo da lanterna no tier atual (toque: no máximo 512). */
+    _lanternShadowSize() {
+        const s = this.quality.lanternShadow;
+        return this.touch ? Math.min(s, 512) : s;
     }
 
     /**
@@ -201,7 +241,7 @@ class Game {
             const q = this.settings.quality;
             if (q !== 'auto' && !this.stage.software) this.stage.setTier(q);
             this.quality = QUALITY[this.stage.tier];
-            this.player.light.castShadow = this.quality.lanternShadow > 0;
+            this.player.light.castShadow = this._lanternShadowSize() > 0;
         });
         this.hud.el.volumeSlider.addEventListener('input', () => {
             this.settings.volume = Number(this.hud.el.volumeSlider.value);
@@ -213,6 +253,8 @@ class Game {
         document.getElementById('resumeButton').addEventListener('click', () => this.resume());
         document.getElementById('pauseMenuButton').addEventListener('click', () => this.toMenu());
         document.getElementById('retryButton').addEventListener('click', () => this.retry());
+        document.getElementById('restartButton')?.addEventListener('click', () => this.restartChapter());
+        document.getElementById('reloadButton')?.addEventListener('click', () => location.reload());
         document.getElementById('defeatMenuButton').addEventListener('click', () => this.toMenu());
         document.getElementById('replayButton').addEventListener('click', () => this.start(0));
         document.getElementById('victoryMenuButton').addEventListener('click', () => this.toMenu());
@@ -230,6 +272,11 @@ class Game {
         // aba oculta: o palco para de desenhar e a noite pausa
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.state === 'playing') this.pause();
+        });
+        // janela perdeu o foco (alt-tab, notificação): pausa — as teclas presas já são soltas
+        // pelo teclado compartilhado; o stick e o "correr" do toque, em _bindTouch
+        window.addEventListener('blur', () => {
+            if (this.state === 'playing') this.pause();
         });
         // Esc solta o mouse sem chegar como tecla: soltar o mouse jogando abre a pausa
         document.addEventListener('pointerlockchange', () => {
@@ -435,9 +482,22 @@ class Game {
     }
 
     async start(index = 0) {
-        await this.audio.unlock();
-        this.audio.setVolume(this.settings.volume / 100);
-        this.audio.setMuted(this.settings.muted);
+        if (this.starting) return; // clique duplo no "Jogar" não carrega o capítulo duas vezes
+        this.starting = true;
+        try {
+            await this._start(index);
+        } finally {
+            this.starting = false;
+        }
+    }
+
+    async _start(index) {
+        // áudio só destrava com gesto e pode falhar/pendurar (iOS): nunca segura o jogo
+        try {
+            await Promise.race([this.audio.unlock(), wait(1200)]);
+            this.audio.setVolume(this.settings.volume / 100);
+            this.audio.setMuted(this.settings.muted);
+        } catch (err) { /* segue sem som */ }
 
         this.pendingChapter = index;
         this.chapterIndex = index;
@@ -457,13 +517,54 @@ class Game {
         this._beginIntro();
     }
 
-    /** Derrota → recomeça o capítulo com o progresso de quando Clara entrou nele. */
-    async retry() {
+    /**
+     * Derrota → "Acender de novo": Clara reaparece no último ponto de luz, virada para o
+     * próximo passo, com corações e chama cheios. O que já foi aceso continua aceso;
+     * Sombrios e a Noite voltam para casa.
+     */
+    retry() {
+        if (this.state !== 'defeat') return;
+        this.hud.hideDefeat();
+        const w = this.world;
+        const rp = this.respawnPoint;
+        this.lowFuel = false;
+        this.player.fuel = PLAYER.fuelMax; // o rumo de volta é o próximo passo, não o abrigo
+        const t = this._guideTarget();
+        const yaw = t ? Math.atan2(t.x - rp.x, t.z - rp.z) : w.spawn.yaw;
+        this.player.spawn(rp.x, rp.z, yaw, w.heightAt);
+        if (w.blocked(rp.x, rp.z, PLAYER.radius)) this.player._unstick(w);
+        for (const s of w.shadows) s.reset();
+        w.night?.reset();
+        this.darkHurtT = 0;
+        this.hintT = 0;
+        this.bestGoalD = Infinity;
+        this.hud.setHearts(this.player.health, this.player.maxHealth);
+        this.hud.setFuel(this.player.fuel);
+        this.hud.setStealth(0);
+        this.fade = 1;
+        this.fadeDir = -1;
+        this.state = 'playing';
+        this.hud.setState('playing');
+        this.input.enabled = true;
+        this.input.consumeInteract();
+        this.input.consumeFlash();
+        this.hud.say('A chama acendeu de novo, aqui onde ainda havia luz.', 3.4);
+        if (!this.touch) this.input.requestLock();
+    }
+
+    /** Pausa → "Recomeçar capítulo": do começo, com o progresso de quando Clara entrou nele. */
+    async restartChapter() {
         const cp = { ...this.checkpoint };
         await this.start(this.chapterIndex);
         Object.assign(this, cp);
         this.checkpoint = cp;
         this.hud.setMemories(this.memories, CHAPTERS.length);
+    }
+
+    /** Marca o ponto de luz atual (onde Clara está ao acender/falar/libertar) como volta segura. */
+    _markRespawn() {
+        this.respawnPoint.x = this.player.x;
+        this.respawnPoint.z = this.player.z;
     }
 
     /** "Pular": encerra a abertura do capítulo ou adianta o nascer do sol final. */
@@ -479,7 +580,12 @@ class Game {
         this.checkpoint = { memories: this.memories, score: this.score, caught: this.caught, lampsTotal: this.lampsTotal, elapsed: this.elapsed };
         this.hintT = 0;
         this.bestGoalD = Infinity;
+        this.respawnPoint.x = this.world.spawn.x;
+        this.respawnPoint.z = this.world.spawn.z;
+        this.lowFuel = false;
+        this.goalTarget = null;
         this.guide.hide();
+        this.trail?.clear();
         if (this.skipEl) this.skipEl.hidden = false;
         this.player.root.visible = true;
         this.hud.showHud(true);
@@ -498,6 +604,7 @@ class Game {
     pause() {
         if (this.state !== 'playing') return;
         this.guide.hide();
+        this.trail.clear();
         this.state = 'pause';
         this.hud.setState('pause');
         this.hud.showPause(true);
@@ -539,9 +646,14 @@ class Game {
 
     _frame(dt) {
         this.time += dt;
-        this._update(dt);
-        this.valley.update(dt, this.time, this.player, this.camera);
-        this._applyAtmos(dt);
+        // uma exceção num quadro não pode congelar a noite: registra (só as 3 primeiras) e segue
+        try {
+            this._update(dt);
+            this.valley.update(dt, this.time, this.player, this.camera);
+            this._applyAtmos(dt);
+        } catch (err) {
+            if (this.frameErrors++ < 3) console.error(err);
+        }
         this.fpsAccum += dt;
         if (this.fpsAccum >= 0.5) {
             this.hud.setFps(Math.round(this.stage.fps));
@@ -617,26 +729,44 @@ class Game {
         this._refreshObjective();
         this._followCamera(dt);
         if (this.state === 'playing') this._updateGuide(dt);
-        else this.guide.hide();
+        else {
+            this.guide.hide();
+            this.trail.clear();
+        }
     }
 
     /**
-     * Próximo passo do capítulo para a bússola: { x, z, name, near } ou null.
+     * Próximo passo do capítulo para a bússola e o rastro: { x, z, name, near } ou null.
      *   I   Tomás → carta → lampião apagado mais perto → saída
      *   II  lanterna apagada mais perto → moinho
      *   III bóia apagada mais perto → Pingo (sarças) → ponte
      *   IV  próxima raiz da canção (ouro, azul, rosa, verde) → copa
      *   V   Pedra da Aurora
+     * Chama fraca (lowFuel: capítulo escuro, entrou < 25, sai > 45; longe de lampião): o alvo vira o abrigo mais
+     * perto — vaga-lume aceso ou lampião aceso (que reacende +6/s) — se estiver a < 45 m.
+     * Sem alocação: devolve sempre o mesmo objeto (goalScratch).
      */
     _guideTarget() {
         const w = this.world;
         const p = this.player;
-        const pending = (kind) => w.interactables.filter((i) => i.kind === kind && !i.done);
-        const at = (it, name) => (it ? { x: it.x, z: it.z, name, near: (it.r || 1.6) + 0.3 } : null);
-        const nearest = (list) => {
+        const out = this.goalScratch;
+        const at = (it, name) => {
+            if (!it) return null;
+            out.x = it.x;
+            out.z = it.z;
+            out.name = name;
+            out.near = (it.r || 1.6) + 0.3;
+            return out;
+        };
+        const first = (kind, test = null) => {
+            for (const it of w.interactables) if (it.kind === kind && !it.done && (!test || test(it))) return it;
+            return null;
+        };
+        const nearest = (list, want) => {
             let best = null;
             let bd = Infinity;
             for (const it of list) {
+                if (!want(it)) continue;
                 const d = Math.hypot(it.x - p.x, it.z - p.z);
                 if (d < bd) {
                     bd = d;
@@ -645,46 +775,74 @@ class Game {
             }
             return best;
         };
-        const unlit = () => nearest(w.lamps.filter((l) => !l.lit));
         const id = this.chapter.id;
+
+        if (this.lowFuel && !p.nearLit) {
+            const fly = nearest(w.fireflies, (f) => !f.done);
+            const lamp = nearest(w.lamps, (l) => l.lit);
+            const df = fly ? Math.hypot(fly.x - p.x, fly.z - p.z) : Infinity;
+            const dl = lamp ? Math.hypot(lamp.x - p.x, lamp.z - p.z) : Infinity;
+            if (df < dl && df < 45) return at(fly, 'Vaga-lumes');
+            if (dl < 45) {
+                at(lamp, 'Abrigo de luz');
+                out.near = PLAYER.lampRange * 0.8; // dentro do raio do abrigo a seta some
+                return out;
+            }
+        }
+
         if (id === 'aldeia') {
-            if (!w.progress.talked) return at(pending('talk')[0], 'Tomás');
-            const carta = pending('memory').find((m) => m.id === 'carta');
+            if (!w.progress.talked) return at(first('talk'), 'Tomás');
+            const carta = first('memory', (m) => m.id === 'carta');
             if (carta) return at(carta, 'Carta');
         }
         if (id === 'arvore') {
             const next = ROOT_ORDER[w.progress.crystals.length];
-            const c = next !== undefined && pending('crystal').find((it) => it.index === next);
+            const c = next !== undefined ? first('crystal', (it) => it.index === next) : null;
             if (c) return at(c, `Raiz ${ROOT_NAMES[next]}`);
         }
-        if (id === 'alvorecer') return at(pending('place')[0], 'Pedra da Aurora');
+        if (id === 'alvorecer') return at(first('place'), 'Pedra da Aurora');
         if (w.progress.lampsNeeded && w.lampsLit() < w.progress.lampsNeeded) {
-            return at(unlit(), id === 'rio' ? 'Bóia' : id === 'trilha' ? 'Lanterna' : 'Lampião');
+            return at(nearest(w.lamps, (l) => !l.lit), id === 'rio' ? 'Bóia' : id === 'trilha' ? 'Lanterna' : 'Lampião');
         }
-        if (id === 'rio' && !w.progress.foxFreed) return at(pending('cage')[0], 'Pingo');
+        if (id === 'rio' && !w.progress.foxFreed) return at(first('cage'), 'Pingo');
         if (w.goal && !w.goal.done && w.readyToExit()) return at(w.goal, id === 'trilha' ? 'Moinho' : id === 'rio' ? 'Ponte' : id === 'arvore' ? 'Copa' : 'Saída');
         return null;
     }
 
     _updateGuide(dt) {
-        // 10 Hz bastam (a seta tem transição no CSS) e poupam a busca do alvo a cada quadro
+        // alvo e seta a 10 Hz (a seta tem transição no CSS); o rastro anima a cada quadro
         this.guideAcc = (this.guideAcc || 0) + dt;
-        if (this.guideAcc < 0.1) return;
-        dt = this.guideAcc;
-        this.guideAcc = 0;
-        const t = this._guideTarget();
-        this.guide.update(this.camera, this.player.x, this.player.z, t);
-        if (!t) return;
-        const d = Math.hypot(t.x - this.player.x, t.z - this.player.z);
-        if (d < this.bestGoalD - 3) {
-            this.bestGoalD = d;
-            this.hintT = 0;
+        if (this.guideAcc >= 0.1) {
+            const step = this.guideAcc;
+            this.guideAcc = 0;
+            const p = this.player;
+            const wasLow = this.lowFuel;
+            if (!this.chapter.dark) this.lowFuel = false;
+            else if (p.fuel < 25) this.lowFuel = true;
+            else if (p.fuel > 45) this.lowFuel = false;
+            if (this.lowFuel && !wasLow && !p.nearLit) {
+                this.hud.say('A chama está fraca. Siga as fagulhas até a luz mais perto.', 4);
+            }
+            const t = this._guideTarget();
+            this.goalTarget = t;
+            this.guide.update(this.camera, this.player.x, this.player.z, t);
+            if (t) {
+                const d = Math.hypot(t.x - this.player.x, t.z - this.player.z);
+                if (d < this.bestGoalD - 3) {
+                    this.bestGoalD = d;
+                    this.hintT = 0;
+                }
+                this.hintT += step;
+                if (this.hintT > 30) {
+                    this.hintT = 0;
+                    this.bestGoalD = d;
+                    this.hud.say(this.chapter.hint, 5);
+                }
+            }
         }
-        this.hintT += dt;
-        if (this.hintT > 30) {
-            this.hintT = 0;
-            this.hud.say(this.chapter.hint, 5);
-        }
+        // perdida há 12 s ou chama fraca: o rastro brilha mais
+        const boost = 1 + 0.8 * smoothstep(12, 20, this.hintT) + (this.lowFuel ? 0.5 : 0);
+        this.trail.update(dt, this.time, this.player, this.goalTarget, this.world, boost);
     }
 
     _updateMenuCam(dt) {
@@ -791,6 +949,7 @@ class Game {
     _lightLamp(lamp) {
         if (lamp.lit) return;
         lamp.setLit(true);
+        this._markRespawn();
         this.lampsTotal += 1;
         this.score += 40;
         this.audio.lamp();
@@ -805,6 +964,7 @@ class Game {
 
     _freeFox(cage) {
         cage.burn();
+        this._markRespawn();
         this.world.progress.foxFreed = true;
         this.world.fox?.free();
         this.score += 80;
@@ -841,12 +1001,17 @@ class Game {
         }
     }
 
+    /** Colhe vaga-lumes (+16 de chama). Colhido volta a brilhar 45 s depois: a chama nunca morre de fome. */
     _pickupFireflies() {
         for (const f of this.world.fireflies) {
-            if (f.done) continue;
+            if (f.done) {
+                if (this.elapsed - (f.takenAt ?? -1e9) > PLAYER.fireflyRespawn) f.done = false;
+                continue;
+            }
             const d = Math.hypot(this.player.x - f.x, this.player.z - f.z);
             if (d > 1.15) continue;
             f.collect();
+            f.takenAt = this.elapsed;
             this.player.addFuel(PLAYER.fireflyHeal);
             this.score += 12;
             this.audio.pickup();
@@ -923,6 +1088,7 @@ class Game {
         }
         this.world.lightCrystal(it);
         this.world.progress.crystals.push(it.index);
+        this._markRespawn();
         this.audio.lamp();
         const n = this.world.progress.crystals.length;
         this.hud.say(`A raiz ${ROOT_NAMES[it.index]} acendeu (${n}/4).`, 2.4);
@@ -990,6 +1156,7 @@ class Game {
     _openDialogue(speaker, lines, item) {
         this.hud.setPrompt('');
         this.guide.hide();
+        this.trail.clear();
         this.dialogue = { speaker, lines: [...lines], item };
         this.state = 'dialogue';
         this.hud.setState('dialogue');
@@ -1010,6 +1177,7 @@ class Game {
         if (item?.kind === 'talk') {
             item.done = true;
             this.world.progress.talked = true;
+            this._markRespawn();
         }
         if (item?.npc) item.npc.mode = 'idle';
         const end = item?.kind === 'nara-end';
@@ -1038,6 +1206,7 @@ class Game {
     async _completeChapter() {
         if (this.state === 'transition') return;
         this.guide.hide();
+        this.trail.clear();
         if (this.skipEl) this.skipEl.hidden = true;
         this.state = 'transition';
         this.hud.setState('transition');
@@ -1066,6 +1235,7 @@ class Game {
     _defeat(reason) {
         if (this.state === 'defeat') return;
         this.guide.hide();
+        this.trail.clear();
         this.state = 'defeat';
         this.hud.setState('defeat');
         this.input.exitLock();
@@ -1118,6 +1288,7 @@ class Game {
                 g.introT = 3.1;
                 g.fade = 0;
                 g.fadeDir = -1;
+                g.fadeEl.style.opacity = '0';
             },
             tp(x, z, yaw) {
                 g.player.x = x;
@@ -1144,7 +1315,13 @@ class Game {
             flash() { g.input.flashPressed = true; },
             stats() {
                 const s = g.stage.stats();
-                return { ...s, state: g.state, chapter: g.chapter.id, x: +g.player.x.toFixed(1), z: +g.player.z.toFixed(1), forest: g.valley.forest.stats() };
+                return {
+                    ...s, state: g.state, chapter: g.chapter.id, x: +g.player.x.toFixed(1), z: +g.player.z.toFixed(1),
+                    v: +g.player.moveSpeed.toFixed(2), fuel: +g.player.fuel.toFixed(1), hp: g.player.health,
+                    goal: g.goalTarget ? `${g.goalTarget.name} @ ${g.goalTarget.x.toFixed(1)},${g.goalTarget.z.toFixed(1)}` : null,
+                    glows: g.valley.glows.mesh.geometry.instanceCount, lights: g.quality.lights, lanternShadow: g.player.light.castShadow,
+                    forest: g.valley.forest.stats()
+                };
             }
         };
     }

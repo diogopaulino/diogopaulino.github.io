@@ -10,12 +10,17 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 
 import { createTextures } from './textures.js?v=3';
-import { buildWorld } from './models.js?v=4';
-import { CrtOs } from './crt.js?v=2';
+import { buildWorld } from './models.js?v=5';
+import { CrtOs } from './crt.js?v=3';
 import { DeskAudio } from './audio.js?v=2';
 
 const HOME_CAM = new THREE.Vector3(1.35, 1.22, 1.85);
 const HOME_TARGET = new THREE.Vector3(0.02, 0.96, -0.04);
+// Pontos de partida da câmera na abertura (reaproveitados: nada é alocado por quadro).
+const INTRO_CAM = new THREE.Vector3(1.8, 1.42, 2.05);
+const INTRO_TARGET = new THREE.Vector3(0.02, 0.88, 0.05);
+const TZ_OFFSET_MS = new Date().getTimezoneOffset() * 60000;
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function isMobile() {
     return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 720;
@@ -48,7 +53,10 @@ class BeigeBox {
             error: document.getElementById('errorOverlay'),
             errorText: document.getElementById('errorText'),
             sound: document.getElementById('soundButton'),
-            reset: document.getElementById('resetCamera')
+            reset: document.getElementById('resetCamera'),
+            keyboard: document.getElementById('keyboardButton'),
+            dosInput: document.getElementById('dosInput'),
+            hint: document.getElementById('hintBar')
         };
         this.audio = new DeskAudio();
         this.crt = new CrtOs();
@@ -63,8 +71,10 @@ class BeigeBox {
         this.phoneT = 0;
         this.focus = null;
         this.muted = false;
-        this._clock = new THREE.Clock();
+        this._last = 0; // relógio próprio (THREE.Clock está depreciado)
         this._v = new THREE.Vector3();
+        this._v2 = new THREE.Vector3();
+        this.screenDrag = false;
     }
 
     setLoad(p, text) {
@@ -160,7 +170,7 @@ class BeigeBox {
             this.dom.hud.hidden = false;
         }, 420);
 
-        this._clock.start();
+        this._last = performance.now();
         this._renderLoop = () => this.frame();
         if (window.LabRuntime) LabRuntime.bindThreeLoop(this.renderer, this._renderLoop);
         else this.renderer.setAnimationLoop(this._renderLoop);
@@ -258,12 +268,15 @@ class BeigeBox {
     async setupBloom() {
         if (!this.quality.bloom) return;
         try {
-            const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all([
+            // Bloom é opcional: se os módulos demorarem, segue sem ele (loading nunca trava).
+            const modules = Promise.all([
                 import('three/addons/postprocessing/EffectComposer.js'),
                 import('three/addons/postprocessing/RenderPass.js'),
                 import('three/addons/postprocessing/UnrealBloomPass.js'),
                 import('three/addons/postprocessing/OutputPass.js')
             ]);
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('bloom timeout')), 6000));
+            const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.race([modules, timeout]);
             const composer = new EffectComposer(this.renderer);
             composer.setPixelRatio(this.renderer.getPixelRatio());
             composer.setSize(window.innerWidth, window.innerHeight);
@@ -277,8 +290,51 @@ class BeigeBox {
         }
     }
 
+    /** Raycast só contra a tela do CRT; devolve uv ou null. */
+    screenUv(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        this.raycaster.setFromCamera(this.pointer, this.camera);
+        const hit = this.raycaster.intersectObject(this.refs.screenMesh, false)[0];
+        return hit && hit.uv ? hit.uv : null;
+    }
+
+    endScreenDrag() {
+        if (!this.screenDrag) return;
+        this.screenDrag = false;
+        this.crt.pointerUp();
+        this.canvas.classList.remove('is-drag');
+    }
+
     bind() {
         const canvas = this.canvas;
+
+        /* Arrastar janelas do Nexus 95: ouvinte em captura roda ANTES do
+           OrbitControls no mesmo elemento, então dá para desligar a órbita
+           antes que ela comece a girar a câmera. */
+        canvas.addEventListener('pointerdown', (e) => {
+            if (!e.isPrimary || e.button !== 0 || !this.crt.power || this.crt.mode !== 'win') return;
+            const uv = this.screenUv(e);
+            if (!uv || !this.crt.pointerDown(uv.x, uv.y)) return;
+            this.screenDrag = true;
+            this.controls.enabled = false;
+            this.audio.click();
+            try {
+                canvas.setPointerCapture(e.pointerId);
+            } catch {
+                /* segue sem captura */
+            }
+        }, true);
+        canvas.addEventListener('pointermove', (e) => {
+            if (!this.screenDrag) return;
+            const uv = this.screenUv(e);
+            if (uv) this.crt.pointerMove(uv.x, uv.y);
+        });
+        canvas.addEventListener('pointercancel', () => this.endScreenDrag());
+        canvas.addEventListener('lostpointercapture', () => this.endScreenDrag());
+        window.addEventListener('blur', () => this.endScreenDrag());
+
         canvas.addEventListener('pointermove', (e) => {
             if (e.buttons > 0 && this._downX !== undefined) {
                 const dx = e.clientX - this._downX;
@@ -295,12 +351,20 @@ class BeigeBox {
         });
         canvas.addEventListener('pointerup', (e) => {
             canvas.classList.remove('is-drag');
+            if (this.screenDrag) {
+                this.endScreenDrag();
+                this.dragging = false;
+                return;
+            }
             const dx = e.clientX - (this._downX ?? e.clientX);
             const dy = e.clientY - (this._downY ?? e.clientY);
             if (!this.dragging && Math.hypot(dx, dy) < 6) this.onClick(e);
             this.dragging = false;
         });
-        canvas.addEventListener('pointerleave', () => this.setHover(null));
+        canvas.addEventListener('pointerleave', () => {
+            this.setHover(null);
+            this.crt.hover(null);
+        });
 
         this.controls.addEventListener('change', () => {
             if (this._downX !== undefined && this.canvas.classList.contains('is-drag')) {
@@ -324,12 +388,68 @@ class BeigeBox {
             this.dom.sound.setAttribute('aria-pressed', this.muted ? 'false' : 'true');
         });
         this.dom.reset.addEventListener('click', () => this.resetCamera());
+        this.bindMobileKeyboard();
+        if (window.matchMedia('(pointer: coarse)').matches && this.dom.hint) {
+            this.dom.hint.textContent = 'Arraste para orbitar · pinça para zoom · toque para mexer';
+        }
 
         const unlock = () => {
             this.audio.init();
             window.removeEventListener('pointerdown', unlock);
         };
         window.addEventListener('pointerdown', unlock);
+    }
+
+    /**
+     * Celular não tem teclado físico: o botão ⌨ liga o PC (se preciso), pula a
+     * BIOS e foca um <input> invisível. O que for digitado vai para o DOS ou
+     * para o Bloco de Notas, igual ao teclado de mesa.
+     */
+    bindMobileKeyboard() {
+        const input = this.dom.dosInput;
+        const btn = this.dom.keyboard;
+        if (!input || !btn) return;
+        const send = (ch) => {
+            this.crt.type(ch);
+            this.audio.key();
+            this.pressKey(Math.floor(Math.random() * (this.refs.keyPositions.length || 1)));
+        };
+        btn.addEventListener('click', () => {
+            this.audio.init();
+            if (!this.crt.power) this.togglePower();
+            this.crt.skipBoot();
+            if (this.crt.mode === 'saver') this.crt.mode = 'win';
+            input.value = '';
+            input.focus({ preventScroll: true });
+            this.say(this.crt.mode === 'win'
+                ? 'Teclado ligado ao Bloco de Notas. Iniciar → Prompt do MS-DOS volta ao DOS.'
+                : 'Teclado pronto. Experimente HELP, DIR ou WIN.');
+        });
+        input.addEventListener('beforeinput', (e) => {
+            if (e.inputType === 'deleteContentBackward') {
+                e.preventDefault();
+                send('Backspace');
+            } else if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph') {
+                e.preventDefault();
+                send('Enter');
+            }
+        });
+        input.addEventListener('input', () => {
+            const text = input.value;
+            input.value = '';
+            for (const ch of text) send(ch);
+        });
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                send('Enter');
+            } else if (e.key === 'Backspace' && !input.value) {
+                e.preventDefault();
+                send('Backspace');
+            } else if (e.key === 'Escape') {
+                input.blur();
+            }
+        });
     }
 
     runQuickCommand(cmd) {
@@ -341,10 +461,7 @@ class BeigeBox {
         if (cmd.toUpperCase() === 'SECRET' && !this.floppyIn) {
             this.insertFloppy();
         }
-        if (this.crt.mode === 'boot') {
-            this.crt.bootT = 4.0;
-            this.crt.update(0.1);
-        }
+        this.crt.skipBoot();
         if (this.crt.mode === 'win' || this.crt.mode === 'saver') {
             this.crt.mode = 'dos';
         }
@@ -367,6 +484,10 @@ class BeigeBox {
         const hit = hits.find((h) => h.object.userData.iid);
         this.setHover(hit ? hit.object.userData.iid : null);
         this.canvas.classList.toggle('is-hover', Boolean(hit));
+        if (e.pointerType === 'mouse') {
+            const onScreen = hit && hit.object === this.refs.screenMesh && hit.uv;
+            this.crt.hover(onScreen ? hit.uv.x : null, onScreen ? hit.uv.y : 0);
+        }
     }
 
     setHover(id) {
@@ -659,15 +780,18 @@ class BeigeBox {
 
     frame() {
         if (document.hidden) return;
-        const dt = Math.min(0.05, Math.max(0, this._clock.getDelta()));
+        const tNow = performance.now();
+        // dt limitado a 50 ms: voltar de outra aba não dá um “salto” na animação.
+        const dt = Math.min(0.05, Math.max(0, (tNow - this._last) / 1000));
+        this._last = tNow;
         this.time += dt;
 
-        this.controls.enabled = this.intro <= 0 && !this.focus;
+        this.controls.enabled = this.intro <= 0 && !this.focus && !this.screenDrag;
         if (this.intro > 0) {
             this.intro = Math.max(0, this.intro - dt * 0.35);
             const k = 1 - Math.pow(this.intro, 2);
-            this.camera.position.lerpVectors(new THREE.Vector3(1.8, 1.42, 2.05), HOME_CAM, k);
-            this.controls.target.lerpVectors(new THREE.Vector3(0.02, 0.88, 0.05), HOME_TARGET, k);
+            this.camera.position.lerpVectors(INTRO_CAM, HOME_CAM, k);
+            this.controls.target.lerpVectors(INTRO_TARGET, HOME_TARGET, k);
         }
 
         if (this.focus) {
@@ -680,8 +804,15 @@ class BeigeBox {
 
         this.controls.update();
         this.crt.update(dt);
-        this.crt.draw();
-        this.screenTex.needsUpdate = true;
+        // Só sobe a textura 640×480 quando o CRT realmente repintou.
+        if (this.crt.draw()) this.screenTex.needsUpdate = true;
+        // Cintilação do fósforo feita na cor do material (grátis, sem upload).
+        if (this.refs.screenMat && !REDUCED_MOTION) {
+            const flick = this.crt.power
+                ? 0.97 + Math.sin(this.time * 7.3) * 0.015 + (Math.random() < 0.02 ? -0.04 : 0)
+                : 1;
+            this.refs.screenMat.color.setScalar(flick);
+        }
         if (this.refs.screenTime) this.refs.screenTime.value = this.time;
 
         const col = this.crt.averageColor();
@@ -709,7 +840,7 @@ class BeigeBox {
             if (this.floppyIn) {
                 this.refs.driveSlot.getWorldPosition(this._v);
                 this._v.z += 0.02;
-                f.position.lerp(f.parent.worldToLocal(this._v.clone()), Math.min(1, dt * 6));
+                f.position.lerp(f.parent.worldToLocal(this._v2.copy(this._v)), Math.min(1, dt * 6));
                 f.rotation.x += (0 - f.rotation.x) * dt * 6;
                 f.rotation.y += (0 - f.rotation.y) * dt * 6;
                 if (this.floppyAnim <= 0) f.visible = false;
@@ -744,10 +875,11 @@ class BeigeBox {
             this.refs.fanHead.rotation.y = Math.sin(this.time * 0.5) * 0.7;
         }
 
-        const now = new Date();
-        const h = (now.getHours() % 12) + now.getMinutes() / 60;
-        const m = now.getMinutes() + now.getSeconds() / 60;
-        const s = now.getSeconds() + now.getMilliseconds() / 1000;
+        // Hora local sem alocar Date por quadro: segundos desde a meia-noite local.
+        const local = ((Date.now() - TZ_OFFSET_MS) / 1000) % 86400;
+        const s = local % 60;
+        const m = (local / 60) % 60;
+        const h = (local / 3600) % 12;
         const { hour, minute, second } = this.refs.clockHands;
         hour.rotation.z = -h / 12 * Math.PI * 2;
         minute.rotation.z = -m / 60 * Math.PI * 2;

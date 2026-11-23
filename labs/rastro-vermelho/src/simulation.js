@@ -46,34 +46,88 @@ export function biomeAt(x, z) {
     return z > 420 ? 'Vale da Esperança' : 'Pradaria Dourada';
 }
 export function freshPlayer() {
-    return { x: roadX(24), z: 20, yaw: 0, speed: 0, distance: 0, stamina: 100, health: 100, focus: 100, ammo: 6, reload: 0, cooldown: 0, cruise: false, tired: false, money: 0, kills: 0, phase: 0 };
+    return { x: roadX(24), z: 20, yaw: 0, yawRate: 0, speed: 0, distance: 0, stamina: 100, health: 100, focus: 100, ammo: 6, reload: 0, cooldown: 0, cruise: false, tired: false, money: 0, kills: 0, phase: 0 };
 }
-/** Acceleration, slope resistance and stamina use dt; a held spur cannot bypass exhaustion.
- * Gallop 11 m/s, sprint 17 m/s; stamina -17/s sprinting, +10/s walking, +5/s trotting.
- * Exhaustion has hysteresis: sprint is unavailable until stamina has recovered to 28%.
+/** Montaria — física por andaduras (cavalo de sela ~500 kg com cavaleiro). Unidades: m, s, rad.
+ *
+ * Andaduras de referência (m/s): passo 1,7 · trote 4 · galope curto 7 · galope 11 · disparada 14
+ *   (≈ 6 · 14 · 25 · 40 · 50 km/h). Um puro-sangue de corrida chega a ~17 m/s sem carga; um
+ *   cavalo de lida com cavaleiro e alforjes sustenta 11–14 m/s por pouco tempo.
+ * Alvo de velocidade: v* = galope × rédea (analógico proporcional) ou disparada com espora;
+ *   marcha automática = 6,5 m/s; rédea para trás freia e, quase parado, recua a 0,8 m/s.
+ * Aceleração limitada por potência: a ≤ min(A₀, (P/m)/v) com A₀ = 3 m/s² e P/m = 18 W/kg
+ *   → 0→40 km/h em ~5 s e 40→50 km/h em ~2,5 s. Rédea para trás: −5,5 m/s²; soltar: −3 m/s².
+ * Rampa: na subida a aceleração perde g·sinθ·0,5 (mínimo 0,25 m/s², o cavalo nunca escorrega
+ *   para trás) e o alvo cai 60 % por unidade de inclinação (piso de 35 %).
+ * Curva: ω* = rédea × min(ω₀, a_lat/|v|), ω₀ = 1,4 rad/s (pivô sobre os posteriores) e
+ *   a_lat = 5,5 m/s² (~0,56 g). A guinada tem inércia (τ = 0,15 s) e curvar forte custa
+ *   velocidade (perda = 0,08·|ω|·v por segundo).
+ * Colisão: círculos (raio + 0,65 m). O cavalo é empurrado para fora, desvia sozinho para a
+ *   tangente (cavalo não se joga contra pedra) e perde velocidade conforme o ângulo de choque:
+ *   de frente freia 12 m/s². `impact` (0–1) informa o choque para câmera e som.
+ * Passo fixo interno ≤ 1/60 s, então o resultado não muda com a taxa de quadros.
+ * Vigor do cavalo: −17/s em disparada, +10/s abaixo de 5 m/s, +5/s até 10 m/s, −1/s a galope.
+ * Exaustão com histerese: a espora só volta a funcionar com 28 % de vigor.
  */
+export const HORSE = { walk: 1.7, trot: 4, canter: 7, gallop: 11, sprint: 14, cruise: 6.5, back: 0.8, accel: 3, power: 18, brake: 5.5, coast: 3, yawRate: 1.4, lateral: 5.5, yawTau: 0.15, radius: 0.65 };
+const STEP = 1 / 60;
 export function stepRiding(p, input, dt, colliders = []) {
     const throttle = clamp(input.throttle, -1, 1), steer = clamp(input.steer, -1, 1);
     if (p.stamina <= 1) p.tired = true;
     if (p.stamina >= 28) p.tired = false;
     const sprint = input.sprint && !p.tired && throttle >= 0;
-    let target = throttle < -0.1 ? 0 : sprint ? 17 : throttle > 0.1 ? 11 * throttle : p.cruise ? 8 : 0;
-    const y = terrainHeight(p.x, p.z);
-    const grade = (terrainHeight(p.x + Math.sin(p.yaw) * 2, p.z + Math.cos(p.yaw) * 2) - y) / 2;
-    target *= clamp(1 - Math.max(0, grade) * 0.65, 0.35, 1);
-    p.speed = damp(p.speed, target, target < p.speed ? 3.8 : 1.35, dt);
-    if (p.speed < 0.04) p.speed = 0;
-    p.yaw += steer * dt * (0.65 + 0.7 * clamp(p.speed / 9, 0, 1)) / (1 + p.speed * 0.022);
-    const nx = p.x + Math.sin(p.yaw) * p.speed * dt, nz = p.z + Math.cos(p.yaw) * p.speed * dt;
-    const obstacle = colliders.some(o => Math.hypot(nx - o.x, nz - o.z) < o.radius + 0.65);
-    const steep = Math.abs(terrainHeight(nx, nz) - y) > Math.max(0.6, p.speed * dt * 0.9);
-    if (obstacle || steep) p.speed = damp(p.speed, 0, 16, dt);
-    else { p.distance += Math.hypot(nx - p.x, nz - p.z); p.x = nx; p.z = nz; }
-    p.stamina = clamp(p.stamina + (sprint && p.speed > 10 ? -17 : p.speed < 5 ? 10 : p.speed < 10 ? 5 : -1) * dt, 0, 100);
-    p.phase += p.speed * dt;
+    const result = { obstacle: false, grade: 0, impact: 0 };
+    if (!Number.isFinite(p.yawRate)) p.yawRate = 0;
+    const steps = Math.max(1, Math.ceil(dt / STEP - 1e-6)), h = dt / steps;
+    for (let i = 0; i < steps; i++) {
+        const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw), y = terrainHeight(p.x, p.z);
+        const grade = (terrainHeight(p.x + sy * 2, p.z + cy * 2) - y) / 2, sinT = grade / Math.sqrt(1 + grade * grade);
+        result.grade = grade;
+        // velocidade-alvo pela rédea; recuar só quando quase parado
+        let target = throttle < -0.1 ? (p.speed < 0.3 ? -HORSE.back * -throttle : 0)
+            : sprint ? HORSE.sprint : throttle > 0.1 ? HORSE.gallop * throttle : p.cruise ? HORSE.cruise : 0;
+        if (target > 0) target *= clamp(1 - Math.max(0, grade) * 0.6, 0.35, 1);
+        const error = target - p.speed;
+        let a;
+        if (error >= 0) a = Math.min(error * 2.5, Math.max(0.25, Math.min(HORSE.accel, HORSE.power / Math.max(Math.abs(p.speed), 1)) - 9.81 * Math.max(0, sinT) * 0.5));
+        else a = Math.max(error * 2.5, -(throttle < -0.1 ? HORSE.brake : HORSE.coast));
+        p.speed += a * h;
+        if (Math.abs(p.speed) < 0.04 && Math.abs(target) < 0.04) p.speed = 0;
+        // guinada com inércia, limitada pela aderência lateral
+        const v = Math.abs(p.speed);
+        const yawTarget = steer * Math.min(HORSE.yawRate, HORSE.lateral / Math.max(v, 0.1)) * (p.speed < 0 ? -1 : 1);
+        p.yawRate += (yawTarget - p.yawRate) * (1 - Math.exp(-h / HORSE.yawTau));
+        p.yaw += p.yawRate * h;
+        if (v > 4) p.speed -= Math.sign(p.speed) * 0.08 * Math.abs(p.yawRate) * v * h;
+        // movimento + colisão com deslize
+        const vx = Math.sin(p.yaw) * p.speed, vz = Math.cos(p.yaw) * p.speed;
+        let nx = p.x + vx * h, nz = p.z + vz * h, hit = false;
+        for (let k = 0; k < colliders.length; k++) {
+            const o = colliders[k], dx = nx - o.x, dz = nz - o.z, r = o.radius + HORSE.radius, d2 = dx * dx + dz * dz;
+            if (d2 >= r * r) continue;
+            hit = true;
+            const d = Math.sqrt(d2) || 1e-3, ux = dx / d, uz = dz / d, vn = vx * ux + vz * uz;
+            nx = o.x + ux * r; nz = o.z + uz * r;
+            if (vn < 0 && Math.abs(p.speed) > 1e-3) {
+                const head = clamp(-vn / Math.abs(p.speed), 0, 1);
+                result.impact = Math.max(result.impact, head * clamp(Math.abs(p.speed) / HORSE.gallop, 0, 1));
+                p.speed -= Math.sign(p.speed) * Math.min(Math.abs(p.speed), 12 * head * h);
+                // desvio instintivo para o lado da tangente mais próxima do rumo atual
+                const side = (vx * uz - vz * ux) > 0 ? -1 : 1;
+                p.yaw += side * 2 * head * h;
+            }
+        }
+        result.obstacle = result.obstacle || hit;
+        const steep = Math.abs(terrainHeight(nx, nz) - y) > Math.max(0.6, Math.abs(p.speed) * h * 0.9);
+        if (steep) { p.speed -= p.speed * (1 - Math.exp(-16 * h)); result.obstacle = true; }
+        else { p.distance += Math.hypot(nx - p.x, nz - p.z); p.x = nx; p.z = nz; }
+        const speed = Math.abs(p.speed);
+        p.stamina = clamp(p.stamina + (sprint && speed > 10 ? -17 : speed < 5 ? 10 : speed < 10 ? 5 : -1) * h, 0, 100);
+        p.phase += speed * h;
+    }
     p.cooldown = Math.max(0, p.cooldown - dt);
     if (p.reload > 0) { p.reload = Math.max(0, p.reload - dt); if (p.reload === 0) p.ammo = 6; }
-    return { obstacle, grade };
+    return result;
 }
 export function worldClock(elapsed) {
     const minutes = (16 * 60 + elapsed * 1.5) % 1440;

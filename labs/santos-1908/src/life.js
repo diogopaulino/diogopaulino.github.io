@@ -177,7 +177,11 @@ export function createLife(ctx, world) {
         h.bones.chest.add(sack);
         scene.add(h.object);
         const loop = loops[i % loops.length];
-        workers.push({ h, sack, loop, off: (Math.floor(i / loops.length) / Math.ceil(quality.workers / loops.length)) * loop.total * 2 + rnd() * 1.5, speed: 1.15 + rnd() * 0.2 });
+        // N03: com 60 kg no ombro o passo encurta (~0,95–1,1 m/s); de volta, vazio, ~1,3–1,45 m/s.
+        const carry = 0.95 + rnd() * 0.15;
+        const back = 1.3 + rnd() * 0.15;
+        const cycle = loop.total / carry + loop.total / back;
+        workers.push({ h, sack, loop, carry, back, cycle, off: (Math.floor(i / loops.length) / Math.ceil(quality.workers / loops.length)) * cycle + rnd() * 1.5 });
     }
 
     // ---------- transeuntes e fiscais ----------
@@ -299,9 +303,11 @@ export function createLife(ctx, world) {
 
             for (const w of workers) {
                 const L = w.loop.total;
-                const s = (t * w.speed + w.off) % (L * 2);
-                const out = s < L;
-                const d = out ? s : L * 2 - s;
+                const k = (t + w.off) % w.cycle;          // fase no ciclo ida+volta (s)
+                const tOut = L / w.carry;
+                const out = k < tOut;
+                const d = out ? k * w.carry : L - (k - tOut) * w.back;
+                const s = out ? d : L * 2 - d;            // distância andada no ciclo (fase da marcha)
                 w.loop.at(Math.min(d, L - 0.01), tmp, dir);
                 const o = w.h.object;
                 o.position.copy(tmp);

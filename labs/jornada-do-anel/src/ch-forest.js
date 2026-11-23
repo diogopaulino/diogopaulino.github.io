@@ -9,9 +9,9 @@
 import * as THREE from 'three';
 import { fbm2, smoothstep, lerp } from '../../shared/gfx/core.js';
 import { createCourse, createTerrain, createGrass, createForest, createWater, createPath, scatter, scatterModel } from '../../shared/gfx/terrain.js';
-import { ChapterWorld, own, makePage, halo, lightShaft, addAmbient } from './world.js?v=31';
-import { Batch, trs, turned } from './build.js?v=31';
-import { makeDarkRider, makeBlackHorse, mount, Rider, makeElf, Extra, createCreature } from './actors.js?v=31';
+import { ChapterWorld, own, makePage, halo, lightShaft, addAmbient } from './world.js?v=32';
+import { Batch, trs, turned } from './build.js?v=32';
+import { makeDarkRider, makeBlackHorse, mount, Rider, makeElf, Extra, createCreature } from './actors.js?v=32';
 
 export function buildForest(ctx) {
     const world = new ChapterWorld(ctx);

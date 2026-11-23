@@ -232,8 +232,10 @@ body[data-state="intro"] .game-shell > header .app-logo {
     opacity: 0;
 }
 
-/* Invisível mas ainda clicável: some de verdade durante a abertura. */
-body[data-state="intro"] .lab-foot { visibility: hidden; pointer-events: none; }
+/* Invisível mas ainda clicável: some de verdade durante a abertura e o passeio. */
+body[data-state="intro"] .lab-foot,
+body[data-state="explore"] .lab-foot,
+body[data-state="paused"] .lab-foot { visibility: hidden; pointer-events: none; }
 
 .title-card {
     position: absolute;
@@ -288,7 +290,7 @@ body[data-state="intro"] .lab-foot { visibility: hidden; pointer-events: none; }
 .hud {
     position: absolute;
     inset: 0;
-    z-index: 12;
+    z-index: 31; /* acima do rodapé (30): o dock nunca perde o toque para o link */
     pointer-events: none;
 }
 
@@ -364,9 +366,16 @@ body[data-state="intro"] .hint {
 }
 
 .dock-btn.accent {
-    background: linear-gradient(135deg, color-mix(in oklab, var(--gold-deep) 55%, transparent), color-mix(in oklab, var(--gold) 40%, transparent));
-    border-color: color-mix(in oklab, var(--gold) 45%, transparent);
+    background: linear-gradient(135deg, var(--gold-deep), var(--gold));
+    border-color: color-mix(in oklab, var(--gold) 70%, transparent);
     color: oklch(16% 0.04 80);
+    font-weight: 650;
+    box-shadow: 0 6px 22px color-mix(in oklab, var(--gold) 35%, transparent);
+}
+
+.dock-btn.accent:hover {
+    color: oklch(12% 0.04 80);
+    background: linear-gradient(135deg, var(--gold), var(--gold-deep));
 }
 
 .overlay {
@@ -501,14 +510,61 @@ body[data-state="intro"] .hint {
 }
 
 .field input[type="range"] {
-    padding: 0.45rem 0;
+    padding: 0;
+    height: 44px;
+    border: 0;
+    background: transparent;
     accent-color: var(--gold);
+    cursor: pointer;
+}
+
+.field input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--moon) 22%, transparent);
+}
+
+.field input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    margin-top: -8px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--gold) 22%, transparent);
+}
+
+.field input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--moon) 22%, transparent);
+}
+
+.field input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--gold);
+}
+
+.field select {
+    min-height: 44px;
 }
 
 .card-actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 0.6rem;
+}
+
+.retry-row {
+    margin-top: 1rem;
+}
+
+.retry-row[hidden] {
+    display: none;
 }
 
 .primary-button {
@@ -524,12 +580,323 @@ body[data-state="intro"] .hint {
     box-shadow: 0 10px 30px color-mix(in oklab, var(--gold) 40%, transparent);
 }
 
+.primary-button {
+    min-height: 44px;
+    transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
 .primary-button i {
     font-style: normal;
 }
 
+.ghost-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.7rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--text-soft);
+    font-weight: 550;
+    transition: background 0.2s var(--ease), color 0.2s, border-color 0.2s;
+}
+
+.ghost-button:hover {
+    color: var(--text);
+    border-color: var(--gold);
+    background: color-mix(in oklab, var(--gold) 12%, transparent);
+}
+
+.menu-stack {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.menu-stack .primary-button {
+    justify-content: center;
+}
+
+kbd {
+    display: inline-block;
+    min-width: 1.5em;
+    padding: 0.05em 0.4em;
+    margin: 0 0.1em;
+    border-radius: 6px;
+    border: 1px solid var(--line-soft);
+    background: color-mix(in oklab, var(--moon) 8%, transparent);
+    font: 600 0.72em/1.5 'Outfit', system-ui, sans-serif;
+    text-align: center;
+    color: var(--text-soft);
+}
+
+.keys-help {
+    margin: 1rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.9;
+    color: var(--text-dim);
+}
+
+.feature-list b {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.overlay--soft {
+    background: radial-gradient(ellipse at 50% 100%, oklch(4% 0.03 270 / 0.7), transparent 70%);
+    backdrop-filter: none;
+}
+
 .primary-button:hover {
     transform: translateY(-1px);
+}
+
+
+/* ================================================================
+   Passeio: objetivo, bússola, aviso, analógico
+   ================================================================ */
+
+.hud > .quest,
+.hud > .toast,
+.hud > .hint {
+    pointer-events: none;
+}
+
+.quest {
+    position: absolute;
+    top: calc(4.4rem + var(--safe-top));
+    left: 50%;
+    translate: -50% 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    max-width: calc(100vw - 1.5rem);
+}
+
+.quest[hidden],
+.guide[hidden] {
+    display: none;
+}
+
+.quest-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.95rem 0.45rem 0.7rem;
+    border-radius: 999px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    box-shadow: 0 10px 30px oklch(0% 0 0 / 0.35);
+    font-size: 0.86rem;
+    color: var(--text-soft);
+    white-space: nowrap;
+}
+
+.quest-chip b {
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+}
+
+.quest-pips {
+    display: flex;
+    gap: 4px;
+}
+
+.quest-pips i {
+    width: 9px;
+    height: 9px;
+    rotate: 45deg;
+    border-radius: 2px;
+    border: 1px solid color-mix(in oklab, var(--gold) 55%, transparent);
+    transition: background 0.4s var(--ease), box-shadow 0.4s var(--ease);
+}
+
+.quest-pips i.is-on {
+    background: var(--gold);
+    box-shadow: 0 0 10px var(--gold);
+}
+
+.guide {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.3rem 0.85rem 0.3rem 0.35rem;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+}
+
+.guide i {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, color-mix(in oklab, var(--gold) 26%, transparent), transparent 70%);
+    transition: transform 0.12s linear;
+}
+
+.guide i::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 4px;
+    translate: -50% 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 20px solid var(--gold);
+    filter: drop-shadow(0 0 6px color-mix(in oklab, var(--gold) 70%, transparent));
+}
+
+.guide span {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+}
+
+.guide b {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--gold);
+}
+
+.guide small {
+    font-size: 0.76rem;
+    color: var(--text-soft);
+    font-variant-numeric: tabular-nums;
+}
+
+.toast {
+    position: absolute;
+    left: 50%;
+    bottom: calc(5.6rem + var(--safe-bottom));
+    translate: -50% 8px;
+    margin: 0;
+    width: max-content;
+    max-width: min(560px, calc(100vw - 2rem));
+    padding: 0.6rem 1rem;
+    border-radius: 14px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line-soft);
+    color: var(--text);
+    font-size: 0.86rem;
+    line-height: 1.4;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.35s var(--ease), translate 0.35s var(--ease);
+}
+
+.toast.is-on {
+    opacity: 1;
+    translate: -50% 0;
+}
+
+.toast:empty {
+    display: none;
+}
+
+body[data-state="explore"] .hint,
+body[data-state="paused"] .hint {
+    display: none;
+}
+
+/* no passeio o dock vai para a direita: a esquerda é do polegar */
+body[data-state="explore"] .dock,
+body[data-state="paused"] .dock {
+    left: auto;
+    right: calc(0.75rem + var(--safe-right));
+    transform: none;
+}
+
+body[data-state="explore"] .toast,
+body[data-state="paused"] .toast {
+    bottom: calc(5.4rem + var(--safe-bottom));
+}
+
+.stick-zone {
+    display: none;
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: min(50vw, 420px);
+    height: min(55dvh, 420px);
+    touch-action: none;
+}
+
+.stick-base {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    border: 1px solid color-mix(in oklab, var(--moon) 30%, transparent);
+    background: radial-gradient(circle, color-mix(in oklab, var(--night) 40%, transparent), color-mix(in oklab, var(--night) 70%, transparent));
+    opacity: 0;
+    transition: opacity 0.2s var(--ease);
+    pointer-events: none;
+}
+
+.stick-base.is-active {
+    opacity: 1;
+}
+
+.stick-base i {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 48px;
+    height: 48px;
+    margin: -24px 0 0 -24px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, var(--gold), var(--gold-deep));
+    box-shadow: 0 4px 18px oklch(0% 0 0 / 0.45);
+}
+
+/* dica visual de onde fica o analógico, antes do primeiro toque */
+.stick-zone::after {
+    content: '';
+    position: absolute;
+    left: calc(1.6rem + var(--safe-left));
+    bottom: calc(1.6rem + var(--safe-bottom));
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    border: 1px dashed color-mix(in oklab, var(--moon) 28%, transparent);
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+.stick-zone:has(.is-active)::after {
+    opacity: 0;
+}
+
+.only-touch {
+    display: none;
+}
+
+@media (pointer: coarse) {
+    body[data-state="explore"] .stick-zone {
+        display: block;
+    }
+
+    .only-touch {
+        display: inline-flex;
+        align-items: center;
+    }
+}
+
+#pauseButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 @media (max-width: 640px) {
@@ -538,15 +905,62 @@ body[data-state="intro"] .hint {
     }
 
     .title-card {
-        bottom: calc(8.4rem + var(--safe-bottom));
+        bottom: calc(10.8rem + var(--safe-bottom));
+    }
+
+    /* o rodapé (voltar para home) fica livre embaixo do dock: nada de toque ambíguo */
+    .dock {
+        bottom: calc(2.6rem + var(--safe-bottom));
+    }
+
+    .hint {
+        bottom: calc(7.2rem + var(--safe-bottom));
+    }
+
+    body[data-state="explore"] .dock,
+    body[data-state="paused"] .dock {
+        bottom: calc(1.1rem + var(--safe-bottom));
     }
 
     .title-card h1 {
         letter-spacing: 0.1em;
     }
+
+    .quest {
+        top: calc(4rem + var(--safe-top));
+    }
+
+    .quest-chip {
+        font-size: 0.8rem;
+    }
+
+    .card-actions > * {
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+}
+
+/* retrato baixo (iPhone SE): o cartão do menu cabe sem rolar */
+@media (max-height: 720px) and (orientation: portrait) {
+    .intro-card .feature-list {
+        display: none;
+    }
+
+    .overlay-card h2 {
+        font-size: clamp(1.9rem, 9vw, 2.4rem);
+    }
+
+    .overlay-card {
+        padding: 1.5rem 1.3rem 1.2rem;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .toast,
+    .quest-pips i {
+        transition: none;
+    }
+
     .title-card {
         animation: none;
     }
@@ -563,7 +977,10 @@ body[data-state="intro"] .hint {
         max-width: min(420px, 70vw);
     }
 
+    /* dock à esquerda: o rodapé (voltar para home) fica livre, sem toque ambíguo */
     .dock {
+        left: calc(0.75rem + var(--safe-left));
+        transform: none;
         bottom: calc(0.45rem + var(--safe-bottom));
         gap: 0.3rem;
         padding: 0.35rem;
@@ -593,6 +1010,66 @@ body[data-state="intro"] .hint {
         max-height: min(92dvh, 32rem);
         overflow-y: auto;
         padding: 0.9rem 1.1rem;
+    }
+
+    .overlay-card h2 {
+        font-size: 1.6rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .menu-stack {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .menu-stack .primary-button {
+        grid-column: 1 / -1;
+    }
+
+    .keys-help,
+    .intro-card .feature-list {
+        display: none;
+    }
+
+    /* objetivo e bússola lado a lado, colados no topo */
+    .quest {
+        top: calc(0.7rem + var(--safe-top));
+        flex-direction: row;
+    }
+
+    body[data-state="explore"] .game-shell > header .app-logo,
+    body[data-state="paused"] .game-shell > header .app-logo {
+        display: none;
+    }
+
+    .quest-chip {
+        padding: 0.35rem 0.8rem 0.35rem 0.6rem;
+    }
+
+    .guide i {
+        width: 26px;
+        height: 26px;
+    }
+
+    .guide i::before {
+        top: 3px;
+        border-left-width: 6px;
+        border-right-width: 6px;
+        border-bottom-width: 16px;
+    }
+
+    .toast,
+    body[data-state="explore"] .toast {
+        bottom: calc(4rem + var(--safe-bottom));
+        font-size: 0.78rem;
+    }
+
+    .stick-base {
+        width: 96px;
+        height: 96px;
+    }
+
+    .stick-zone {
+        height: 70dvh;
     }
 }
 

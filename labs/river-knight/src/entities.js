@@ -7,20 +7,20 @@
  */
 
 import * as THREE from 'three';
-import { Entity } from './entity.js?v=50';
-import { Tower, Barricade } from './structures.js?v=51';
-import { buildLongship } from './ships.js?v=50';
+import { Entity } from './entity.js?v=60';
+import { Tower, Barricade } from './structures.js?v=60';
+import { buildLongship } from './ships.js?v=60';
 import {
     buildRockGeometry,
     buildPickup,
     buildArrowMesh,
     buildCannonballMesh,
     plainMaterial
-} from './models.js?v=51';
-import { waterHeight, waterSlope } from './water.js?v=51';
-import { centerX, halfWidth } from './river.js?v=51';
-import { CANNON, SCORE } from './config.js?v=51';
-import { clamp, damp, randRange } from './utils.js?v=50';
+} from './models.js?v=60';
+import { waterHeight, waterSlope } from './water.js?v=60';
+import { centerX, halfWidth } from './river.js?v=60';
+import { CANNON, SCORE } from './config.js?v=60';
+import { clamp, damp, randRange } from './utils.js?v=60';
 
 const tmpSlope = { dx: 0, dz: 0 };
 const ROW = { rowRate: 2.6, speedRatio: 0.5 };

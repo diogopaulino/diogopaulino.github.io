@@ -3,7 +3,7 @@
  * Temas musicais dinâmicos por estágio, SFX táteis, passos e áudio posicional.
  */
 
-import { clamp } from '../utils/math.js';
+import { clamp } from '../utils/math.js?v=50';
 
 const THEMES = {
     home: { base: 196, mode: [0, 2, 4, 7, 9], tempo: 0.55, filter: 700, drone: 98 },
@@ -32,6 +32,15 @@ export class AudioManager {
     }
 
     async unlock() {
+        /* Áudio nunca derruba o jogo: sem Web Audio (ou com o contexto recusado) segue mudo. */
+        try {
+            await this._unlock();
+        } catch (err) {
+            console.warn('[Guerreiro] áudio indisponível', err);
+        }
+    }
+
+    async _unlock() {
         if (this.ctx) {
             if (this.ctx.state === 'suspended') await this.ctx.resume();
             return;
@@ -39,6 +48,8 @@ export class AudioManager {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
         this.ctx = new Ctx();
+        /* ruído branco reaproveitado por duração (passos e impactos tocam toda hora) */
+        this._noise = new Map();
         this.master = this.ctx.createGain();
         this.master.gain.value = this.muted ? 0 : this.volume.master;
         this.master.connect(this.ctx.destination);
@@ -158,9 +169,13 @@ export class AudioManager {
 
     noise(dur = 0.3, gain = 0.08, bus = 'sfx') {
         if (!this._enabled || this.muted || !this.ctx) return;
-        const n = this.ctx.createBuffer(1, this.ctx.sampleRate * dur, this.ctx.sampleRate);
-        const data = n.getChannelData(0);
-        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        let n = this._noise.get(dur);
+        if (!n) {
+            n = this.ctx.createBuffer(1, Math.ceil(this.ctx.sampleRate * dur), this.ctx.sampleRate);
+            const data = n.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            this._noise.set(dur, n);
+        }
         const src = this.ctx.createBufferSource();
         src.buffer = n;
         const g = this.ctx.createGain();
@@ -185,6 +200,8 @@ export class AudioManager {
             case 'thunder': this.noise(1.4, 0.22, 'ambient'); this.tone(48, 1.6, 'sawtooth', 0.08, 'ambient'); break;
             case 'hit': this.noise(0.12, 0.1); this.tone(90, 0.12, 'square', 0.08); break;
             case 'block': this.tone(200, 0.1, 'square', 0.07); break;
+            case 'swing': this.noise(0.1, 0.035); this.tone(260, 0.09, 'triangle', 0.02); break;
+            case 'whoosh': this.noise(0.18, 0.04); break;
             case 'bell': this.tone(620, 1.8, 'sine', 0.12, 'ambient'); this.tone(930, 1.8, 'sine', 0.06, 'ambient'); break;
             case 'growl': this.tone(70, 0.6, 'sawtooth', 0.1); this.noise(0.5, 0.08); break;
             case 'fire': this.noise(0.3, 0.03, 'ambient'); break;

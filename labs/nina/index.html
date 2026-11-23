@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/assets/fonts/fredoka/font.css">
     <link rel="stylesheet" href="/assets/fonts/nunito/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=21">
+    <link rel="stylesheet" href="style.css?v=23">
 
     <script type="importmap">
     {
@@ -140,9 +140,9 @@
             </div>
 
             <div id="touchControls" class="touch-controls" hidden>
-                <div id="moveStick" class="stick" aria-label="Correr">
+                <div id="moveStick" class="stick" role="group" aria-label="Andar e correr (empurre até a borda)">
                     <i id="moveKnob"></i>
-                    <span>correr</span>
+                    <span>andar</span>
                 </div>
                 <div class="touch-buttons">
                     <button type="button" id="btnRun" class="pad" aria-label="Segure para correr">🏃</button>
@@ -178,11 +178,13 @@
                             <span><kbd>Shift</kbd> correr · <kbd>Espaço</kbd> pular</span>
                             <span>Encoste no filhote com uma amora: ele vem atrás de você</span>
                             <span>Chegou ao ninho com a fila? Eles ficam lá sozinhos</span>
+                            <span>Segure <kbd>Espaço</kbd> para pular mais alto · a seta dourada ➤ mostra o caminho</span>
                             <span>Mouse arrasta a câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
                         <div class="keys keys--touch">
-                            <span>Arraste o círculo da esquerda para andar. Segure 🏃 para correr.</span>
-                            <span>Toque em <b>pular</b> para pular. Encoste no filhote com uma amora e leve-o ao ninho.</span>
+                            <span>Arraste o círculo da esquerda para andar. Empurre até a borda (ou segure 🏃) para correr.</span>
+                            <span>Toque em <b>pular</b> (segure para ir mais alto). Arraste a tela para olhar em volta.</span>
+                            <span>Encoste no filhote com uma amora e leve-o ao ninho. A seta dourada ➤ mostra o caminho.</span>
                         </div>
                     </details>
                     <details class="menu-section menu-disclosure" open>
@@ -223,6 +225,7 @@
                     <button id="resumeButton" class="primary-button" type="button">
                         <span>Continuar</span><i aria-hidden="true">→</i>
                     </button>
+                    <button id="restartButton" class="ghost-button" type="button">Recomeçar</button>
                     <button id="pauseMenuButton" class="ghost-button" type="button">Voltar ao início</button>
                 </div>
             </div>
@@ -258,7 +261,7 @@
 
     <script src="/labs/shared.js?v=16" defer></script>
     <script type="module" src="../shared/gfx/check-webgl.js"></script>
-    <script type="module" src="src/main.js?v=22"></script>
+    <script type="module" src="src/main.js?v=23"></script>
 </body>
 
 </html>

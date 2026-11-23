@@ -11,7 +11,7 @@
  */
 
 import * as THREE from 'three';
-import { damp } from '../utils/math.js';
+import { damp } from '../utils/math.js?v=50';
 
 export class TigerAI {
     constructor(tiger) {
@@ -73,12 +73,12 @@ export class TigerAI {
             this.lookTarget = game.player.root;
             if (!this.hit && this.timer > 0.3) {
                 this.hit = true;
-                if (distP < 2.9 && game.player.hurt(1)) {
+                /* patada: 1 de dano + tranco de 5 m/s para longe do tigre (referencial da sala) */
+                if (distP < 2.9 && game.player.hurt(1, game.player.position.x - dxp, game.player.position.z - dzp, 5)) {
                     game.audio?.play('hit');
                     game.cameraRig?.addShake(0.2, 0.3);
-                    const k = 5 / (distP || 1);
-                    game.player.controller.vx += dxp * k;
-                    game.player.controller.vz += dzp * k;
+                    game.hitstop?.(0.08);
+                    game.hud?.flashHurt?.();
                 }
             }
             if (this.timer > 0.9) {

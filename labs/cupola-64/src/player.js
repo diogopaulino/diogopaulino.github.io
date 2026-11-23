@@ -13,9 +13,9 @@
  */
 
 import * as THREE from 'three';
-import { PLAYER, CAMERA, ISLAND } from './config.js?v=13';
+import { PLAYER, CAMERA, ISLAND } from './config.js?v=14';
 import { clamp, damp, wrapPi, lerpAngle } from './utils.js?v=13';
-import { createNico } from './models.js?v=14';
+import { createNico } from './models.js?v=15';
 
 /** Altura máxima (m) acima do último chão que os quiques na parede alcançam. */
 const WALL_CLIMB = 9;
@@ -53,6 +53,8 @@ export class Player {
         this.jumpCombo = 0;
         this.landTimer = 0;
         this.jumpHeld = false;
+        this.coyote = 0;
+        this.jumpBuf = 0;
         this.invuln = 0;
         this.starPose = 0;
         this.hurtT = 0;
@@ -94,6 +96,8 @@ export class Player {
         this.diving = false;
         this.inCannon = false;
         this.jumpCombo = 0;
+        this.coyote = 0;
+        this.jumpBuf = 0;
         this.invuln = 1.1;
         this.starPose = 0;
         this.hurtT = 0;
@@ -253,8 +257,26 @@ export class Player {
             this.vz *= Math.exp(-10 * dt);
         }
 
-        const jump = input.consumeJump();
-        if (jump && this.grounded) {
+        /* Pulo com coyote time e buffer:
+             · apertou → jumpBuf = JUMP_BUFFER (s); decai em tempo real
+             · coyote = COYOTE enquanto pisa; decai ao sair do chão sem pular
+             · pulo de chão quando há buffer e (chão OU coyote) — inclui o pouso logo depois
+             · no ar, o aperto só vira pound/dive se o pouso previsto estiver a mais de
+               JUMP_BUFFER s (t = altura acima do chão / |vy|); senão fica guardado */
+        const pressed = input.consumeJump();
+        this.jumpBuf = pressed ? PLAYER.jumpBuffer : Math.max(0, this.jumpBuf - dt);
+        this.coyote = this.grounded ? PLAYER.coyote : Math.max(0, this.coyote - dt);
+        const canGroundJump = this.grounded || (this.coyote > 0 && this.vy <= 0 && !this.pounding && !this.diving);
+        let airAction = false;
+        if (pressed && !canGroundJump && !this.pounding && !this.diving) {
+            const below = world.groundAt(this.x, this.z, this.y);
+            const tLand = this.vy < 0 ? (this.y - below) / -this.vy : Infinity;
+            airAction = crouch || tLand > PLAYER.jumpBuffer;
+        }
+        const jump = this.jumpBuf > 0 && canGroundJump;
+        if (jump) {
+            this.jumpBuf = 0;
+            this.coyote = 0;
             const speed = Math.hypot(this.vx, this.vz);
             if (crouch && speed > 7.5) {
                 this.vy = PLAYER.jumpLong;
@@ -276,7 +298,8 @@ export class Player {
             this.jumpHeld = true;
             flags.jumped = true;
             this.squash = 1.22;
-        } else if (jump && !this.grounded && !this.pounding && !this.diving) {
+        } else if (airAction) {
+            this.jumpBuf = 0;
             if (crouch) {
                 this.pounding = true;
                 this.vy = PLAYER.poundVy;
@@ -298,6 +321,9 @@ export class Player {
 
         const g = this.vy < 0 ? PLAYER.fallGravity : PLAYER.gravity;
         this.vy -= (this.pounding ? g * 1.35 : g) * dt;
+        // velocidade terminal: o arrasto do ar segura a queda (pound cai mais rápido)
+        const terminal = this.pounding ? -PLAYER.maxFall * 1.35 : -PLAYER.maxFall;
+        if (this.vy < terminal) this.vy = terminal;
 
         let nx = this.x + this.vx * dt;
         let nz = this.z + this.vz * dt;
@@ -333,8 +359,11 @@ export class Player {
             }
         }
 
+        // pouso varrido: plataformas contam a partir da altura do frame anterior, assim
+        // uma queda rápida não "pula" o tampo de uma plataforma fina entre dois frames
+        const prevY = this.y;
         this.y += this.vy * dt;
-        const ground = world.groundAt(nx, nz, this.y);
+        const ground = world.groundAt(nx, nz, Math.max(prevY, this.y));
         if (this.vy <= 0 && this.y <= ground) {
             const wasAir = !this.grounded;
             this.y = ground;

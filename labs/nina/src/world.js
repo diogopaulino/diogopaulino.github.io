@@ -30,12 +30,12 @@ import { loadModel, instanceModel } from '../../shared/gfx/assets.js';
 import { createCreature } from '../../shared/gfx/creature.js';
 import {
     WORLD_RADIUS, FRIENDS, TOTAL_BERRIES, BERRY_SPOTS, heightAt, HOME, BARN, POND, CREEK, TRAILS, FLOAT
-} from './config.js?v=20';
+} from './config.js?v=23';
 import {
     createBarn, BARN_SIZE, createBlanket, createNestRim, createHomeGlow, mushroomGeometry, berryGeometry,
     createButterflies, createRainbow, createDew, createPollen
-} from './builds.js?v=20';
-import { createFriend } from './animals.js?v=20';
+} from './builds.js?v=23';
+import { createFriend } from './animals.js?v=23';
 
 const TAU = Math.PI * 2;
 const _m = new THREE.Matrix4();

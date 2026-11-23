@@ -7,7 +7,17 @@
  * branca multiplicada pela cor da instância (vidros/pneus são escuros e quase não mudam).
  *
  * Mão brasileira (direita): pista sul segue para leste, pista norte para oeste.
- * Cada faixa tem velocidade única (8–13 m/s), então os carros nunca se alcançam.
+ * Faixa da guia = estacionamento; as outras duas rodam em anel (saem numa ponta, voltam na outra).
+ *
+ * Seguimento de veículo: Intelligent Driver Model (Treiber, 2000), por carro:
+ *   a = a_max · [1 − (v/v₀)⁴ − (s_d/s)²]
+ *   s_d = s₀ + max(0, v·T + v·Δv / (2·√(a_max·b)))
+ *   s = vão até o para-choque do líder (ou até o pedestre na faixa), Δv = v − v_líder.
+ *   v₀: faixa da esquerda ~48 km/h, do meio ~42 km/h (limite 50 km/h na orla), ±6 % por
+ *   motorista; ônibus 38 km/h. s₀ = 2 m, T = 1,3 s, b = 2,5 m/s², frenagem máx. 8 m/s².
+ *   Como ninguém ultrapassa, a ordem na faixa é fixa → nunca empilham nem se atravessam.
+ * O visitante na pista vira obstáculo parado: os carros freiam e esperam (e buzinam se
+ *   tiverem de frear forte). Carros parados e em movimento também bloqueiam o visitante.
  * Faróis/lanternas: quads emissivos instanciados, acesos conforme a noite.
  */
 import * as THREE from 'three';
@@ -103,8 +113,8 @@ export function createTraffic(quality) {
     const lanes = [];
     // pista sul → leste (dir +1); pista norte → oeste (dir −1). Faixa da guia = estacionamento.
     for (let l = 0; l < 2; l++) {
-        lanes.push({ z: ZONES.roadS[0] + laneW * (l + 0.5), dir: 1, speed: 12.5 - l * 3 });
-        lanes.push({ z: ZONES.roadN[1] - laneW * (l + 0.5), dir: -1, speed: 12.5 - l * 3 });
+        lanes.push({ z: ZONES.roadS[0] + laneW * (l + 0.5), dir: 1, v0: l ? 11.6 : 13.4, cars: [] });
+        lanes.push({ z: ZONES.roadN[1] - laneW * (l + 0.5), dir: -1, v0: l ? 11.6 : 13.4, cars: [] });
     }
     const span = X_EAST - X_WEST - 6;
     const cars = [];
@@ -112,12 +122,23 @@ export function createTraffic(quality) {
     lanes.forEach((lane, li) => {
         const gap = span / perLane;
         for (let i = 0; i < perLane; i++) {
-            const isBus = i === 0 && li % 2 === 1;
-            cars.push({
-                lane, x: X_WEST + 3 + gap * i + rnd() * gap * 0.55, kind: isBus ? 3 : Math.floor(rnd() * 3),
-                color: isBus ? 0xf4f4f2 : rnd.pick(PAINT)
-            });
+            const isBus = i === 0 && li >= 2; // ônibus nas faixas do meio
+            const kind = isBus ? 3 : Math.floor(rnd() * 3);
+            const car = {
+                lane, x: X_WEST + 3 + gap * i + rnd() * gap * 0.55, kind,
+                color: isBus ? 0xf4f4f2 : rnd.pick(PAINT),
+                v0: isBus ? 10.5 : lane.v0 * (0.94 + rnd() * 0.12),
+                amax: isBus ? 0.9 : 1.5 + rnd() * 0.4,
+                v: 0, len: 0, honkT: 0, leader: null,
+                rect: { x0: 0, x1: 0, z0: 0, z1: 0 }
+            };
+            car.v = car.v0 * 0.9;
+            cars.push(car);
+            lane.cars.push(car);
         }
+        // ordem no sentido da faixa; o líder de cada um é o próximo (em anel)
+        lane.cars.sort((a, b) => (a.x - b.x) * lane.dir);
+        lane.cars.forEach((c, i) => { c.leader = lane.cars[(i + 1) % lane.cars.length]; });
     });
     // estacionados junto às guias externas
     const parked = [];
@@ -156,8 +177,19 @@ export function createTraffic(quality) {
     }
     for (const c of cars) {
         c.index = counters[c.kind]++;
+        c.len = c.kind === 3 ? bus.L : kinds[c.kind].L;
+        c.wid = c.kind === 3 ? bus.W : kinds[c.kind].W;
         meshes[c.kind].setColorAt(c.index, col.set(c.color));
     }
+    // pegadas sólidas (retângulos XZ) para a colisão do visitante; as dos carros andando
+    // são atualizadas no lugar a cada quadro (sem alocação)
+    const footprints = [];
+    for (const p of parked) {
+        const k = kinds[p.kind];
+        const z = p.north ? ZONES.roadN[0] + 1.15 : ZONES.roadS[1] - 1.15;
+        footprints.push({ x0: p.x - k.L / 2, x1: p.x + k.L / 2, z0: z - k.W / 2, z1: z + k.W / 2 });
+    }
+    for (const c of cars) footprints.push(c.rect);
     meshes.forEach((m) => { if (m.instanceColor) m.instanceColor.needsUpdate = true; });
 
     // faróis (brancos) e lanternas (vermelhas)
@@ -173,15 +205,74 @@ export function createTraffic(quality) {
     const qb = new THREE.Quaternion();
     let night = 0;
 
-    function update(t, dt) {
-        cars.forEach((c, i) => {
-            c.x += c.lane.dir * c.lane.speed * dt;
-            if (c.x > X_EAST - 3) c.x -= span;
-            if (c.x < X_WEST + 3) c.x += span;
+    // Parâmetros do IDM (m, s)
+    const S0 = 2.0;
+    const T_HEAD = 1.3;
+    const B_COMF = 2.5;
+    const B_MAX = 8;
+    let onHonk = null;
+
+    /** Vão (m) até o visitante se ele estiver na faixa à frente; Infinity se não. */
+    function playerGap(c, player) {
+        if (!player) return Infinity;
+        const lane = c.lane;
+        if (Math.abs(player.z - lane.z) > laneW / 2 + 0.55) return Infinity;
+        const d = (player.x - c.x) * lane.dir;
+        // à frente (inclui o visitante colado no para-choque) e dentro do alcance de frenagem
+        if (d < c.len * 0.5 - 0.3 || d > 70) return Infinity;
+        return d - c.len * 0.5 - 0.9;
+    }
+
+    function update(t, dt, ctx) {
+        const player = ctx?.player;
+        if (dt > 0) {
+            for (let i = 0; i < cars.length; i++) {
+                const c = cars[i];
+                const L = c.leader;
+                let gap = Infinity;
+                let vl = 0;
+                if (L !== c) {
+                    let d = (L.x - c.x) * c.lane.dir;
+                    if (d < 0) d += span;
+                    gap = d - (c.len + L.len) * 0.5;
+                    vl = L.v;
+                }
+                const pg = playerGap(c, player);
+                let byPlayer = false;
+                if (pg < gap) { gap = pg; vl = 0; byPlayer = true; }
+                let acc;
+                if (gap <= 0.05) {
+                    acc = -B_MAX * 4; // encostado: para
+                } else {
+                    const ss = S0 + Math.max(0, c.v * T_HEAD + (c.v * (c.v - vl)) / (2 * Math.sqrt(c.amax * B_COMF)));
+                    acc = c.amax * (1 - (c.v / c.v0) ** 4 - (ss / gap) ** 2);
+                }
+                acc = Math.max(-B_MAX, acc);
+                c.v = Math.max(0, c.v + acc * dt);
+                // nunca avança além do vão livre
+                const step = Math.min(c.v * dt, Math.max(0, gap));
+                if (step < c.v * dt) c.v = step / dt;
+                c.x += c.lane.dir * step;
+                if (c.x > X_EAST - 3) c.x -= span;
+                if (c.x < X_WEST + 3) c.x += span;
+                c.honkT = Math.max(0, c.honkT - dt);
+                if (byPlayer && acc < -3.5 && c.v > 2 && c.honkT <= 0) {
+                    c.honkT = 6;
+                    onHonk?.(c.x, c.lane.z);
+                }
+            }
+        }
+        for (let i = 0; i < cars.length; i++) {
+            const c = cars[i];
             const yaw = c.lane.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
             q.setFromAxisAngle(up, yaw);
             mtx.compose(pos.set(c.x, ROAD_Y, c.lane.z), q, one);
             meshes[c.kind].setMatrixAt(c.index, mtx);
+            const r = c.rect;
+            r.x0 = c.x - c.len * 0.5;
+            r.x1 = c.x + c.len * 0.5;
+            r.z0 = c.lane.z - c.wid * 0.5;
+            r.z1 = c.lane.z + c.wid * 0.5;
             if (night > 0.05) {
                 const k = c.kind === 3 ? bus : kinds[c.kind];
                 const half = k.L / 2 + 0.02;
@@ -196,8 +287,8 @@ export function createTraffic(quality) {
                     tails.setMatrixAt(i * 2 + s, mtx);
                 }
             }
-        });
-        meshes.forEach((m) => { m.instanceMatrix.needsUpdate = true; });
+        }
+        for (let i = 0; i < meshes.length; i++) meshes[i].instanceMatrix.needsUpdate = true;
         if (night > 0.05) {
             heads.instanceMatrix.needsUpdate = true;
             tails.instanceMatrix.needsUpdate = true;
@@ -208,6 +299,9 @@ export function createTraffic(quality) {
     return {
         root,
         update,
+        footprints,
+        /** cb(x, z) quando um carro freia forte por causa do visitante */
+        set onHonk(cb) { onHonk = cb; },
         setNight(k) {
             night = k;
             heads.visible = tails.visible = k > 0.05;

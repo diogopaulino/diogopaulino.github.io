@@ -9,39 +9,49 @@
  *   IV  pegue ouro, galinha e harpa (a harpa acorda o gigante) → com os três, fuja
  *   V   desça, pegue o machado e dê 8 machadadas no pé
  * Pontuação: +40 vaca · +100 troca · +80 plantio · +120 por tesouro · +60 machado
- *            · +250 corte · +200 por capítulo · bônus de tempo max(0, 700 − s).
+ *            · +50 por vagem dourada · +250 corte · +200 por capítulo · bônus de tempo max(0, 700 − s).
  *
- * Câmera: órbita em volta do João (yaw/pitch/distância) suavizada com
- *   pos ← lerp(pos, alvo, 1 − e^(−10·dt)); não desce abaixo do chão + 0,5 m, é
- *   puxada para perto quando uma parede fica no meio e treme com `shake`.
+ * Câmera: camera.js (órbita com pivô suavizado, recentralização e colisão com paredes,
+ *   terreno, caule e folhas). Saindo de uma cutscene, a câmera "alcança" o rig em ~0,5 s.
+ *
+ * Pé de feijão (III e V) como fase vertical:
+ *   salto assistido caule ↔ folha com anel de pouso (player.js, markers.js)
+ *   sombra de contato sob o João em qualquer apoio (markers.js)
+ *   ponto seguro: último apoio firme (chão, folha ou trecho do caule), gravado a cada 0,4 s
+ *   queda longa (> 7 m de queda livre) → fade curto e volta ao ponto seguro, sem perder
+ *     coração; só cair no vazio das nuvens (IV) custa 1 coração
+ *   preso dentro de um colisor por 0,8 s ou abaixo do chão → volta ao ponto seguro
+ *   altímetro no HUD durante a subida; 4 vagens douradas opcionais (+50 cada)
  *
  * Modo infantil (regras de perdão):
  *   vida           5 corações · o gigante fica tonto 3 s depois de alcançar (npcs.js)
- *   queda          cair das nuvens custa 1 coração e volta ao último chão firme
+ *   queda          cair das nuvens custa 1 coração; queda longa no pé de feijão é grátis
  *   derrota        "Tentar de novo" recomeça o capítulo com a glória de quando entrou nele
- *   caule          perto do pé crescido, E agarra (além do pulo)
+ *   caule          perto do pé crescido, E agarra (além do pulo); no ar, encostar agarra
  *   bússola        seta no HUD aponta o próximo passo do capítulo (guide.js, _guideTarget)
  *   dica           30 s sem se aproximar do alvo → repete a dica do capítulo
  *   cutscenes      botão "Pular" (abertura, pé crescendo, gigante acordando, pé caindo)
  */
 
 import * as THREE from 'three';
-import { CHAPTERS, QUALITY, STORAGE_KEY, CAMERA } from './config.js';
-import { clamp, lerp, formatTime } from './utils.js';
-import { Input } from './input.js';
-import { GameAudio } from './audio.js';
-import { Hud, statsBlock } from './hud.js?v=9';
-import { Player } from './player.js?v=9';
-import { createWorld } from './world.js?v=9';
-import { nearestInteractable } from './npcs.js?v=9';
+import { CHAPTERS, QUALITY, STORAGE_KEY, CAMERA, PLAYER } from './config.js?v=12';
+import { clamp, lerp, formatTime } from './utils.js?v=12';
+import { Input } from './input.js?v=12';
+import { GameAudio } from './audio.js?v=12';
+import { Hud, statsBlock } from './hud.js?v=12';
+import { Player } from './player.js?v=12';
+import { createWorld } from './world.js?v=12';
+import { nearestInteractable } from './npcs.js?v=12';
+import { CameraRig } from './camera.js?v=12';
+import { createMarkers } from './markers.js?v=12';
 import { Guide } from '../../shared/gfx/guide.js?v=1';
 import { createStage } from '../../shared/gfx/stage.js';
 import { pickTier, detectMobile } from '../../shared/gfx/core.js';
 
-const LOOK = new THREE.Vector3();
-const CAM = new THREE.Vector3();
 const TMP = new THREE.Vector3();
+const AXP = { x: 0, z: 0 };
 const DEBUG = new URLSearchParams(location.search).has('debug');
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Luz das nuvens por capítulo: [borda, barriga, ganho da borda, ganho da barriga]. */
 const CLOUD_LIGHT = {
@@ -65,6 +75,10 @@ class Game {
         this.introT = 0;
         this.fade = 1;
         this.fadeDir = -1;
+        this.fadeSpeed = 0.85;
+        this.camCatch = 9;
+        this.stuckT = 0;
+        this.podsTaken = 0;
         this.dialogue = null;
         this.hudAccum = 0;
         this.orbit = 0;
@@ -77,8 +91,8 @@ class Game {
         this.skipEl = document.getElementById('skipButton');
         this.hintT = 0;
         this.bestGoalD = Infinity;
-        /** Último chão firme (cair das nuvens volta para cá). */
-        this.safe = { x: 0, z: 0, t: 0 };
+        /** Último apoio firme: chão, folha ou trecho do caule (quedas longas voltam para cá). */
+        this.safe = { kind: 'ground', x: 0, y: 0, z: 0, ang: 0, leaf: null, t: 0 };
         /** Glória/tempo ao entrar no capítulo (o "Tentar de novo" volta para cá). */
         this.checkpoint = { score: 0, elapsed: 0, caught: 0 };
     }
@@ -127,6 +141,8 @@ class Game {
         this.audio = new GameAudio();
         this.player = new Player(this.stage.scene, this.quality.heroDetail);
         this.player.setVisible(false);
+        this.rig = new CameraRig(this.camera);
+        this.markers = createMarkers(this.stage.scene);
 
         this._bindUi();
 
@@ -201,9 +217,15 @@ class Game {
             if (this.state === 'playing') this.input.interactPressed = true;
         });
         this.skipEl?.addEventListener('click', () => this._skip());
-        // aba oculta: o palco para de desenhar e o conto pausa
+        // aba oculta ou janela sem foco: o palco para de desenhar, o conto pausa e nenhuma tecla fica presa
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden && this.state === 'playing') this.pause();
+            if (!document.hidden) return;
+            this.input.release();
+            if (this.state === 'playing') this.pause();
+        });
+        window.addEventListener('blur', () => {
+            this.input.release();
+            if (this.state === 'playing') this.pause();
         });
         // Esc solta o mouse sem chegar como tecla: soltar o mouse jogando abre a pausa
         document.addEventListener('pointerlockchange', () => {
@@ -216,11 +238,7 @@ class Game {
             if (this.state === 'playing') this.pause();
             else if (this.state === 'pause') this.resume();
         });
-        this.input.on('camera', () => {
-            const dists = [4.6, 6.8, 10.2];
-            const i = dists.findIndex((d) => Math.abs(this.player.camDist - d) < 0.35);
-            this.player.camDist = dists[(i + 1) % dists.length];
-        });
+        this.input.on('camera', () => this.rig.cycle());
         this.input.on('mute', () => this.toggleMute());
         this.input.on('confirm', () => {
             if (this.state === 'dialogue') this._advanceDialogue();
@@ -305,11 +323,17 @@ class Game {
         document.getElementById('btnInteract')?.addEventListener('click', () => {
             this.input.interactPressed = true;
         });
-        document.getElementById('btnJump')?.addEventListener('click', () => {
+        // pulo no toque: segurar o botão = pulo alto, tocar rápido = pulo curto (como no teclado)
+        const jumpBtn = document.getElementById('btnJump');
+        jumpBtn?.addEventListener('pointerdown', (e) => {
+            capturePointer(jumpBtn, e.pointerId);
             this.input.jumpPressed = true;
             this.input.jumpHeld = true;
-            setTimeout(() => { this.input.jumpHeld = false; }, 180);
         });
+        const jumpUp = () => { this.input.jumpHeld = false; };
+        jumpBtn?.addEventListener('pointerup', jumpUp);
+        jumpBtn?.addEventListener('pointercancel', jumpUp);
+        jumpBtn?.addEventListener('lostpointercapture', jumpUp);
         document.getElementById('btnSprint')?.addEventListener('pointerdown', () => {
             this.input.touchSprint = true;
         });
@@ -357,12 +381,20 @@ class Game {
         this.audio.setTheme(ch.music);
 
         this.player.hero.equip({ handR: null });
+        this.markers.hide();
         if (!menu) {
             const s = w.spawn;
-            this.player.spawn(s.x, s.z, s.yaw, w.heightAt, s.y);
-            if (s.climbing) this.player.climbing = true;
-            if (index >= 1) this.player.beans = 5;
-            if (index >= 4) this.player.treasures = { gold: true, hen: true, harp: true };
+            const p = this.player;
+            p.spawn(s.x, s.z, s.yaw, w.heightAt, s.y);
+            if (s.climbing && w.climbs[0]) {
+                const c = w.climbs[0];
+                c.axis(s.y, AXP);
+                p.grabStalk(c, s.y, Math.atan2(s.x - AXP.x, s.z - AXP.z));
+            }
+            if (index >= 1) p.beans = 5;
+            if (index >= 4) p.treasures = { gold: true, hen: true, harp: true };
+            this.rig.reset(p, p.climbing ? p.climbAng + CAMERA.climbSide : s.yaw + Math.PI);
+            this.rig.solve(1 / 60, p, w);
         } else {
             this.player.setVisible(false);
         }
@@ -394,6 +426,7 @@ class Game {
         this.player.hasCow = false;
         this.player.hasAxe = false;
         this.player.maxHealth = 5;
+        this.podsTaken = 0;
         this.hud.hideDefeat();
         this.hud.hideVictory();
         this.hud.showMenu(false);
@@ -427,11 +460,13 @@ class Game {
         this.state = 'intro';
         this.hud.setState('intro');
         this.introT = 0;
-        this.checkpoint = { score: this.score, elapsed: this.elapsed, caught: this.caught };
+        this.checkpoint = { score: this.score, elapsed: this.elapsed, caught: this.caught, podsTaken: this.podsTaken };
         this.hintT = 0;
         this.bestGoalD = Infinity;
-        this.safe.x = this.player.x;
-        this.safe.z = this.player.z;
+        this.stuckT = 0;
+        this.climbTipShown = this.chapter.id !== 'night';
+        this.safe.t = 99;
+        this._trackSafe(0);
         this.guide.hide();
         if (this.skipEl) this.skipEl.hidden = false;
         this.player.setVisible(true);
@@ -444,8 +479,10 @@ class Game {
         this.hud.showChapterCard(this.chapter);
         this.hud.say(this.chapter.objective, 5);
         this.input.enabled = false;
+        this.input.release();
         this.fade = 1;
         this.fadeDir = -1;
+        this.fadeSpeed = 0.85;
     }
 
     pause() {
@@ -454,8 +491,12 @@ class Game {
         this.state = 'pause';
         this.hud.setState('pause');
         this.hud.showPause(true);
+        this.hud.setPrompt('');
+        this.markers.hide();
         this.input.exitLock();
+        this.input.release();
         // o teclado segue ligado para P/Esc tirarem da pausa (o mundo não anda em 'pause')
+        document.getElementById('resumeButton')?.focus({ preventScroll: true });
     }
 
     resume() {
@@ -464,7 +505,7 @@ class Game {
         this.hud.setState('playing');
         this.hud.showPause(false);
         this.input.enabled = true;
-        this.input.consumeInteract();
+        this.input.release();
         if (!this.mobile) this.input.requestLock();
     }
 
@@ -475,7 +516,9 @@ class Game {
         this.hud.hideDialogue();
         this.hud.showHud(false);
         this.player.setVisible(false);
+        this.markers.hide();
         this.input.exitLock();
+        this.input.release();
         this.input.enabled = true;
         this._loadChapter(0, { menu: true });
         this._refreshChapterList();
@@ -499,13 +542,14 @@ class Game {
         const w = this.world;
         for (const fn of w.updateFns) fn(this.time, dt);
 
-        this.fade = clamp(this.fade + this.fadeDir * dt * 0.85, 0, 1);
+        this.fade = clamp(this.fade + this.fadeDir * dt * this.fadeSpeed, 0, 1);
         if (this.fade !== this.lastFade) {
             // só escreve no DOM quando o fade muda (no jogo ele fica parado em 0)
             this.lastFade = this.fade;
             this.fadeEl.style.opacity = this.fade.toFixed(3);
         }
         this.shake = Math.max(0, this.shake - dt * 4);
+        this.camCatch += dt;
 
         this.hudAccum += dt;
         if (this.hudAccum > 0.25) {
@@ -526,13 +570,23 @@ class Game {
             this._updateCut(dt);
         } else if (this.state === 'playing') {
             this.elapsed += dt;
-            const info = this.player.update(dt, this.input, w);
-            if (info.fell) {
-                this._fell();
+            const p = this.player;
+            this.rig.input(this.input);
+            const info = p.update(dt, this.input, w, this.rig.yaw);
+            const longFall = !p.grounded && !p.climbing && !p.leap && p.fallTop - p.y > PLAYER.longFall;
+            if (info.fell || longFall || !Number.isFinite(p.x + p.y + p.z)) {
+                this._rescue(info.fell && this.chapter.id === 'castle');
             } else {
                 if (info.footstep) this.audio.footstep();
-                if (info.jumped) this.audio.chime();
+                if (info.jumped) this.audio.footstep();
+                if (info.landed > 0) {
+                    this.audio.footstep();
+                    // aterrissagem pesada (> 2,5 m): tremor curto proporcional à queda
+                    if (info.landed > 2.5) this.shake = Math.max(this.shake, Math.min(0.6, info.landed * 0.12));
+                }
                 this._trackSafe(dt);
+                this._checkStuck(dt);
+                this._updatePods();
                 this._updateNpcs(dt);
                 if (this.state === 'playing') this._updateInteract();
                 if (this.state === 'playing') this._updateChapterLogic();
@@ -549,6 +603,7 @@ class Game {
             this._followCamera(dt);
         }
 
+        this.markers.update(dt, this.player, w, this.state === 'playing');
         this.worlds.update(dt, this.time, this.camera, this.player, this.state === 'dialogue' ? this.dialogue?.speaker : null);
         this.stage.scene.environmentIntensity = this.envBase * (w.envK ?? 1);
         this.focus.set(this.player.x, this.player.y, this.player.z);
@@ -585,84 +640,52 @@ class Game {
         const t = clamp(this.introT / 3.2, 0, 1);
         const e = t * t * (3 - 2 * t);
         const o = this.world.overview;
-        this._cameraTarget();
-        this.camera.position.lerpVectors(o.pos, CAM, e);
-        TMP.lerpVectors(o.look, LOOK, e);
+        this.rig.solve(dt, this.player, this.world);
+        this.camera.position.lerpVectors(o.pos, this.rig.pos, e);
+        TMP.lerpVectors(o.look, this.rig.look, e);
         this.camera.lookAt(TMP);
         if (t >= 1) {
             this.state = 'playing';
             this.hud.setState('playing');
             this.input.enabled = true;
-            this.input.consumeInteract();
-            this.input.consumeJump();
+            this.input.consumeTaps();
+            this.camCatch = 9;
             if (this.skipEl) this.skipEl.hidden = true;
-            if (this.player.climbing) this.hud.say(this.touch ? 'Puxe a bolinha para baixo para descer o caule.' : 'Segure S (ou ↓) para descer o caule.', 4.5);
+            if (this.player.climbing) this.hud.say(this.touch ? 'Puxe a bolinha para baixo para descer. No fim do curso, escorrega.' : 'Segure S (ou ↓) para descer — com Shift, escorrega.', 4.5);
             else this.hud.say(this.touch ? 'Siga a seta dourada. Arraste a tela para olhar.' : 'Siga a seta dourada. Clique no mundo para olhar com o mouse.', 3.6);
         }
     }
 
-    /** Posição desejada da câmera (CAM) e alvo (LOOK), já com colisão. */
-    _cameraTarget() {
-        const p = this.player;
-        const w = this.world;
-        p.cameraPosition(CAM);
-        p.lookAt(LOOK);
-        if (p.climbing) {
-            // na escalada a câmera sobe e olha para baixo: o chão encolhe sob os pés
-            CAM.y += 2.6;
-            LOOK.y -= 0.8;
-        }
-        // parede no meio: anda do João até a câmera e para no primeiro ponto bloqueado
-        let k = 1;
-        for (let i = 1; i <= 8; i++) {
-            const u = i / 8;
-            const x = lerp(LOOK.x, CAM.x, u);
-            const z = lerp(LOOK.z, CAM.z, u);
-            if (this._camBlocked(x, lerp(LOOK.y, CAM.y, u), z)) {
-                k = Math.max(0.16, (i - 1) / 8);
-                break;
-            }
-        }
-        if (k < 1) CAM.lerpVectors(LOOK, CAM, k);
-        if (w.cam && w.inside?.(p.x, p.z)) {
-            CAM.x = clamp(CAM.x, w.cam.minX, w.cam.maxX);
-            CAM.z = clamp(CAM.z, w.cam.minZ, w.cam.maxZ);
-            CAM.y = Math.min(CAM.y, w.cam.maxY);
-        }
-        const gy = w.heightAt(CAM.x, CAM.z) + 0.5;
-        if (gy > -20 && CAM.y < gy) CAM.y = gy;
-    }
-
-    _camBlocked(x, y, z) {
-        for (const c of this.world.colliders) {
-            if (!c.box) continue;
-            if (c.camTop != null && y > c.camTop) continue;
-            const dx = x - c.x;
-            const dz = z - c.z;
-            const lx = dx * c.cos - dz * c.sin;
-            const lz = dx * c.sin + dz * c.cos;
-            if (Math.abs(lx) < c.hx + 0.25 && Math.abs(lz) < c.hz + 0.25) return true;
-        }
-        return false;
-    }
-
+    /**
+     * Câmera do jogo: o rig (camera.js) resolve posição e alvo com colisão. Logo depois de
+     * uma cutscene/diálogo a câmera alcança o rig com λ = 6 (~0,5 s) em vez de cortar.
+     */
     _followCamera(dt) {
-        this._cameraTarget();
-        const k = 1 - Math.exp(-10 * (dt || 0.016));
-        this.camera.position.lerp(CAM, k);
-        this._applyShake();
-        this.camera.lookAt(LOOK);
+        const r = this.rig.solve(dt, this.player, this.world);
+        const shake = REDUCED ? this.shake * 0.3 : this.shake;
+        if (this.camCatch < 0.9) {
+            const k = 1 - Math.exp(-6 * dt);
+            this.camera.position.lerp(r.pos, k);
+            if (shake > 0) this._applyShake(shake);
+            this.camera.lookAt(r.look);
+        } else {
+            r.apply(shake);
+        }
     }
 
-    _applyShake() {
-        if (this.shake <= 0) return;
-        this.camera.position.x += (Math.random() - 0.5) * this.shake * 0.35;
-        this.camera.position.y += (Math.random() - 0.5) * this.shake * 0.22;
+    _applyShake(amount = this.shake) {
+        if (amount <= 0) return;
+        this.camera.position.x += (Math.random() - 0.5) * amount * 0.35;
+        this.camera.position.y += (Math.random() - 0.5) * amount * 0.22;
     }
 
     /** Cutscene: câmera fixa em `pos` olhando `look(t)`; `tick` roda a cada quadro e `end` ao fim. */
     _beginCut(cut) {
         this.cut = { t: 0, ...cut };
+        this.cutPos ||= new THREE.Vector3();
+        this.cutLook ||= new THREE.Vector3();
+        this.markers.hide();
+        this.input.consumeTaps();
         this.state = 'cutscene';
         this.hud.setState('cutscene');
         this.hud.setPrompt('');
@@ -675,11 +698,11 @@ class Game {
         const c = this.cut;
         c.t += dt;
         c.tick?.(c.t, dt);
-        c.pos(c.t, CAM);
-        c.look(c.t, LOOK);
-        this.camera.position.lerp(CAM, 1 - Math.exp(-(c.snap ?? 3) * dt));
-        this._applyShake();
-        this.camera.lookAt(LOOK);
+        c.pos(c.t, this.cutPos);
+        c.look(c.t, this.cutLook);
+        this.camera.position.lerp(this.cutPos, 1 - Math.exp(-(c.snap ?? 3) * dt));
+        this._applyShake(REDUCED ? this.shake * 0.3 : this.shake);
+        this.camera.lookAt(this.cutLook);
         if (c.t >= c.dur) {
             this.cut = null;
             if (this.skipEl) this.skipEl.hidden = true;
@@ -691,44 +714,118 @@ class Game {
         this.state = 'playing';
         this.hud.setState('playing');
         this.input.enabled = true;
-        this.input.consumeInteract();
-        this.input.consumeJump();
+        this.input.consumeTaps();
+        this.camCatch = 0;
         this.hintT = 0;
         this.bestGoalD = Infinity;
     }
 
-    /** Guarda o último chão firme a cada 0,5 s (fora do caule, acima do vazio). */
+    /**
+     * Ponto seguro = último apoio firme, gravado a cada 0,4 s:
+     *   chão   (x, z) com terreno acima do vazio
+     *   folha  centro da folha (nunca a beirada de onde ele escorregou)
+     *   caule  altura e azimute em volta do eixo
+     * `force` grava já (início de capítulo).
+     */
     _trackSafe(dt) {
         const p = this.player;
         const w = this.world;
-        this.safe.t += dt;
-        if (this.safe.t < 0.5 || !p.grounded || p.climbing) return;
-        if (w.heightAt(p.x, p.z) < w.voidY + 4) return;
-        this.safe.t = 0;
-        this.safe.x = p.x;
-        this.safe.z = p.z;
-    }
-
-    /** Caiu das nuvens: −1 coração e volta ao último chão firme (só é derrota sem corações). */
-    _fell() {
-        const p = this.player;
-        const w = this.world;
-        p.hurt(1);
-        this.hud.flashHit();
-        this.hud.setHearts(p.health, p.maxHealth);
-        this.audio.danger();
-        if (!p.alive) {
-            this._defeat('João caiu das nuvens.');
+        const sf = this.safe;
+        sf.t += dt;
+        if (sf.t < 0.4 || p.leap) return;
+        if (p.climbing) {
+            sf.kind = 'stalk';
+            sf.y = p.y;
+            sf.ang = p.climbAng;
+        } else if (p.grounded && p.support) {
+            sf.kind = 'leaf';
+            sf.leaf = p.support;
+            sf.x = p.support.x;
+            sf.y = p.support.y;
+            sf.z = p.support.z;
+        } else if (p.grounded) {
+            // chão firme também em volta (±1,6 m): o resgate nunca devolve o João à beirada
+            const v = w.voidY + 4;
+            if (w.heightAt(p.x, p.z) < v || w.heightAt(p.x + 1.6, p.z) < v || w.heightAt(p.x - 1.6, p.z) < v
+                || w.heightAt(p.x, p.z + 1.6) < v || w.heightAt(p.x, p.z - 1.6) < v) return;
+            if (p._blocked(p.x, p.z, w)) return;
+            sf.kind = 'ground';
+            sf.x = p.x;
+            sf.z = p.z;
+        } else {
             return;
         }
-        p.x = this.safe.x;
-        p.z = this.safe.z;
-        p.y = w.heightAt(p.x, p.z);
-        p.vy = 0;
-        p.grounded = true;
+        sf.t = 0;
+    }
+
+    /**
+     * Resgate: queda longa (> PLAYER.longFall), vazio das nuvens ou estado inválido.
+     * Fade de 0,45 s e volta ao ponto seguro. `costly` (vazio do castelo) custa 1 coração.
+     */
+    _rescue(costly = false) {
+        const p = this.player;
+        const w = this.world;
+        if (costly) {
+            p.hurt(1);
+            this.hud.flashHit();
+            this.hud.setHearts(p.health, p.maxHealth);
+            this.audio.danger();
+            if (!p.alive) {
+                this._defeat('João caiu das nuvens.');
+                return;
+            }
+        }
+        const sf = this.safe;
+        const climb = w.climbs[0];
+        if (sf.kind === 'stalk' && climb && !climb.locked) {
+            p.grabStalk(climb, sf.y, sf.ang);
+            this.hud.say('O João se agarrou de novo ao caule. Ufa!', 3);
+        } else if (sf.kind === 'leaf' && w.platforms.includes(sf.leaf)) {
+            p.placeAt(sf.x, sf.y, sf.z, sf.leaf);
+            this.hud.say('Uma folha larga amorteceu a queda.', 3);
+        } else {
+            const y = w.heightAt(sf.x, sf.z);
+            p.placeAt(sf.x, y, sf.z, null);
+            this.hud.say(costly ? 'Ufa! Uma nuvem segurou o João. Cuidado com a beirada.' : 'De volta ao chão firme.', 3.2);
+        }
         p.invuln = Math.max(p.invuln, 1.2);
         p.sync();
-        this.hud.say('Ufa! Uma nuvem segurou o João. Cuidado com a beirada.', 3.2);
+        this.input.consumeTaps();
+        this.rig.reset(p, p.climbing ? p.climbAng + CAMERA.climbSide : this.rig.yaw);
+        this.camCatch = 9;
+        this.fade = 0.9;
+        this.fadeDir = -1;
+        this.fadeSpeed = 2.2;
+        this.stuckT = 0;
+    }
+
+    /** Preso dentro de um colisor por 0,8 s, ou enterrado no chão: volta ao ponto seguro. */
+    _checkStuck(dt) {
+        const p = this.player;
+        if (p.climbing || p.leap) {
+            this.stuckT = 0;
+            return;
+        }
+        const w = this.world;
+        const buried = p.grounded && p.y < w.heightAt(p.x, p.z) - 0.6;
+        const inside = p._blocked(p.x, p.z, w);
+        this.stuckT = buried || inside ? this.stuckT + dt : 0;
+        if (this.stuckT > 0.8) this._rescue(false);
+    }
+
+    /** Vagens douradas (capítulo III): pegar = encostar (raio 0,9 m, ±1,2 m de altura). */
+    _updatePods() {
+        const p = this.player;
+        for (const pod of this.world.pods) {
+            if (pod.taken || !pod.mesh.visible) continue;
+            if (Math.abs(p.y - pod.y) > 1.2 || Math.hypot(p.x - pod.x, p.z - pod.z) > 0.9) continue;
+            pod.taken = true;
+            pod.mesh.visible = false;
+            this.podsTaken += 1;
+            this.score += 50;
+            this.audio.pickup();
+            this.hud.say(`Vagem dourada! ${this.podsTaken}/${this.world.pods.length} · +50 de glória`, 2.6);
+        }
     }
 
     /**
@@ -775,6 +872,15 @@ class Game {
         this.guideAcc = 0;
         const t = this._guideTarget();
         this.guide.update(this.camera, this.player.x, this.player.z, t);
+        // altímetro da subida (III): a bússola some no caule; a barra mostra quanto falta
+        const p = this.player;
+        if (this.chapter.id === 'night' && this.world.flags.grown && (p.climbing || p.y > 4 || p.leap)) {
+            const top = 66;
+            const left = Math.max(0, Math.round(top - p.y));
+            this.hud.setMeter(left > 0 ? `Nuvens · faltam ${left} m` : 'Nuvens à vista', clamp(p.y / top, 0.03, 1), false, false);
+        } else if (this.chapter.id === 'night') {
+            this.hud.setMeter('', 0);
+        }
         if (!t) return;
         const d = Math.hypot(t.x - this.player.x, t.z - this.player.z);
         if (d < this.bestGoalD - 3) {
@@ -794,7 +900,8 @@ class Game {
 
         const giant = w.giant;
         if (!giant) {
-            if (!passive) this.hud.setMeter('', 0);
+            // sem gigante a barra é do altímetro (III, _updateGuide) ou some
+            if (!passive && this.chapter.id !== 'night') this.hud.setMeter('', 0);
             return;
         }
 
@@ -872,20 +979,20 @@ class Game {
         if (near?.kind === 'chop' && this.player.hasAxe) {
             label = `Cortar o pé (${w.chop}/${w.chopNeeded})`;
         }
-        // perto do pé crescido (no chão): E agarra o caule — pular continua valendo
+        // ações do pé de feijão (player.js decide; aqui só o aviso): agarrar, saltar p/ folha, voltar ao caule
         const p = this.player;
-        const canGrab = !near && this.chapter.id === 'night' && w.flags.grown && !p.climbing && p.y < 6
-            && Math.hypot(p.x - w.stalk.x, p.z - w.stalk.z) < 3;
-        if (canGrab) label = 'Subir no pé de feijão (ou pule)';
-        if (p.climbing && this.chapter.id === 'night' && !near) label = '';
-        this.hud.setPrompt(label);
-        if (canGrab && this.input.consumeInteract()) {
-            p.climbing = true;
-            p.grounded = false;
-            p.vy = 0;
-            this.hud.say(this.touch ? 'Empurre a bolinha para cima para subir.' : 'Segure W (ou ↑) para subir.', 4);
-            return;
+        let key = 'E';
+        if (!label && p.action) {
+            key = p.action === 'stalk' ? 'E' : 'Espaço';
+            label = p.action === 'grab' ? 'Agarrar o pé de feijão'
+                : p.action === 'leaf' ? 'Saltar para a folha'
+                    : 'Voltar ao caule';
         }
+        if (p.climbing && !this.climbTipShown) {
+            this.climbTipShown = true;
+            this.hud.say(this.touch ? 'Bolinha para cima sobe; para os lados, dá a volta no caule.' : 'W sobe · A/D dão a volta no caule · Shift acelera.', 4.5);
+        }
+        this.hud.setPrompt(label, key);
         if (!this.input.consumeInteract() || !near) return;
 
         if (near.kind === 'talk') {
@@ -1006,8 +1113,8 @@ class Game {
                 if (!w.flags.grown) this.shake = Math.max(this.shake, 0.35);
             },
             end: () => {
-                this.hud.setObjective('Suba o pé de feijão — pule junto ao caule para agarrar e segure W.');
-                this.hud.say('Chegue perto do caule e pule para agarrar. W sobe, A/D dá a volta.', 5);
+                this.hud.setObjective('Suba o pé de feijão até as nuvens. Vagens douradas nas folhas valem glória.');
+                this.hud.say(this.touch ? 'Encoste no caule e toque em pular para agarrar.' : 'Encoste no caule e aperte Espaço (ou E) para agarrar.', 5);
                 this._resumePlay();
             }
         });
@@ -1228,9 +1335,22 @@ class Game {
             ['Glória', String(total)],
             ['Tempo', formatTime(this.elapsed)],
             ['Tesouros', `${this.player.treasureCount}/3`],
+            ['Vagens douradas', `${this.podsTaken}/4`],
             ['Sustos', this.caught === 0 ? 'nenhum' : `${this.caught}`]
         ]));
         this.hud.setBest(this.settings.best);
+    }
+
+    _debugState() {
+        const p = this.player;
+        const cam = this.camera.position;
+        return {
+            state: this.state, chapter: this.chapter.id, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2),
+            vx: +p.vx.toFixed(2), vz: +p.vz.toFixed(2), vy: +p.vy.toFixed(2), speed: +p.speed.toFixed(2),
+            grounded: p.grounded, climbing: p.climbing, leap: Boolean(p.leap), onLeaf: Boolean(p.support), action: p.action,
+            flags: this.world.flags, giant: this.world.giant?.state, health: p.health, pods: this.podsTaken, safe: this.safe.kind,
+            cam: { x: +cam.x.toFixed(2), y: +cam.y.toFixed(2), z: +cam.z.toFixed(2), dist: +this.rig.cur.toFixed(2) }
+        };
     }
 
     /** Atalhos de depuração (só com ?debug=1): pular capítulo, teleportar, medir. */
@@ -1249,16 +1369,38 @@ class Game {
                 g.player.sync();
             },
             cam: (yaw, pitch = CAMERA.defaultPitch, dist = CAMERA.distance) => {
-                g.player.camYaw = yaw;
-                g.player.camPitch = pitch;
-                g.player.camDist = dist;
+                g.rig.yaw = yaw;
+                g.rig.pitch = pitch;
+                g.rig.dist = dist;
+                g.rig.idle = 0;
             },
+            /**
+             * Simulação sem desenhar: roda `seconds` de jogo em passos de 1/60 s segurando
+             * `keys` (nomes de ação: forward, back, left, right, sprint) e apertando `press`
+             * ('jump' | 'interact') no primeiro passo. Devolve o estado ao fim.
+             */
+            sim: (seconds, keys = [], press = null, opts = {}) => {
+                const inp = g.input;
+                keys.forEach((k) => inp.keys.add(k));
+                if (press === 'jump') { inp.jumpPressed = true; inp.jumpHeld = true; }
+                if (press === 'interact') inp.interactPressed = true;
+                const n = Math.round(seconds * 60);
+                let maxY = -1e9;
+                let minY = 1e9;
+                for (let i = 0; i < n; i++) {
+                    if (opts.releaseJumpAt != null && i === Math.round(opts.releaseJumpAt * 60)) inp.jumpHeld = false;
+                    g._update(1 / 60);
+                    maxY = Math.max(maxY, g.player.y);
+                    minY = Math.min(minY, g.player.y);
+                }
+                keys.forEach((k) => inp.keys.delete(k));
+                inp.jumpHeld = false;
+                return { ...g._debugState(), maxY: +maxY.toFixed(3), minY: +minY.toFixed(3) };
+            },
+            leaves: () => g.world.platforms.map((l) => ({ x: +l.x.toFixed(2), y: +l.y.toFixed(2), z: +l.z.toFixed(2), ang: +l.ang.toFixed(2), L: +l.L.toFixed(2) })),
             press: () => { g.input.interactPressed = true; },
             talk: () => { while (g.dialogue) g._advanceDialogue(); },
-            state: () => ({
-                state: g.state, chapter: g.chapter.id, x: +g.player.x.toFixed(2), y: +g.player.y.toFixed(2), z: +g.player.z.toFixed(2),
-                climbing: g.player.climbing, flags: g.world.flags, giant: g.world.giant?.state, health: g.player.health
-            }),
+            state: () => g._debugState(),
             stats: () => g.stage.stats()
         };
     }

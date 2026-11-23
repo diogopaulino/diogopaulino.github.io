@@ -1,6 +1,12 @@
 /**
- * Input teclado + toque (stick virtual).
+ * Input teclado + toque (stick virtual, pad de olhar e botão de correr).
+ *
+ * Teclado: W/S ou ↑/↓ andar · A/D passo lateral (na bike: guidão) · ←/→ ou Q/E virar
+ *          R/F inclinar a câmera · Shift correr (na bike: sprint).
+ * Sem teclas presas: `blur`, aba oculta e perda de foco limpam tudo (clear()).
  */
+
+const BLOCK_DEFAULT = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']);
 
 export class Input {
     constructor() {
@@ -9,6 +15,7 @@ export class Input {
         this.turn = 0;
         this.lookY = 0;
         this.run = false;
+        this.runToggle = false; // botão "Correr" do toque
         this.keys = new Set();
         this.touch = { active: false, x: 0, y: 0, lookX: 0, lookY: 0 };
         this._bound = false;
@@ -19,23 +26,44 @@ export class Input {
         this._bound = true;
         window.addEventListener('keydown', this.onKeyDown);
         window.addEventListener('keyup', this.onKeyUp);
+        window.addEventListener('blur', this.clear);
+        document.addEventListener('visibilitychange', this.onVisibility);
     }
 
     unbind() {
         window.removeEventListener('keydown', this.onKeyDown);
         window.removeEventListener('keyup', this.onKeyUp);
+        window.removeEventListener('blur', this.clear);
+        document.removeEventListener('visibilitychange', this.onVisibility);
         this._bound = false;
     }
 
+    /** Solta tudo (troca de aba, perda de foco, pausa). */
+    clear = () => {
+        this.keys.clear();
+        this.touch.active = false;
+        this.touch.x = this.touch.y = 0;
+        this.touch.lookX = this.touch.lookY = 0;
+        this.forward = this.strafe = this.turn = this.lookY = 0;
+        this.run = false;
+    };
+
+    onVisibility = () => {
+        if (document.hidden) this.clear();
+    };
+
     onKeyDown = (e) => {
+        const tag = e.target?.tagName;
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+        if (e.metaKey || e.ctrlKey) return;
         this.keys.add(e.code);
-        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
-            e.preventDefault();
-        }
+        if (BLOCK_DEFAULT.has(e.code)) e.preventDefault();
     };
 
     onKeyUp = (e) => {
         this.keys.delete(e.code);
+        // macOS não envia keyup das outras teclas enquanto Cmd está pressionado
+        if (e.key === 'Meta') this.keys.clear();
     };
 
     setTouchMove(x, y) {
@@ -80,7 +108,7 @@ export class Input {
         this.strafe = Math.max(-1, Math.min(1, strafe));
         this.turn = Math.max(-1, Math.min(1, turn));
         this.lookY = Math.max(-1, Math.min(1, lookY));
-        this.run = k.has('ShiftLeft') || k.has('ShiftRight');
+        this.run = k.has('ShiftLeft') || k.has('ShiftRight') || this.runToggle;
 
         return this;
     }

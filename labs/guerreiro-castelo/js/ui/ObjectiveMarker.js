@@ -17,8 +17,8 @@
  */
 
 import * as THREE from 'three';
-import { ISLAND_MARKS } from '../world/Island.js?v=40';
-import { UP } from '../world/Dungeon.js?v=42';
+import { ISLAND_MARKS } from '../world/Island.js?v=50';
+import { UP } from '../world/Dungeon.js?v=50';
 
 /** Limites verticais do marcador em NDC (+1 = topo): o topo fica livre para o HUD. */
 const TOP = 0.55;
@@ -35,6 +35,7 @@ const TARGETS = {
     talk_crew: { labels: ['Conversar'] },
     horizon: { labels: ['Observar o horizonte'] },
     check_helm: { labels: ['Verificar o leme'] },
+    teco_play: { labels: ['Interagir com Teco'] },
     free_helm: { labels: ['Mandar Teco'] },
     reach_castle: { local: (g) => islandPoint(g, ISLAND_MARKS.view.x, ISLAND_MARKS.view.z - 2) },
     other_entrance: { labels: ['Mandar Teco'] },

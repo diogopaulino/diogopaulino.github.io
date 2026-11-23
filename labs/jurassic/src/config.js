@@ -38,23 +38,43 @@ export const WORLD = {
 };
 
 /**
- * Jipe — física arcade.
- *   aceleração = accel·aderência; aderência = 1 na trilha, 0,55 fora dela, ×0,85 na chuva
- *   suspensão: mola k e amortecedor c por roda (ver jeep.js)
+ * Jipe — utilitário 4×4 de safári com unidades SI (m, kg, s, N, W).
+ * As fórmulas estão no cabeçalho de jeep.js. Referências de bancada:
+ *   0–50 km/h ≈ 4 s · 0–80 km/h ≈ 9 s na trilha (equivale a 0–100 em ~13 s sem o regulador)
+ *   máxima 80 km/h na terra batida (regulador do parque) · ~50 km/h no mato
+ *   frenagem 80→0 ≈ 22 m na trilha seca (μ = 0,75, ABS)
+ *   raio mínimo de giro ≈ 5 m · rolagem ≈ 3° a 0,4 g
  */
 export const JEEP = {
-    accel: 15,
-    brake: 26,
-    friction: 2.2,
-    maxSpeed: 16.5,
-    reverseMax: 6.2,
-    turn: 1.5,
+    mass: 2100,            // kg: chassi, quatro ocupantes e equipamento
+    power: 80000,          // W entregues às rodas (≈ 110 cv no motor, 25 % de perda)
+    maxForce: 8200,        // N: força de tração máxima em 1ª (torque × redução / raio) ≈ 0,4 g
+    lowRangeSlope: 0.15,   // tan θ a partir da qual a reduzida automática entra (subida)
+    lowRangeSpeed: 6,      // m/s: a reduzida só atua devagar
+    cdA: 1.75,             // m²: Cd 0,55 × área frontal 3,2 m²
+    airDensity: 1.2,       // kg/m³
+    crrRoad: 0.025,        // resistência ao rolamento na terra batida
+    crrOff: 0.06,          // no capim/solo fofo
+    rough: 24,             // N/(m/s)²: perda nas irregularidades fora da trilha (pancada da suspensão)
+    muRoad: 0.75,          // atrito pneu-chão na trilha
+    muOff: 0.58,           // no capim
+    wetGrip: 0.8,          // multiplicador com o chão molhado
+    brakeDecel: 8,         // m/s² pedidos pelo pedal no fundo (limitado por μ·g)
+    engineBrake: 350,      // N: freio-motor fixo (+ 18·v)
+    governor: 22.8,        // m/s: regulador do parque (corta suave e assenta em ~80 km/h)
+    reverseMax: 5.5,       // m/s (~20 km/h) em ré
+    steerMax: 0.5,         // rad: esterço máximo das rodas dianteiras parado
+    steerRate: 2.6,        // rad/s: velocidade da caixa de direção
+    yawLag: 0.12,          // s: constante de tempo da guinada (inércia do chassi)
+    latStiff: 9,           // 1/s: quão rápido o pneu anula o deslizamento lateral
     radius: 1.9,
     wheelBase: 2.56,
     track: 1.62,
-    wheelRadius: 0.43
+    wheelRadius: 0.43,
+    gears: [7, 12.5, 18, 23.5] // m/s em que cada marcha chega a 4000 rpm (câmbio automático, só para o som e o HUD)
 };
 
+/** Câmera de perseguição: rumo suavizado, mola por eixo e campo de visão com a velocidade. */
 export const CAMERA = {
     distance: 9.5,
     minDistance: 6,
@@ -64,7 +84,34 @@ export const CAMERA = {
     lookAhead: 9,
     pitchMin: -0.14,
     pitchMax: 0.5,
-    defaultPitch: 0.02
+    defaultPitch: 0.02,
+    headingLambda: 3.2,    // 1/s: quão rápido o rumo da câmera alcança o do jipe
+    posLambda: 7,          // 1/s: mola horizontal
+    heightLambda: 3.5,     // 1/s: mola vertical (mais lenta: não sacode nos buracos)
+    recenter: 1.8,         // s sem mexer o mouse/dedo até a câmera voltar para trás do jipe
+    fovKick: 7             // graus a mais na velocidade máxima
+};
+
+/**
+ * Ataque do rex — perseguição justa:
+ *   aviso   ao chegar a `windupDist` m e de frente para o jipe, ele trava 0,6 s (HUD pisca "bote")
+ *   bote    0,35 s a 1,5× a corrida (~4,3 m de alcance); acerta se o jipe ainda estiver a ≤ `biteDist` m
+ *           → parado, leva a mordida; acelerando a ≥ 6 m/s durante o aviso, escapa
+ *   dano    1 ponto de integridade (o jipe tem `hull`); empurrão de `knockback` m/s para longe
+ *   folga   `iframes` s invulnerável depois de cada mordida; o rex recua e ruge 1,4 s
+ * Corrida do rex ≈ 8,2 m/s (30 km/h): o jipe passa disso em ~2,5 s acelerando na trilha.
+ */
+export const REX = {
+    windupDist: 7,
+    windup: 0.6,
+    lunge: 0.35,
+    lungeBoost: 1.5,
+    biteDist: 4.6,
+    recover: 1.4,
+    knockback: 5,
+    iframes: 2.5,
+    hull: 3,
+    chaseMax: 12
 };
 
 /**
@@ -72,19 +119,20 @@ export const CAMERA = {
  *   trees      árvores da selva            lod        distância malha → impostor (m)
  *   ferns…     plantas fotogramétricas     dinoNear   detalhe do dinossauro perto / longe
  *   nearDist   troca de LOD do dinossauro  rain       gotas de chuva
+ *   cullDist   além disso o animal some     burst      partículas novas por quadro (teto)
  */
 export const QUALITY = {
     low: {
         id: 'low', grass: 26, grassRange: 22, trees: 240, lod: 20, ferns: 50, shrubs: 26, rocks: 16, dinoNear: 1, dinoFar: 0, nearDist: 30,
-        rain: 1400, particles: 160, puddles: 26, headShadow: false, transmission: false, heroDetail: 1, flock: 3
+        rain: 1400, particles: 160, puddles: 26, headShadow: false, transmission: false, heroDetail: 1, flock: 3, cullDist: 150, burst: 24
     },
     medium: {
         id: 'medium', grass: 55, grassRange: 45, trees: 520, lod: 30, ferns: 150, shrubs: 70, rocks: 34, dinoNear: 2, dinoFar: 1, nearDist: 32,
-        rain: 3600, particles: 320, puddles: 46, headShadow: true, transmission: false, heroDetail: 1, flock: 4
+        rain: 3600, particles: 320, puddles: 46, headShadow: true, transmission: false, heroDetail: 1, flock: 4, cullDist: 200, burst: 40
     },
     high: {
         id: 'high', grass: 80, grassRange: 62, trees: 700, lod: 38, ferns: 260, shrubs: 110, rocks: 48, dinoNear: 2, dinoFar: 1, nearDist: 40,
-        rain: 6000, particles: 480, puddles: 64, headShadow: true, transmission: false, heroDetail: 1, flock: 5
+        rain: 6000, particles: 480, puddles: 64, headShadow: true, transmission: false, heroDetail: 1, flock: 5, cullDist: 250, burst: 60
     }
 };
 

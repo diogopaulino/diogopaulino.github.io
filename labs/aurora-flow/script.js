@@ -8,6 +8,25 @@
  * Campo: θ = noise3D(x·τ, y·τ, z) misturado com um dipolo 2D no ponteiro.
  * Cortinas: fibras verticais com envelope fBm; rosa no topo, verde na base.
  * Partículas: Euler + damping 0.97; ribbon = histórico de N pontos.
+ *
+ * Remaster — cortinas fisicamente plausíveis:
+ *   A aurora não nasce no horizonte: é uma cortina a ~100–300 km de altura,
+ *   vista de longe. Por isso a BORDA INFERIOR flutua no céu (35–60% da
+ *   altura do céu) e é a parte mais brilhante e nítida — verde do oxigênio
+ *   (OI 557,7 nm, ~100–150 km). Os raios sobem e esmaecem para o
+ *   vermelho/magenta (OI 630 nm, >200 km). Em atividade alta aparece uma
+ *   franja violeta do N2+ (427,8 nm) logo abaixo da borda.
+ *     base(x)   = topo + céu·(0,35…0,6) + A1·sin(k1·x + ω1·t) + A2·vn(k2·x + ω2·t)
+ *     brilho(x) = envelope(vn lento) · (1 + 1,6·|d base/dx|)  — dobras vistas
+ *                 de lado acumulam mais luz na linha de visada
+ *     raio(x)   = 0,55 + 0,45·vn(x·0,35 + t·0,6)            — estrias verticais
+ *   (vn = value noise 1D barato.) Desenho em canvas a 1/3 da resolução,
+ *   ampliado com suavização (brilho macio de graça) + bloom de 1/12.
+ *   O tempo das cortinas é em segundos reais: ondulação lenta (dezenas de s
+ *   por ciclo), como no céu de verdade.
+ *
+ * Simulação: dt real limitado (dt ≤ 1/20 s) normalizado a 60 Hz → mesmo
+ * ritmo em telas de 60, 90 ou 120 Hz sem descartar quadros.
  */
 
 const canvas = document.getElementById('canvas');
@@ -17,7 +36,16 @@ const skyCtx = sky.getContext('2d', { alpha: false });
 const land = document.createElement('canvas');
 const landCtx = land.getContext('2d', { alpha: true });
 
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+let reducedMotion = reducedMotionQuery.matches;
+const auroraLayer = document.createElement('canvas');
+const auroraCtx = auroraLayer.getContext('2d');
+const bloomLayer = document.createElement('canvas');
+const bloomCtx = bloomLayer.getContext('2d');
+const AURORA_DOWNSCALE = 3;
+let raySprite = null;
+let auroraSeconds = 0;
+let frameStep = 1; // quadros de 60 Hz equivalentes neste frame
 const coarse = window.matchMedia('(pointer: coarse)').matches;
 const isMobile = window.matchMedia('(max-width: 768px)').matches || coarse;
 
@@ -307,6 +335,10 @@ function resize() {
     cols = Math.floor(width / SCALE) + 1;
     rows = Math.floor(height / SCALE) + 1;
     flowField = new Float32Array(cols * rows);
+    auroraLayer.width = Math.max(1, Math.ceil(width / AURORA_DOWNSCALE));
+    auroraLayer.height = Math.max(1, Math.ceil(height / AURORA_DOWNSCALE));
+    bloomLayer.width = Math.max(1, Math.ceil(width / 12));
+    bloomLayer.height = Math.max(1, Math.ceil(height / 12));
     initStars();
     initIce();
     buildTerrain();
@@ -531,7 +563,7 @@ class Particle {
         }
         this.vx = 0;
         this.vy = 0;
-        this.color = current.colors[(Math.random() * current.colors.length) | 0];
+        this.colorIdx = (Math.random() * current.colors.length) | 0;
         this.alpha = Math.random() * 0.4 + 0.4;
         this.size = (Math.random() * 1.2 + 0.55) * particleSize;
         this.life = Math.random() * 240 + 80;
@@ -558,7 +590,7 @@ class Particle {
         const col = clamp((this.x / SCALE) | 0, 0, cols - 1);
         const row = clamp((this.y / SCALE) | 0, 0, rows - 1);
         const angle = flowField[col + row * cols];
-        const force = 0.4 * flowSpeed;
+        const force = 0.4 * flowSpeed * frameStep;
         this.vx += Math.cos(angle) * force;
         this.vy += Math.sin(angle) * force;
 
@@ -602,8 +634,9 @@ class Particle {
             }
         }
 
-        this.vx *= 0.972;
-        this.vy *= 0.972;
+        const damp = Math.pow(0.972, frameStep);
+        this.vx *= damp;
+        this.vy *= damp;
         const maxSpeed = flowStyle === 'chaos' ? 9.2 : 6.1;
         const speed = Math.hypot(this.vx, this.vy);
         if (speed > maxSpeed) {
@@ -612,9 +645,9 @@ class Particle {
         }
 
         this.pushTrail();
-        this.x += this.vx;
-        this.y += this.vy;
-        this.life--;
+        this.x += this.vx * frameStep;
+        this.y += this.vy * frameStep;
+        this.life -= frameStep;
 
         const hzn = horizonY();
         const margin = 36;
@@ -697,7 +730,7 @@ function updateFlowField() {
             flowField[i++] = fieldAngle(x, y, cx, cy);
         }
     }
-    zoff += 0.0017 * flowSpeed;
+    zoff += 0.0017 * flowSpeed * frameStep;
 }
 
 function fillSky(alpha) {
@@ -746,7 +779,7 @@ function drawStars() {
     }
     for (const star of stars) {
         if (star.y > hzn) continue;
-        star.twinkle += star.speed * flowSpeed;
+        star.twinkle += star.speed * flowSpeed * frameStep * (reducedMotion ? 0.1 : 1);
         const alpha = (Math.sin(star.twinkle) + 1) * 0.32 + 0.18;
         const px = star.x + parallaxX * (0.35 + star.layer);
         const py = star.y + parallaxY * (0.35 + star.layer);
@@ -818,52 +851,120 @@ function horizonY() {
     return height * t;
 }
 
-function drawAurora() {
+// Value noise 1D: hash por inteiro + interpolação suave. Barato o bastante
+// para centenas de colunas por quadro.
+function hash1(i) {
+    const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+    return x - Math.floor(x);
+}
+function vnoise(x) {
+    const i = Math.floor(x);
+    const f = x - i;
+    const u = f * f * (3 - 2 * f);
+    return hash1(i) * (1 - u) + hash1(i + 1) * u;
+}
+
+/* Sprite vertical de um raio (1 coluna): transparente no topo → vermelho
+   630 nm → verde 557,7 nm forte na base → corte nítido → franja violeta. */
+function buildRaySprite() {
+    const c = document.createElement('canvas');
+    c.width = 4;
+    c.height = 256;
+    const g = c.getContext('2d');
+    const green = current.colors[0];
+    const top = current.colors[3] || current.colors[2];
+    const mid = current.colors[1];
+    const fringe = current.colors[2];
+    const grad = g.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, hexAlpha(top, 0));
+    grad.addColorStop(0.3, hexAlpha(top, 0.16));
+    grad.addColorStop(0.58, hexAlpha(mid, 0.28));
+    grad.addColorStop(0.8, hexAlpha(green, 0.62));
+    grad.addColorStop(0.9, hexAlpha(green, 1));
+    grad.addColorStop(0.915, hexAlpha('#ffffff', 0.55));
+    grad.addColorStop(0.93, hexAlpha(fringe, 0.35));
+    grad.addColorStop(1, hexAlpha(fringe, 0));
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 4, 256);
+    raySprite = c;
+}
+
+function drawAurora(dtSec) {
     const intensity = auroraIntensity / 100;
+    const ac = auroraCtx;
+    const aw = auroraLayer.width;
+    const ah = auroraLayer.height;
+    ac.globalCompositeOperation = 'source-over';
+    ac.clearRect(0, 0, aw, ah);
     if (intensity <= 0.02) return;
+    if (!raySprite) buildRaySprite();
+
+    // Tempo das cortinas em segundos (movimento reduzido: quase parado).
+    const speed = reducedMotion ? 0.12 : 0.55 + flowSpeed * 0.45;
+    auroraSeconds += dtSec * speed;
+    curtainT += 0.002 * flowSpeed * frameStep * (reducedMotion ? 0.2 : 1);
+    kpBreath = reducedMotion ? 1 : 0.86 + Math.sin(auroraSeconds * 0.21) * 0.14;
+    const t = auroraSeconds;
+
     const hzn = horizonY();
-    const skyH = Math.max(90, hzn);
-    const short = height < 520;
-    const sheets = short || isMobile ? Math.min(current.sheets, 4) : current.sheets;
-    const step = short ? 4 : isMobile ? 3 : 1.5;
+    const skyH = Math.max(90, hzn) / AURORA_DOWNSCALE;
+    const sheets = isMobile || height < 520 ? Math.min(current.sheets, 3) : current.sheets;
+    const step = isMobile ? 2 : 1; // colunas do layer (já em 1/3 da resolução)
+    const altitude = clamp(auroraAltitude, 0.3, 1);
 
-    curtainT += 0.002 * flowSpeed;
-    kpBreath = 0.82 + Math.sin(curtainT * 1.3) * 0.18;
-
-    skyCtx.save();
-    skyCtx.globalCompositeOperation = 'lighter';
-    skyCtx.lineCap = 'round';
-
+    ac.globalCompositeOperation = 'lighter';
     for (let s = 0; s < sheets; s++) {
-        const phase = s * 19.7;
-        const topC = current.colors[(s + 2) % current.colors.length];
-        const botC = current.colors[s % current.colors.length];
-        const grad = skyCtx.createLinearGradient(0, 0, 0, hzn);
-        grad.addColorStop(0, hexAlpha(topC, 0.92));
-        grad.addColorStop(0.28, hexAlpha(current.colors[1], 0.78));
-        grad.addColorStop(0.62, hexAlpha(botC, 0.42));
-        grad.addColorStop(0.88, hexAlpha(botC, 0.12));
-        grad.addColorStop(1, hexAlpha(botC, 0));
-        skyCtx.strokeStyle = grad;
-        skyCtx.lineWidth = (isMobile ? 2.4 : 3.4) + s * 0.4;
-        skyCtx.globalAlpha = intensity * (0.92 - s * 0.12) * kpBreath;
-        skyCtx.beginPath();
-
-        for (let x = 0; x < width; x += step) {
-            const env = fbm(x * 0.0016 + phase, curtainT * 0.5 + s, s * 0.4);
-            const fold = Math.pow(clamp(Math.sin(x * 0.007 + curtainT + phase) * 0.5 + 0.5, 0, 1), 1.6);
-            const envelope = Math.pow(clamp(env * 0.5 + 0.5, 0, 1), 1.25) * (0.28 + fold * 0.85);
-            if (envelope < 0.14) continue;
-            const flicker = 0.62 + noise3D(x * 0.02, curtainT * 1.6, s) * 0.38;
-            const h = envelope * skyH * auroraAltitude * (0.55 + s * 0.1) * flicker;
-            const wobble = noise3D(x * 0.028, curtainT * 0.8, s + 2) * 14;
-            const yTop = hzn - h - skyH * 0.04 * s;
-            skyCtx.moveTo(x + wobble, yTop);
-            skyCtx.lineTo(x, hzn - 2);
+        const seed = s * 37.3 + 11;
+        // Cortinas de trás ficam mais altas no céu (perspectiva) e mais fracas.
+        const baseFrac = 0.62 - s * 0.09 - (altitude - 0.7) * 0.25;
+        const baseY0 = skyH * clamp(baseFrac, 0.25, 0.75);
+        const amp1 = skyH * (0.06 + 0.02 * s);
+        const amp2 = skyH * 0.07;
+        const k1 = (0.9 + s * 0.35) * Math.PI * 2 / aw;
+        const sheetAlpha = intensity * kpBreath * (1 - s * 0.2);
+        const rayH = skyH * (0.32 + 0.22 * altitude) * (1 - s * 0.12);
+        let prevY = 0;
+        for (let x = 0; x < aw; x += step) {
+            const y = baseY0
+                + Math.sin(x * k1 + t * (0.05 + s * 0.013) + seed) * amp1
+                + (vnoise(x * 0.012 + t * 0.03 + seed) - 0.5) * 2 * amp2;
+            const slope = x === 0 ? 0 : Math.abs(y - prevY) / step;
+            prevY = y;
+            // Envelope: a cortina tem trechos acesos e apagados que derivam.
+            let env = vnoise(x * 0.008 - t * 0.02 + seed * 3);
+            env = clamp((env - 0.28) / 0.5, 0, 1);
+            env = env * env * (3 - 2 * env);
+            if (env < 0.02) continue;
+            const fold = 1 + Math.min(1.6, slope * 1.6);
+            const ray = 0.55 + 0.45 * vnoise(x * 0.35 + t * 0.6 + seed);
+            const flicker = reducedMotion ? 1 : 0.88 + 0.12 * vnoise(x * 0.05 + t * 2.2 + seed);
+            const a = sheetAlpha * env * fold * ray * flicker * 0.55;
+            if (a < 0.01) continue;
+            const h = rayH * (0.7 + 0.5 * ray) * env;
+            // O sprite tem a borda na altura 0,9: alinha a borda com y.
+            const spriteH = h / 0.9;
+            ac.globalAlpha = Math.min(1, a);
+            ac.drawImage(raySprite, x, y - spriteH * 0.915, step + 0.6, spriteH);
         }
-        skyCtx.stroke();
     }
-    skyCtx.restore();
+    ac.globalAlpha = 1;
+
+    // Bloom barato: reduz para 1/12 e amplia de volta no composite.
+    bloomCtx.globalCompositeOperation = 'copy';
+    bloomCtx.drawImage(auroraLayer, 0, 0, bloomLayer.width, bloomLayer.height);
+}
+
+/* Composição no canvas principal (antes do lago e das montanhas). */
+function compositeAurora() {
+    if (auroraIntensity <= 2) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalAlpha = 0.55;
+    ctx.drawImage(bloomLayer, 0, 0, bloomLayer.width, bloomLayer.height, 0, 0, width, height);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(auroraLayer, 0, 0, auroraLayer.width, auroraLayer.height, 0, 0, width, height);
+    ctx.restore();
 }
 
 function drawFieldLines() {
@@ -891,43 +992,50 @@ function drawFieldLines() {
     skyCtx.restore();
 }
 
+// Buckets por cor reaproveitados entre quadros (sem Map/arrays novos no laço).
+let particleBuckets = [];
+
 function drawParticles() {
+    const nColors = current.colors.length;
+    if (particleBuckets.length !== nColors) {
+        particleBuckets = [];
+        for (let i = 0; i < nColors; i++) particleBuckets.push([]);
+    }
+    for (let i = 0; i < nColors; i++) particleBuckets[i].length = 0;
+    for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.update();
+        particleBuckets[p.colorIdx % nColors].push(p);
+    }
+
     skyCtx.save();
     skyCtx.globalCompositeOperation = blendMode;
     skyCtx.lineCap = 'round';
     skyCtx.lineJoin = 'round';
-    skyCtx.lineWidth = particleSize;
-
-    const groups = new Map();
-    for (const p of particles) {
-        p.update();
-        let g = groups.get(p.color);
-        if (!g) {
-            g = [];
-            groups.set(p.color, g);
-        }
-        g.push(p);
-    }
-
-    for (const [color, group] of groups) {
-        skyCtx.strokeStyle = color;
-        skyCtx.globalAlpha = 0.22;
+    // Plasma tênue: alfa baixo para não competir com as cortinas.
+    const soft = current.terrain === 'void' ? 0.9 : 0.45;
+    for (let c = 0; c < nColors; c++) {
+        const group = particleBuckets[c];
+        if (!group.length) continue;
+        skyCtx.strokeStyle = current.colors[c];
+        skyCtx.globalAlpha = 0.14 * soft;
         skyCtx.lineWidth = particleSize * 2.4;
         skyCtx.beginPath();
-        for (const p of group) p.trace(skyCtx);
+        for (let i = 0; i < group.length; i++) group[i].trace(skyCtx);
         skyCtx.stroke();
-        skyCtx.globalAlpha = 0.58;
+        skyCtx.globalAlpha = 0.42 * soft;
         skyCtx.lineWidth = particleSize;
         skyCtx.beginPath();
-        for (const p of group) p.trace(skyCtx);
+        for (let i = 0; i < group.length; i++) group[i].trace(skyCtx);
         skyCtx.stroke();
     }
 
-    skyCtx.globalAlpha = 0.62;
-    for (const p of particles) {
+    skyCtx.globalAlpha = 0.5 * soft;
+    for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
         if (!p.glow) continue;
         const r = p.size * 5.2;
-        const spr = getGlowSprite(p.color);
+        const spr = getGlowSprite(current.colors[p.colorIdx % nColors]);
         skyCtx.drawImage(spr, p.x - r, p.y - r, r * 2, r * 2);
     }
     skyCtx.restore();
@@ -953,9 +1061,9 @@ function drawMeteors() {
     skyCtx.lineCap = 'round';
     for (let i = meteors.length - 1; i >= 0; i--) {
         const m = meteors[i];
-        m.x += m.vx * flowSpeed;
-        m.y += m.vy * flowSpeed;
-        m.life *= 0.965;
+        m.x += m.vx * flowSpeed * frameStep;
+        m.y += m.vy * flowSpeed * frameStep;
+        m.life *= Math.pow(0.965, frameStep);
         if (m.life < 0.04 || m.y > horizonY()) {
             meteors.splice(i, 1);
             continue;
@@ -977,7 +1085,7 @@ function drawMeteors() {
 function spawnRipple(x, y) {
     ripples.push({ x, y, radius: 8, maxRadius: 280, alpha: 1 });
     wakes.push({ x, y, radius: 46, power: 12, life: 0.95 });
-    flash = Math.min(1, flash + 0.45);
+    if (!reducedMotion) flash = Math.min(1, flash + 0.45);
     auroraIntensity = clamp(auroraIntensity + 8, 0, 100);
 
     const burst = 280;
@@ -1083,6 +1191,12 @@ function drawLake() {
         const rippleX = Math.sin(time * 2.4 + i * 0.55) * (1.2 + ratio * 7.5);
         ctx.globalAlpha = (0.38 - ratio * 0.22) * (current.terrain === 'ice' ? 0.75 : 1);
         ctx.drawImage(sky, 0, srcY, sky.width, srcH, rippleX, dstY, width, stripH + 0.8);
+        // Reflexo da cortina (camada própria em 1/3 da resolução).
+        const aSrcY = (srcY / sky.height) * auroraLayer.height;
+        const aSrcH = Math.max(1, (srcH / sky.height) * auroraLayer.height);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.drawImage(auroraLayer, 0, aSrcY, auroraLayer.width, aSrcH, rippleX, dstY, width, stripH + 0.8);
+        ctx.globalCompositeOperation = 'source-over';
     }
     ctx.restore();
 
@@ -1145,27 +1259,32 @@ function animate(frameNow) {
     if (paused) return;
 
     const stamp = frameNow === undefined ? performance.now() : frameNow;
-    // Meio milissegundo de folga: a 60Hz o intervalo oscila em torno de 16,67ms
-    // e um teste rígido descartaria um frame sim, outro não.
-    if (stamp - lastFrameAt < FRAME_MS - 0.5) return;
+    // dt real, limitado a 1/20 s (aba que volta, engasgo) e expresso em
+    // "quadros de 60 Hz": em 120 Hz cada passo vale 0,5 e o céu anda igual.
+    const dtMs = lastFrameAt === -Infinity ? FRAME_MS : Math.min(50, Math.max(4, stamp - lastFrameAt));
     lastFrameAt = stamp;
+    frameStep = dtMs / FRAME_MS;
+    const dtSec = dtMs / 1000;
 
-    time += 0.016 * flowSpeed;
-    flash *= 0.9;
+    time += 0.016 * flowSpeed * frameStep;
+    flash *= Math.pow(0.9, frameStep);
+    if (reducedMotion) flash = 0;
     if (auroraIntensity > current.aurora) {
-        auroraIntensity += (current.aurora - auroraIntensity) * 0.02;
+        auroraIntensity += (current.aurora - auroraIntensity) * 0.02 * frameStep;
     }
 
-    fillSky(warmFrames < 4 ? 1 : 1 - trailLength);
+    // O rastro depende do passo: fade = 1 − trail^frameStep mantém o mesmo
+    // comprimento visual em qualquer taxa de quadros.
+    fillSky(warmFrames < 4 ? 1 : 1 - Math.pow(trailLength, frameStep));
     warmFrames++;
     drawStars();
     drawMoon();
     updateFlowField();
-    drawAurora();
+    drawAurora(dtSec);
     drawFieldLines();
     drawParticles();
 
-    meteorTimer++;
+    meteorTimer += frameStep;
     if (!reducedMotion && meteorTimer > 220 + Math.random() * 400) {
         meteorTimer = 0;
         if (Math.random() < 0.55) spawnMeteor(false);
@@ -1176,6 +1295,7 @@ function animate(frameNow) {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
     ctx.drawImage(sky, 0, 0, sky.width, sky.height, 0, 0, width, height);
+    compositeAurora();
     drawLake();
     ctx.drawImage(land, 0, 0, land.width, land.height, 0, 0, width, height);
 
@@ -1220,7 +1340,7 @@ function applyScene(key, silent) {
     flowStyle = scene.flow;
     interactionMode = scene.interaction;
     blendMode = scene.blend;
-    flowSpeed = scene.speed;
+    flowSpeed = scene.speed * (reducedMotion ? 0.35 : 1);
     particleSize = scene.size;
     trailLength = scene.trail / 100;
     turbulence = scene.turb;
@@ -1229,7 +1349,8 @@ function applyScene(key, silent) {
     auroraAltitude = scene.altitude / 100;
     horizon = height * scene.horizon;
 
-    const density = isMobile ? Math.max(420, Math.round(scene.density * 0.48)) : scene.density;
+    // Densidade mais contida: o plasma acompanha, quem manda é a cortina.
+    const density = Math.round((isMobile ? Math.max(360, scene.density * 0.4) : scene.density * 0.62));
     setDensity(density);
 
     const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
@@ -1248,6 +1369,9 @@ function applyScene(key, silent) {
     document.querySelectorAll('.scene-chip').forEach((c) => {
         c.classList.toggle('active', c.dataset.scene === key);
         c.setAttribute('aria-selected', c.dataset.scene === key ? 'true' : 'false');
+        if (c.dataset.scene === key && !silent && c.scrollIntoView) {
+            c.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' });
+        }
     });
     document.querySelectorAll('.tool-btn[data-mode]').forEach((b) => {
         b.classList.toggle('active', b.dataset.mode === interactionMode);
@@ -1261,14 +1385,30 @@ function applyScene(key, silent) {
     applyThemeVars();
     buildTerrain();
     for (const particle of particles) {
-        particle.color = current.colors[(Math.random() * current.colors.length) | 0];
+        particle.colorIdx = (Math.random() * current.colors.length) | 0;
         particle.size = (Math.random() * 1.2 + 0.55) * particleSize;
     }
+    buildRaySprite();
+    saveSettings();
 
     fillSky(1);
     warmFrames = 0;
-    flash = 0.65;
+    flash = reducedMotion ? 0 : 0.65;
     if (!silent) showToast(`${scene.name} · ${scene.tag}`);
+}
+
+const SETTINGS_KEY = 'aurora-flow-v2';
+function saveSettings() {
+    try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify({ scene: currentKey }));
+    } catch (err) { /* armazenamento indisponível */ }
+}
+
+function loadSettings() {
+    try {
+        const data = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null');
+        if (data && scenes[data.scene]) currentKey = data.scene;
+    } catch (err) { /* noop */ }
 }
 
 function buildSceneRail() {
@@ -1334,60 +1474,61 @@ function handlePointer(x, y) {
     }
 }
 
+/* Pointer Events unificados (mouse, toque e caneta). Só o primeiro dedo
+   mexe no campo; um segundo dedo não "teleporta" o ímã. */
 let pointerMoved = false;
 let pointerDownX = 0;
 let pointerDownY = 0;
+let activePointer = null;
 
-canvas.addEventListener('mousemove', (e) => {
-    if (painting && (Math.abs(e.clientX - pointerDownX) > 6 || Math.abs(e.clientY - pointerDownY) > 6)) {
-        pointerMoved = true;
-    }
-    handlePointer(e.clientX, e.clientY);
-});
-canvas.addEventListener('mouseleave', () => {
-    mouseActive = false;
-    painting = false;
-});
-canvas.addEventListener('mousedown', (e) => {
+canvas.addEventListener('pointerdown', (e) => {
+    if (activePointer !== null && activePointer !== e.pointerId) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    activePointer = e.pointerId;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
     painting = true;
     pointerMoved = false;
     pointerDownX = e.clientX;
     pointerDownY = e.clientY;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    handlePointer(e.clientX, e.clientY);
+    dismissHint();
+});
+
+canvas.addEventListener('pointermove', (e) => {
+    if (activePointer !== null && e.pointerId !== activePointer) return;
+    if (e.pointerType !== 'mouse' && activePointer === null) return;
+    const slop = e.pointerType === 'mouse' ? 6 : 10;
+    if (painting && (Math.abs(e.clientX - pointerDownX) > slop || Math.abs(e.clientY - pointerDownY) > slop)) {
+        pointerMoved = true;
+    }
     handlePointer(e.clientX, e.clientY);
 });
-canvas.addEventListener('mouseup', (e) => {
-    if (!pointerMoved) spawnRipple(e.clientX, e.clientY);
+
+function endPointer(e, cancelled) {
+    if (e.pointerId !== activePointer) return;
+    activePointer = null;
+    if (!cancelled && painting && !pointerMoved) spawnRipple(e.clientX, e.clientY);
     painting = false;
+    if (e.pointerType !== 'mouse') mouseActive = false;
+}
+
+canvas.addEventListener('pointerup', (e) => endPointer(e, false));
+canvas.addEventListener('pointercancel', (e) => endPointer(e, true));
+canvas.addEventListener('pointerleave', (e) => {
+    if (e.pointerType === 'mouse' && activePointer === null) {
+        mouseActive = false;
+        painting = false;
+    }
 });
 
-let touchMoved = false;
-let touchStartX = 0;
-let touchStartY = 0;
-
-canvas.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    const t = e.touches[0];
-    touchStartX = t.clientX;
-    touchStartY = t.clientY;
-    touchMoved = false;
-    painting = true;
-    handlePointer(t.clientX, t.clientY);
-}, { passive: false });
-
-canvas.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    const t = e.touches[0];
-    if (Math.abs(t.clientX - touchStartX) > 8 || Math.abs(t.clientY - touchStartY) > 8) {
-        touchMoved = true;
-    }
-    handlePointer(t.clientX, t.clientY);
-}, { passive: false });
-
-canvas.addEventListener('touchend', () => {
-    if (!touchMoved) spawnRipple(mouseX, mouseY);
-    mouseActive = false;
-    painting = false;
-}, { passive: true });
+let hintDismissed = false;
+function dismissHint() {
+    if (hintDismissed) return;
+    hintDismissed = true;
+    document.getElementById('hint')?.classList.add('is-gone');
+}
 
 document.querySelectorAll('.tool-btn[data-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -1527,10 +1668,28 @@ document.addEventListener('keydown', (e) => {
 if (window.LabRuntime) LabRuntime.debounceResize(resize);
 else window.addEventListener('resize', resize);
 
-if (reducedMotion) {
-    flowSpeed = 0.35;
-}
+const onMotionPref = () => {
+    reducedMotion = reducedMotionQuery.matches;
+    applyScene(currentKey, true);
+};
+if (reducedMotionQuery.addEventListener) reducedMotionQuery.addEventListener('change', onMotionPref);
+else if (reducedMotionQuery.addListener) reducedMotionQuery.addListener(onMotionPref);
 
+// Sair da aba: solta o ponteiro (evita ímã "preso" na volta).
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        activePointer = null;
+        painting = false;
+        mouseActive = false;
+        lastFrameAt = -Infinity;
+    }
+});
+window.addEventListener('blur', () => {
+    activePointer = null;
+    painting = false;
+});
+
+loadSettings();
 buildSceneRail();
 resize();
 applyScene(currentKey, true);

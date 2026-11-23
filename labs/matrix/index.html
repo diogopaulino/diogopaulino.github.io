@@ -26,7 +26,7 @@
     <meta name="theme-color" content="#000000">
     <link rel="stylesheet" href="/assets/fonts/share-tech-mono/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -98,6 +98,17 @@
                 </div>
             </template>
             <template data-slot="actions">
+                <button id="pauseBtn" class="icon-btn" aria-label="Pausar a chuva" aria-pressed="false"
+                    title="Pausar (Espaço)" type="button">
+                    <svg class="ic-pause" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <path d="M9 5v14M15 5v14" />
+                    </svg>
+                    <svg class="ic-play" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linejoin="round" aria-hidden="true" hidden>
+                        <path d="M7 5l12 7-12 7z" />
+                    </svg>
+                </button>
                 <button id="cinema" class="icon-btn" aria-label="Modo cinema" title="Modo cinema (H)" type="button">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round">
@@ -119,6 +130,10 @@
         </header>
 
         <button id="cinemaExit" class="cinema-exit" type="button">sair [esc]</button>
+
+        <button id="pauseBadge" class="pause-badge" type="button" hidden>
+            <span aria-hidden="true">❚❚</span> pausado · toque para continuar
+        </button>
 
         <button id="toggleControls" class="toggle-controls-btn" type="button"
             aria-label="Mostrar configurações" title="Configurações (C)">
@@ -337,7 +352,7 @@
     </main>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=3" defer></script>
+    <script src="script.js?v=4" defer></script>
 </body>
 
 </html>

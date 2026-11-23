@@ -39,4 +39,8 @@ export function bindGameKeyboard({ moves, actions, held, enabled, onAction, onPr
     window.addEventListener('keydown', keydown);
     window.addEventListener('keyup', keyup);
     window.addEventListener('blur', reset);
+    // Trocar de aba (Cmd+Tab, gesto no celular) nem sempre dispara blur: solta as teclas também.
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) reset();
+    });
 }

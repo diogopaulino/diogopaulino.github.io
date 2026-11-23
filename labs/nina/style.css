@@ -880,3 +880,47 @@ kbd {
     max-width: 100%;
   }
 }
+
+/* Stick: o botão volta ao centro com mola ao soltar; ativo ganha brilho. */
+.stick i {
+    transition: transform 0.18s var(--ease);
+}
+
+.stick.is-active i {
+    transition: none;
+}
+
+.stick.is-active {
+    border-color: color-mix(in oklab, var(--gold) 70%, transparent);
+    box-shadow: 0 0 0 6px color-mix(in oklab, var(--gold) 12%, transparent);
+}
+
+.pad:active {
+    transform: scale(0.94);
+}
+
+/* Celular estreito em pé: HUD mais baixo para sobrar vale entre o topo e os controles. */
+@media (max-width: 420px) and (orientation: portrait) {
+    .hud-top {
+        gap: 0.45rem;
+    }
+
+    .panel {
+        padding: 0.5rem 0.7rem;
+    }
+
+    .friend-panel, .berry-panel {
+        min-width: 0;
+    }
+
+    .objective {
+        font-size: 0.88rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .brand-mark, .stick i, .guide-arrow {
+        animation: none;
+        transition: none;
+    }
+}

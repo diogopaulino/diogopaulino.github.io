@@ -144,3 +144,34 @@ test('every puzzle key move is legal and the expected outcome holds', () => {
         assert.ok(!g.hanging(m.to) || g.status().over, `${pz.id}: key move hangs`);
     }
 });
+
+test('en passant square only counts for repetition when the capture is playable', () => {
+    // Sem peão preto ao lado de e4, a casa e3 não distingue a posição.
+    const g = new Chess('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
+    move(g, 'e2', 'e4');
+    assert.equal(g.positionKey().split(' ')[3], '-');
+    const h = new Chess('4k3/8/8/8/3p4/8/4P3/4K3 w - - 0 1');
+    move(h, 'e2', 'e4');
+    assert.equal(h.positionKey().split(' ')[3], 'e3');
+});
+
+test('same-colour bishops cannot mate; opposite colours or a pawn still can', () => {
+    assert.equal(new Chess('4k3/8/8/8/8/8/8/2B1KB2 w - - 0 1').status().over, false); // c1 e f1: cores diferentes
+    assert.equal(new Chess('4kb2/8/8/8/8/8/8/2B1K3 w - - 0 1').status().reason, 'material insuficiente'); // c1 e f8: mesma cor
+    assert.equal(new Chess('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1').status().over, false);
+    assert.equal(new Chess('4k3/8/8/8/8/8/8/1NN1K3 w - - 0 1').status().over, false);
+});
+
+test('search with quiescence does not grab a defended pawn with the queen', () => {
+    const g = new Chess('4k3/8/4p3/3p4/8/8/8/3QK3 w - - 0 1');
+    for (const level of ['praticante', 'clube']) {
+        const m = pickMove(g, level, Math.random, { budgetMs: 300 });
+        assert.notEqual(`${m.from}-${m.to}`, `${parseAlg('d1')}-${parseAlg('d5')}`);
+    }
+});
+
+test('a tiny time budget still returns a legal move', () => {
+    const g = new Chess('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1');
+    const m = pickMove(g, 'clube', Math.random, { budgetMs: 1 });
+    assert.ok(g.findMove(m.from, m.to, m.promo || 'q'));
+});

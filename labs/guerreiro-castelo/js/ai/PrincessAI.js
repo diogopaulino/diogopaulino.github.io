@@ -1,9 +1,12 @@
 /**
  * Camila segue Dico com offset sem bloquear passagens estreitas.
+ * Ritmo: velocidade = clamp(1,8·distância, 1,4, teto) — teto 5,2 m/s seguindo, 7 m/s na
+ * fuga — e acelera/freia com inércia (λ = 6/s). Ficou para trás mais de 14 m (curva
+ * fechada, porta) → reaparece logo atrás de Dico, sem nunca prender o jogador.
  */
 
 import * as THREE from 'three';
-import { damp } from '../utils/math.js';
+import { damp } from '../utils/math.js?v=50';
 
 export class PrincessAI {
     constructor(camila) {
@@ -51,19 +54,23 @@ export class PrincessAI {
         const dz = tz - c.position.z;
         const dist = Math.hypot(dx, dz);
         const run = this.state === 'RUN' || this.state === 'ESCAPE';
-        const spd = run ? 5.6 : 3.4;
+        const top = run ? 7 : 5.2;
 
-        if (dist > 1.15) {
-            c.position.x += (dx / dist) * spd * dt;
-            c.position.z += (dz / dist) * spd * dt;
-            c.position.y = damp(c.position.y, ty, 8, dt);
-            this.facing = Math.atan2(dx, dz);
-            c.speed = spd;
-        } else {
-            c.speed = 0;
-            c.position.y = damp(c.position.y, ty, 8, dt);
-            this.facing = p.facing;
+        if (dist > 14) {
+            c.position.set(tx, ty, tz);
+            this.v = 0;
         }
+        const want = dist > 1.15 ? Math.min(top, Math.max(1.4, dist * 1.8)) : 0;
+        this.v = damp(this.v || 0, want, 6, dt);
+        if (this.v > 0.05 && dist > 0.2) {
+            const step = Math.min(dist, this.v * dt);
+            c.position.x += (dx / dist) * step;
+            c.position.z += (dz / dist) * step;
+            if (dist > 1.15) this.facing = Math.atan2(dx, dz);
+        }
+        if (dist <= 1.15) this.facing = p.facing;
+        c.position.y = damp(c.position.y, ty, 8, dt);
+        c.speed = this.v;
 
         if (Math.hypot(c.position.x - this.last.x, c.position.z - this.last.z) < 0.01 && dist > 2) {
             this.stuck += dt;

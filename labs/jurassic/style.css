@@ -1162,3 +1162,142 @@ body[data-state="pause"] [data-lab-footer] {
 .pad-observe[data-ready] { animation: observeReady 0.9s ease-in-out infinite alternate; }
 @keyframes observeReady { to { box-shadow: 0 0 0 10px color-mix(in oklab, var(--amber) 30%, transparent), 0 10px 26px rgb(196 106 18 / 0.4); } }
 @media (prefers-reduced-motion: reduce) { .pad-observe[data-ready] { animation: none; outline: 3px solid var(--amber); } }
+
+/* ================================================================
+   2026-11 · remaster: física, mordida justa e HUD que não cobre a pista
+   — marcha e integridade no painel de velocidade
+   — alerta do rex vira faixa compacta no topo (nível 2 = bote iminente)
+   — dica de onboarding, clarão de dano, loading com saída
+   ================================================================ */
+.speed-row { flex-wrap: wrap; }
+.gear {
+    margin-left: auto;
+    min-width: 2.1em;
+    padding: 0.05rem 0.4rem;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--fog);
+}
+.hull {
+    display: flex;
+    gap: 3px;
+    margin: 0.35rem 0 0.25rem;
+}
+.hull i {
+    flex: 1 1 0;
+    height: 5px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--leaf), oklch(66% 0.14 140));
+    transition: background 0.3s, opacity 0.3s;
+}
+.hull[data-low="true"] i { background: var(--blood); }
+.hull i[data-off] { background: rgb(255 255 255 / 0.12); }
+
+.hit-flash {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    opacity: 0;
+    background: radial-gradient(120% 90% at 50% 50%, transparent 35%, rgb(200 30 20 / 0.55) 100%);
+}
+.hit-flash.on { animation: hitFlash 0.6s ease-out; }
+@keyframes hitFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+/* alerta do rex: faixa compacta no fluxo logo abaixo da seta-guia — nunca sobre o jipe ou a pista */
+.danger {
+    position: static;
+    translate: none;
+    display: block;
+    width: fit-content;
+    margin: 0.5rem auto 0;
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    font-size: clamp(0.85rem, 2.6vw, 1.05rem);
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    white-space: normal;
+    max-width: min(30rem, calc(100% - 2rem));
+    animation: dangerPulse 0.8s ease-in-out infinite alternate;
+}
+.danger[data-level="2"] {
+    background: oklch(62% 0.22 28);
+    box-shadow: 0 0 0 4px rgb(255 220 200 / 0.35), 0 0 40px rgb(255 60 30 / 0.6);
+    animation-duration: 0.18s;
+    text-transform: uppercase;
+}
+
+.coach {
+    position: absolute;
+    left: 50%;
+    bottom: calc(1.2rem + var(--safe-bottom));
+    translate: -50% 0;
+    margin: 0;
+    max-width: min(28rem, calc(100% - 2rem));
+    padding: 0.55rem 1rem;
+    border-radius: 12px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.35;
+    animation: coachIn 0.5s var(--ease);
+}
+.coach[hidden] { display: none; }
+@keyframes coachIn { from { opacity: 0; translate: -50% 8px; } }
+
+.loading-stuck { margin-top: 1rem; display: grid; gap: 0.6rem; justify-items: center; }
+.loading-stuck[hidden] { display: none; }
+.loading-stuck p { margin: 0; font-size: 0.85rem; color: var(--text-soft); }
+
+/* No toque o centro de baixo é entre o direcional e o OBSERVAR: dica e alerta sobem. */
+@media (pointer: coarse) {
+    .coach {
+        bottom: calc(9.4rem + var(--safe-bottom));
+        font-size: 0.82rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .card-actions { flex-wrap: wrap; justify-content: center; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    /* deitado: tudo compacto e no alto, a pista do meio fica livre */
+    .danger {
+        margin-top: 0.3rem;
+        padding: 0.25rem 0.8rem;
+        font-size: 0.78rem;
+    }
+    /* deitado não há faixa livre embaixo (direcional, som/pausa, observar): a dica sobe para o fluxo do topo */
+    .coach {
+        position: static;
+        translate: none;
+        width: fit-content;
+        margin: 0.3rem auto 0;
+        max-width: min(24rem, calc(100% - 2rem));
+        padding: 0.25rem 0.7rem;
+        font-size: 0.74rem;
+        animation: none;
+    }
+    .hull { margin: 0.2rem 0 0.1rem; }
+    .hull i { height: 4px; }
+    .gear { font-size: 0.68rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .danger[data-level="2"] { animation: none; }
+    .hit-flash.on { animation-duration: 0.01s; }
+    .coach { animation: none; }
+}
+
+/* alvos de toque ≥ 44 px também nos ajustes */
+.field select,
+.field input[type="range"] { min-height: 44px; }

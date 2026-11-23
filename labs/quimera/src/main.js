@@ -6,6 +6,10 @@
  * o centro da área livre da tela — o que sobra entre o cabeçalho/cartão e o painel de peças.
  *   distância = (altura enquadrada / 2) / tan(fov/2) / (altura livre / altura da tela)
  * Corpo inteiro: da base da plataforma ao topo do chapéu. Busto (tecla C): ombros e cabeça.
+ *
+ * Fluxo sem trava: carregamento com prazo (LOAD_TIMEOUT/WARMUP_TIMEOUT) e botão "Tentar de novo";
+ * erro num quadro é registrado uma vez e o laço segue; histórico de combinações (Desfazer:
+ * Ctrl/⌘+Z ou U, até HISTORY_MAX passos); preferências (giro, som, enquadramento) persistidas.
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -17,18 +21,25 @@ import { Character } from './character.js?v=82';
 import { createStudio, PLINTH_TOP } from './studio.js?v=81';
 import { setSculptTier } from './sculpt.js';
 import { preload } from '../../shared/gfx/assets.js';
-import { StudioAudio } from './audio.js';
+import { StudioAudio } from './audio.js?v=83';
 
 const $ = (sel) => document.querySelector(sel);
 const QUERY = new URLSearchParams(location.search);
 const DEBUG = QUERY.has('debug');   // ?debug=1 expõe window.__lab; ?tier=low|medium|high força a qualidade
+const PREFS_KEY = 'quimera-prefs-v1';
+const HISTORY_MAX = 40;             // passos de desfazer guardados
+const LOAD_TIMEOUT = 6000;          // ms: texturas/modelos opcionais — passado o prazo, abre com o que chegou
+const WARMUP_TIMEOUT = 8000;        // ms: compilação de shaders; depois disso compila sob demanda
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const withTimeout = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise((r) => setTimeout(r, ms))]);
 
 class Quimera {
     constructor() {
         this.canvas = $('#scene');
         this.audio = new StudioAudio();
         this.ids = { head: 'pirate', body: 'sailor', accessory: 'astronaut' };
-        this.autoRotate = true;
+        this.history = [];                  // combinações anteriores (pilha do Desfazer)
+        this.autoRotate = !REDUCED_MOTION;  // movimento reduzido: plataforma parada por padrão
         this.uiHidden = false;
         this.frame = 'full';
         this.raycaster = new THREE.Raycaster();
@@ -40,15 +51,40 @@ class Quimera {
         this.fit = { dist: 6, y: 1.1, dx: 0, dy: 0 };
         this.userZoom = 1;
         this.lookPoint = new THREE.Vector3();
+        this._off = new THREE.Vector3();    // reaproveitado no reenquadramento (sem alocar por quadro)
+        this._frameErr = false;
+    }
+
+    /** Erro fatal no carregamento: mensagem + botão de recarregar (nunca fica no loading infinito). */
+    _fail(msg) {
+        const text = $('#loadingText');
+        if (text) text.textContent = msg;
+        const btn = $('#reloadBtn');
+        if (btn) {
+            btn.hidden = false;
+            btn.onclick = () => location.reload();
+            btn.focus?.();
+        }
+        $('#loading')?.classList.add('is-failed');
     }
 
     async init() {
+        try {
+            await this._init();
+        } catch (err) {
+            console.error('[quimera] falha ao iniciar', err);
+            this._fail('Não deu para montar o ateliê neste aparelho.');
+        }
+    }
+
+    async _init() {
         window.LabShell?.init();
         this._restore();
+        this._restorePrefs();
         const theme = window.LabTheme?.current() || 'dark';
         this.studio = createStudio({ canvas: this.canvas, theme, tier: QUERY.get('tier') || 'auto' });
         if (!this.studio) {
-            $('#loading')?.classList.add('is-done');
+            this._fail('Seu navegador não liberou o 3D (WebGL). Tente outro navegador ou recarregue.');
             return;
         }
         const stage = this.studio.stage;
@@ -75,15 +111,23 @@ class Quimera {
         this._hud();
         this._events();
         // texturas e modelos usados pelas peças chegam atrás da tela de carregamento
-        await Promise.race([
+        await withTimeout(
             Promise.all([stage.ready, preload({ textures: ['rusty_metal_02', 'brown_leather', 'fabric_pattern_07', 'denim_fabric', 'oak_wood_planks', 'dark_wooden_planks'] })]),
-            new Promise((r) => setTimeout(r, 6000))
-        ]);
-        this.applyMix(this.ids, { instant: true, silent: true });
+            LOAD_TIMEOUT
+        );
+        this.applyMix(this.ids, { instant: true, silent: true, record: false });
         this._layout(true);
-        await stage.warmup();
+        await withTimeout(stage.warmup(), WARMUP_TIMEOUT);
         $('#loading')?.classList.add('is-done');
-        stage.start((dt, t) => this.update(dt, t));
+        stage.start((dt, t) => {
+            // um erro num quadro não pode congelar o ateliê: registra uma vez e segue
+            try {
+                this.update(dt, t);
+            } catch (err) {
+                if (!this._frameErr) console.error('[quimera] erro no quadro', err);
+                this._frameErr = true;
+            }
+        });
         if (DEBUG) window.__lab = this;
     }
 
@@ -102,6 +146,43 @@ class Quimera {
                 }
             }
         } catch { /* ignore */ }
+    }
+
+    _restorePrefs() {
+        try {
+            const p = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
+            if (!p) return;
+            if (typeof p.autoRotate === 'boolean') this.autoRotate = p.autoRotate;
+            if (p.frame === 'full' || p.frame === 'bust') this.frame = p.frame;
+            if (typeof p.muted === 'boolean') this.audio.enabled = !p.muted;
+        } catch { /* ignore */ }
+    }
+
+    _savePrefs() {
+        try {
+            localStorage.setItem(PREFS_KEY, JSON.stringify({
+                autoRotate: this.autoRotate, frame: this.frame, muted: !this.audio.enabled
+            }));
+        } catch { /* ignore */ }
+    }
+
+    /** Empilha a combinação atual antes de trocá-la (ignora repetição da mesma combinação). */
+    _record() {
+        const last = this.history[this.history.length - 1];
+        if (last && toHash(last) === toHash(this.ids)) return;
+        this.history.push({ ...this.ids });
+        if (this.history.length > HISTORY_MAX) this.history.shift();
+    }
+
+    undo() {
+        const prev = this.history.pop();
+        if (!prev) {
+            this.toast('Nada para desfazer');
+            return;
+        }
+        this.audio.resume();
+        this.applyMix(prev, { record: false });
+        this.toast('↶ Desfeito', 1200);
     }
 
     _persist() {
@@ -126,6 +207,7 @@ class Quimera {
         $('#fullscreen').addEventListener('click', () => this.toggleFullscreen());
         $('#photoBtn')?.addEventListener('click', () => this.photo());
         $('#shareBtn')?.addEventListener('click', () => this.share());
+        $('#undoBtn')?.addEventListener('click', () => this.undo());
 
         document.querySelectorAll('[data-step]').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -138,8 +220,9 @@ class Quimera {
         document.querySelectorAll('[data-slot-select]').forEach((sel) => {
             sel.addEventListener('change', () => {
                 const slot = sel.dataset.slotSelect;
-                this.ids[slot] = sel.value;
-                this.applyMix(this.ids);
+                if (!KIT_BY_ID[sel.value]) return;
+                this.audio.resume();
+                this.applyMix({ ...this.ids, [slot]: sel.value });
             });
         });
     }
@@ -164,9 +247,12 @@ class Quimera {
         $('#rotateBtn')?.setAttribute('aria-pressed', String(this.autoRotate));
         $('#muteBtn')?.setAttribute('aria-pressed', String(!this.audio.enabled));
         $('#frameBtn')?.setAttribute('aria-pressed', String(this.frame === 'bust'));
+        const undo = $('#undoBtn');
+        if (undo) undo.disabled = this.history.length === 0;
     }
 
-    applyMix(ids, { instant = false, silent = false } = {}) {
+    applyMix(ids, { instant = false, silent = false, record = true } = {}) {
+        if (record && toHash(ids) !== toHash(this.ids)) this._record();
         const accChanged = ids.accessory !== this.character.fig?.ids.accessory;
         this.ids = { ...ids };
         this.character.setMix(this.ids, { instant });
@@ -178,6 +264,7 @@ class Quimera {
     }
 
     step(slot, dir) {
+        this._record();
         const i = wrapIndex(kitIndex(this.ids[slot]) + dir);
         this.ids[slot] = KITS[i].id;
         this.character.setMix(this.ids);
@@ -191,13 +278,19 @@ class Quimera {
 
     surprise() {
         this.audio.resume();
-        this.applyMix(randomIds(true));
+        // sorteia de novo se cair na mesma combinação: a Surpresa nunca pode "não fazer nada"
+        let ids = randomIds(true);
+        for (let i = 0; i < 4 && toHash(ids) === toHash(this.ids); i++) ids = randomIds(true);
+        this.applyMix(ids);
         this.audio.pluck(0);
     }
 
     fullSet() {
         this.audio.resume();
-        const kit = KITS[Math.floor(Math.random() * KITS.length)];
+        // conjunto completo de um kit diferente do conjunto que já está na plataforma
+        const full = this.ids.head === this.ids.body && this.ids.body === this.ids.accessory ? this.ids.head : null;
+        const pool = full ? KITS.filter((k) => k.id !== full) : KITS;
+        const kit = pool[Math.floor(Math.random() * pool.length)];
         this.applyMix({ head: kit.id, body: kit.id, accessory: kit.id });
     }
 
@@ -217,11 +310,13 @@ class Quimera {
         this.audio.resume();
         this.audio.setEnabled(!this.audio.enabled);
         this._syncHud();
+        this._savePrefs();
     }
 
     toggleRotate() {
         this.autoRotate = !this.autoRotate;
         this._syncHud();
+        this._savePrefs();
     }
 
     /** Alterna corpo inteiro ↔ close no busto. */
@@ -230,11 +325,13 @@ class Quimera {
         this.userZoom = 1;
         this._syncHud();
         this._layout(false);
+        this._savePrefs();
     }
 
     toggleFullscreen() {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
-        else document.exitFullscreen?.();
+        // iOS Safari não tem Fullscreen API para páginas: promessa rejeitada não pode vazar
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen?.()?.catch?.(() => {});
+        else document.exitFullscreen?.()?.catch?.(() => {});
     }
 
     /** Aviso curto no rodapé (link copiado, foto salva…). */
@@ -333,16 +430,23 @@ class Quimera {
         this.refit = snap ? 0 : 1.2;
         if (snap) {
             this.controls.target.set(0, this.fit.y, 0);
-            const d = this.camera.position.clone().sub(this.controls.target).setLength(this.fit.dist);
+            const d = this._off.copy(this.camera.position).sub(this.controls.target).setLength(this.fit.dist);
             this.camera.position.copy(this.controls.target).add(d);
         }
     }
 
     _events() {
-        window.addEventListener('resize', () => this._layout(true));
+        // resize em rajada (rotação do celular, barra do navegador): um relayout por quadro
+        let resizeRaf = 0;
+        window.addEventListener('resize', () => {
+            cancelAnimationFrame(resizeRaf);
+            resizeRaf = requestAnimationFrame(() => this._layout(true));
+        });
+        // aba oculta: o drone silencia (o laço do kit já para de desenhar sozinho)
+        document.addEventListener('visibilitychange', () => this.audio.setSuspended(document.hidden));
         window.addEventListener('hashchange', () => {
             const ids = parseHash(location.hash);
-            if (ids) this.applyMix(ids, { silent: true });
+            if (ids && toHash(ids) !== toHash(this.ids)) this.applyMix(ids, { silent: true });
         });
 
         const wake = () => this.audio.resume();
@@ -373,7 +477,17 @@ class Quimera {
 
         window.addEventListener('keydown', (e) => {
             if (e.target.closest?.('input, select, textarea')) return;
-            const k = e.key.toLowerCase();
+            const k = (e.key || '').toLowerCase();
+            // Ctrl/⌘+Z: único atalho com modificador
+            if ((e.ctrlKey || e.metaKey) && k === 'z') {
+                e.preventDefault();
+                this.undo();
+                return;
+            }
+            // Ctrl+R, ⌘+C, ⌘+L… são do navegador — não trocar peça nem tirar foto por engano
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            // setas podem repetir (folhear peças segurando); ações pontuais não
+            if (e.repeat && !k.startsWith('arrow')) return;
             if (k === 'arrowleft' || k === 'a') this.step('head', -1);
             else if (k === 'arrowright' || k === 'd') this.step('head', 1);
             else if (k === 'arrowup' || k === 'w') this.step('body', -1);
@@ -388,6 +502,7 @@ class Quimera {
             else if (k === 'c') this.toggleFrame();
             else if (k === 'p') this.photo();
             else if (k === 'l') this.share();
+            else if (k === 'u') this.undo();
         });
     }
 
@@ -432,7 +547,7 @@ class Quimera {
             this.refit -= dt;
             const k = 1 - Math.exp(-5 * dt);
             this.controls.target.y += (this.fit.y - this.controls.target.y) * k;
-            const off = this.camera.position.clone().sub(this.controls.target);
+            const off = this._off.copy(this.camera.position).sub(this.controls.target);
             off.setLength(off.length() + (this.fit.dist - off.length()) * k);
             this.camera.position.copy(this.controls.target).add(off);
         }

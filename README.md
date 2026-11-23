@@ -48,13 +48,13 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 | 🏮 **[A Menina da Lanterna](https://diogopaulino.com.br/labs/menina-da-lanterna/)** | Conto 3D hiper-realista — Clara, casas detalhadas e a última chama em Vale-da-Bruma |
 | 🫐 **[Nina](https://diogopaulino.com.br/labs/nina/)** | Vale 3D hiper-realista — a raposinha resgata filhotes, coleta amoras e monta o piquenique no ninho |
 | 🧩 **[Quimera](https://diogopaulino.com.br/labs/quimera/)** | Ateliê 3D relaxante — misture cabeça, corpo e acessórios de pirata, marinheiro, astronauta, guerreiro e outros |
-| 🏰 **[Castelo Estelar](https://diogopaulino.com.br/labs/castelo-estelar/)** | Abertura cinematográfica em three.js — castelo hiper-realista, lua, lago, fanfarra e fogos |
+| 🏰 **[Castelo Estelar](https://diogopaulino.com.br/labs/castelo-estelar/)** | Abertura cinematográfica e passeio em 3ª pessoa — recolha 6 estrelas e reacenda o castelo, com lua, lago e fogos |
 | 🦕 **[Jurassic](https://diogopaulino.com.br/labs/jurassic/)** | Safari 3D hiper-realista — jipe, diário de campo e dinossauros com crânios orgânicos |
-| 🎮 **[PS5 Controller](https://diogopaulino.com.br/labs/ps5-controller/)** | Vitrine 3D do DualSense — três edições limitadas, rotação por arraste e transições cinematográficas em WebGPU |
-| 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Sistema Solar 3D — Mercúrio a Netuno com texturas dos planetas e os nomes reais das luas |
-| 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida hiper-realista anos 80 — moto cromada PBR, néon e synthwave |
+| 🎮 **[PS5 Controller](https://diogopaulino.com.br/labs/ps5-controller/)** | Vitrine 3D do DualSense — três edições limitadas, rotação por arraste, transições em WebGPU e teste de controle real |
+| 🪐 **[Orbis](https://diogopaulino.com.br/labs/orbis/)** | Sistema Solar 3D com órbitas reais de Kepler — posição de hoje, controle do tempo e escala real |
+| 🏍️ **[Neon Rider](https://diogopaulino.com.br/labs/neon-rider/)** | Avenida anos 80 com física de moto real — torque, marchas, ABS, néon e synthwave |
 | ⚔️ **[O Guerreiro e o Castelo](https://diogopaulino.com.br/labs/guerreiro-castelo/)** | Aventura 3D em terceira pessoa — Dico e o macaco Teco cruzam o mar até o castelo |
-| ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval hiper-realista — drakkar PBR, machados e o resgate no castelo |
+| ⚔️ **[River Knight](https://diogopaulino.com.br/labs/river-knight/)** | Aventura medieval — drakkar com leme, inércia e ritmo de remo realistas, canhões e o resgate no castelo |
 | 💍 **[A Jornada do Anel](https://diogopaulino.com.br/labs/jornada-do-anel/)** | Aventura inspirada no primeiro filme: o Condado, os Cavaleiros, o vale élfico e as minas |
 | 🌱 **[João e o Pé de Feijão](https://diogopaulino.com.br/labs/joao-e-o-pe-de-feijao/)** | Conto 3D completo — venda a vaca, suba o pé, fuja do gigante e corte o caule |
 | 💻 **[Beige Box](https://diogopaulino.com.br/labs/beige-box/)** | Quarto retrô: ligue o 486, insira o disquete SECRET e mexa em cada objeto da mesa |
@@ -63,16 +63,16 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 
 | Projeto | O que é? |
 | :--- | :--- |
-| ♠ **[Poker](https://diogopaulino.com.br/labs/poker/)** | Texas Hold'em heads-up 3D — feltro texturizado, fichas, cartas com flip, Dealer IA e academia |
+| ♠ **[Poker](https://diogopaulino.com.br/labs/poker/)** | Texas Hold'em 3D contra 1 a 3 rivais de IA — potes paralelos, fichas, cartas com flip e academia |
 | 🤖 **[Claude Bros](https://diogopaulino.com.br/labs/claude-bros/)** | Plataforma 3D em WebGL: colete faíscas, pule nos musgosos e alcance o estandarte |
 | 🐒 **[Kong Kong](https://diogopaulino.com.br/labs/kong-kong/)** | Platformer estilo SNES — o macaquinho do lenço vermelho, canhões-barril e o Rei Croco |
 | 🎈 **[Ravi 1·2·3](https://diogopaulino.com.br/labs/ravi-123/)** | Festa surpresa com heróis — conte 1 a 9 estilo Mickey's 123 |
 | 🥊 **[Rock Kombat](https://diogopaulino.com.br/labs/rock-kombat/)** | Luta 2D cinematográfica com lendas do rock |
 | 🕹️ **[Videogame](https://diogopaulino.com.br/labs/videogame/)** | Emulador de Mega Drive com filtro CRT |
-| 🚀 **[Lunar Lander](https://diogopaulino.com.br/labs/lander/)** | Pouso lunar com física realista |
+| 🚀 **[Lunar Lander](https://diogopaulino.com.br/labs/lander/)** | Pouse o Módulo Lunar da Apollo com física real — 1,62 m/s², motor de 45 kN e propelente em kg |
 | 🏃 **[Jungle Run](https://diogopaulino.com.br/labs/jungle-run/)** | Plataforma retrô pela selva |
 | 🌌 **[Neon Invaders](https://diogopaulino.com.br/labs/space-shooter/)** | Arcade cyberpunk neon |
-| 🧱 **[Tetris 90s](https://diogopaulino.com.br/labs/tetris/)** | Clássico estilo Game Boy |
+| 🧱 **[Tetris 90s](https://diogopaulino.com.br/labs/tetris/)** | Clássico estilo Game Boy com regras modernas — SRS, hold, sombra e T-spin |
 | 🐍 **[Retro Snake](https://diogopaulino.com.br/labs/snake/)** | Cobrinha Nokia 3310 |
 | 💣 **[Campo Minado 95](https://diogopaulino.com.br/labs/minesweeper/)** | Visual Windows 95 autêntico |
 | 🐣 **[RakuRaku Dinokun](https://diogopaulino.com.br/labs/tamagotchi/)** | Réplica do Dinkie Dino de 1997 |
@@ -81,29 +81,29 @@ Cada pasta em `/labs/<slug>/` é o mesmo slug do card da galeria, da linha abaix
 
 | Projeto | O que é? |
 | :--- | :--- |
-| 💻 **[CyberOS Terminal](https://diogopaulino.com.br/labs/cyberos/)** | SO hacker no browser: terminal, firewall, Oracle e cipher |
+| 💻 **[CyberOS Terminal](https://diogopaulino.com.br/labs/cyberos/)** | SO hacker no browser: janelas com encaixe, terminal, firewall, Oracle e cipher |
 | 🟢 **[Matrix](https://diogopaulino.com.br/labs/matrix/)** | Chuva Katakana com glow CRT |
 | 🌌 **[Aurora Flow](https://diogopaulino.com.br/labs/aurora-flow/)** | Noite polar generativa — cortinas, fiorde e campo magnético |
-| 🎨 **[Paint Lab](https://diogopaulino.com.br/labs/paint/)** | Editor de arte digital na web |
-| 🪐 **[Gravity](https://diogopaulino.com.br/labs/gravity/)** | Sandbox orbital — planetas, anéis, binárias e o horizonte de eventos |
+| 🎨 **[Paint Lab](https://diogopaulino.com.br/labs/paint/)** | Desenho digital com pressão de caneta, camadas, zoom e autossalvamento |
+| 🪐 **[Gravity](https://diogopaulino.com.br/labs/gravity/)** | Sandbox orbital com integrador simplético — planetas, anéis, binárias e o horizonte de eventos |
 
 ### 🛠️ Ferramentas & Utilidades
 
 | Projeto | O que é? |
 | :--- | :--- |
-| ☕ **[Grão](https://diogopaulino.com.br/labs/grao/)** | Companheiro de cafeína — curva em tempo real e horário de parar o café |
-| ⚡ **[Image Optimizer](https://diogopaulino.com.br/labs/image-optimizer/)** | Compressão rápida 100% no cliente |
-| 📸 **[Image Editor](https://diogopaulino.com.br/labs/image-editor/)** | Filtros, cortes e ajustes na hora |
+| ☕ **[Grão](https://diogopaulino.com.br/labs/grao/)** | Companheiro de cafeína — curva de absorção e eliminação e horário de parar o café |
+| ⚡ **[Image Optimizer](https://diogopaulino.com.br/labs/image-optimizer/)** | Compressão e conversão em lote com antes/depois e ZIP, 100% no cliente |
+| 📸 **[Image Editor](https://diogopaulino.com.br/labs/image-editor/)** | Recorte com proporções, filtros com intensidade, ajustes e desfazer ilimitado — tudo local |
 | ⏱️ **[Pomodoro](https://diogopaulino.com.br/labs/pomodoro/)** | Timer de foco com soundscapes |
 | 🗣️ **[Talk](https://diogopaulino.com.br/labs/english-duo/)** | Treino de pronúncia e escuta em várias línguas |
-| 🧮 **[Calculator](https://diogopaulino.com.br/labs/calculator/)** | Calculadora com câmbio ao vivo |
+| 🧮 **[Calculator](https://diogopaulino.com.br/labs/calculator/)** | Calculadora com precisão decimal exata, modo científico, histórico e câmbio ao vivo |
 
 ### 🎧 Áudio & Música
 
 | Projeto | O que é? |
 | :--- | :--- |
 | 🎼 **[Partitura: Maestro Quest](https://diogopaulino.com.br/labs/partitura/)** | Aprendizado gamificado de partituras |
-| 🎹 **[Piano](https://diogopaulino.com.br/labs/piano/)** | Sintetizador de 4 oitavas no navegador |
+| 🎹 **[Piano](https://diogopaulino.com.br/labs/piano/)** | Piano de 4 oitavas com timbre realista, sustain, multitoque e MIDI |
 | 📻 **[Winamp JS](https://diogopaulino.com.br/labs/winamp/)** | Nostalgia pura: player estilo Winamp 2.x |
 | ✨ **[Pulsar](https://diogopaulino.com.br/labs/pulsar/)** | Constelação musical — orbes pulsam no BPM, altura é nota, posição é o tempo |
 

@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#02040a">
     <title>Orbis — Sistema Solar em 3D | Diogo Paulino</title>
     <meta name="description"
-        content="Explore o Sistema Solar em 3D: Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno, com texturas dos planetas e os nomes reais das luas.">
+        content="Explore o Sistema Solar em 3D com órbitas reais de Kepler: planetas e luas na posição de hoje, controle do tempo, escala real de distância e dados de cada mundo.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/orbis/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -23,16 +23,16 @@
     <meta property="og:url" content="https://diogopaulino.com.br/labs/orbis/">
     <meta property="og:title" content="Orbis — Sistema Solar em 3D | Diogo Paulino">
     <meta property="og:description"
-        content="Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno em 3D, com texturas dos planetas e luas reais.">
+        content="O Sistema Solar em 3D com órbitas reais de Kepler, a data de hoje, controle do tempo e dados reais de cada planeta e lua.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Orbis — Sistema Solar em 3D | Diogo Paulino">
     <meta name="twitter:description"
-        content="Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno em 3D, com texturas dos planetas e luas reais.">
+        content="O Sistema Solar em 3D com órbitas reais de Kepler, a data de hoje, controle do tempo e dados reais de cada planeta e lua.">
 
     <link rel="stylesheet" href="/assets/fonts/fraunces/font.css">
     <link rel="stylesheet" href="/assets/fonts/syne/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
 
     <script type="importmap">
     {
@@ -50,7 +50,7 @@
           "@type": "WebApplication",
           "name": "Orbis",
           "url": "https://diogopaulino.com.br/labs/orbis/",
-          "description": "Explore o Sistema Solar em 3D: Sol, Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno, com texturas dos planetas e os nomes reais das luas.",
+          "description": "Explore o Sistema Solar em 3D com órbitas reais de Kepler: planetas e luas na posição de hoje, controle do tempo, escala real de distância e dados de cada mundo.",
           "applicationCategory": "WebApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -100,22 +100,29 @@
                 </div>
             </template>
             <template data-slot="actions">
-                <button id="pauseBtn" class="icon-btn" type="button" aria-pressed="false" title="Pausar (Espaço)"
-                    aria-label="Pausar órbitas">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="6" y="4" width="4" height="16" rx="1" />
-                        <rect x="14" y="4" width="4" height="16" rx="1" />
+                <button id="labelsBtn" class="icon-btn" type="button" aria-pressed="true" title="Rótulos (L)"
+                    aria-label="Mostrar nomes dos planetas">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z" />
+                        <circle cx="7.5" cy="7.5" r="1.5" />
+                    </svg>
+                </button>
+                <button id="orbitsBtn" class="icon-btn" type="button" aria-pressed="true" title="Órbitas (O)"
+                    aria-label="Mostrar órbitas">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <ellipse cx="12" cy="12" rx="10" ry="5.5" transform="rotate(-18 12 12)" />
+                        <circle cx="12" cy="12" r="2.2" />
                     </svg>
                 </button>
                 <button id="rotateBtn" class="icon-btn" type="button" aria-pressed="true" title="Autorrotação"
                     aria-label="Autorrotação da câmera">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path d="M21 12a9 9 0 1 1-3-6.7" />
                         <path d="M21 3v6h-6" />
                     </svg>
                 </button>
                 <button id="fullscreen" class="icon-btn" type="button" aria-label="Tela cheia" title="Tela cheia (F)">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path
                             d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                     </svg>
@@ -123,32 +130,52 @@
             </template>
         </header>
 
-        <canvas id="scene" aria-label="Sistema estelar em 3D"></canvas>
+        <canvas id="scene" aria-label="Sistema Solar em 3D. Arraste para girar, pinça ou roda para aproximar, toque num planeta para focar."></canvas>
+
+        <div id="labels" class="labels" aria-hidden="true"></div>
 
         <div id="loading" class="loading" role="status">
             <div class="loading-orb" aria-hidden="true"></div>
-            <p>Calibrando o observatório…</p>
+            <p>Calculando as órbitas de hoje…</p>
+            <button id="retryBtn" class="btn primary" type="button" hidden>Tentar de novo</button>
         </div>
 
         <aside class="hud-left" aria-label="Catálogo do sistema">
             <p class="eyebrow">Sistema</p>
             <h2 id="systemName">—</h2>
             <p class="meta-line">
-                <span id="starType">—</span>
+                <span id="starType">Sol</span>
                 · <span id="planetCount">0</span> planetas
-                <span id="seedValue" class="mono" hidden>0</span>
             </p>
-            <div id="planetList" class="planet-list"></div>
+            <p id="scaleNote" class="scale-note">—</p>
+            <nav id="planetList" class="planet-list" aria-label="Corpos do Sistema Solar"></nav>
         </aside>
 
-        <section class="hud-right" aria-label="Mundo focado">
-            <p class="eyebrow" id="viewLabel">Sistema</p>
-            <h2 id="planetName">—</h2>
-            <p class="meta-line"><span id="planetTag">—</span> · <span id="planetKind">—</span></p>
-            <p id="planetLore" class="lore">Clique um planeta para aproximar a órbita e forjar o mundo.</p>
-            <div class="hud-actions">
-                <button id="backSystem" class="btn ghost" type="button">Ver sistema</button>
-                <button id="forgeToggle" class="btn" type="button">Atelier</button>
+        <section id="infoPanel" class="hud-right" aria-label="Corpo em foco">
+            <div class="info-head">
+                <div class="info-title">
+                    <p class="eyebrow" id="viewLabel">Estrela</p>
+                    <h2 id="planetName">—</h2>
+                    <p class="meta-line"><span id="planetTag">—</span> · <span id="planetKind">—</span></p>
+                </div>
+                <button id="infoToggle" class="icon-btn info-toggle" type="button" aria-expanded="true"
+                    aria-controls="infoBody" aria-label="Recolher dados">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="m6 9 6 6 6-6" />
+                    </svg>
+                </button>
+            </div>
+            <dl class="live" aria-live="off">
+                <div class="stat"><dt id="liveALabel">Distância</dt><dd id="liveA" class="mono">—</dd></div>
+                <div class="stat"><dt id="liveBLabel">Velocidade</dt><dd id="liveB" class="mono">—</dd></div>
+            </dl>
+            <div id="infoBody" class="info-body">
+                <dl id="statsGrid" class="stats"></dl>
+                <p id="planetLore" class="lore">Toque num planeta para aproximar.</p>
+                <div class="hud-actions">
+                    <button id="backSystem" class="btn ghost" type="button">Ver sistema</button>
+                    <button id="forgeToggle" class="btn" type="button" aria-expanded="false" aria-controls="forge">Atelier</button>
+                </div>
             </div>
         </section>
 
@@ -156,26 +183,70 @@
             <div class="forge-head">
                 <strong>Atelier do mundo</strong>
                 <span>Shaders em tempo real</span>
+                <button id="forgeClose" class="icon-btn forge-close" type="button" aria-label="Fechar atelier">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
             <div id="sliders" class="sliders"></div>
         </div>
 
-        <footer class="dock" style="display: none;">
-            <div id="presetRail" class="preset-rail" role="list"></div>
-            <form id="seedForm" class="seed-form" autocomplete="off">
-                <input id="seedInput" type="text" placeholder="Seed ou nome…" aria-label="Seed ou nome do sistema">
-            </form>
-            <button id="newSystem" type="button">Novo sistema</button>
+        <footer class="dock" aria-label="Relógio da simulação">
+            <div class="clock">
+                <button id="dateBtn" class="clock-date" type="button" title="Escolher uma data"
+                    aria-label="Data simulada. Escolher outra data">
+                    <span id="simDate" class="clock-day">—</span>
+                    <span class="clock-sub"><span id="simTime" class="mono">—</span><span class="approx" title="Fora de 1800–2050 os elementos do JPL são aproximados"> · aprox.</span></span>
+                </button>
+                <input id="dateInput" class="date-input" type="date" tabindex="-1" aria-label="Ir para a data">
+            </div>
+            <div class="time-ctrl" role="group" aria-label="Controle do tempo">
+                <button id="reverseBtn" class="icon-btn" type="button" aria-pressed="false" title="Inverter o tempo (R)"
+                    aria-label="Inverter o sentido do tempo">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M7 7h11a3 3 0 0 1 0 6H6" />
+                        <path d="m10 10-4 3 4 3" />
+                    </svg>
+                </button>
+                <button id="slowerBtn" class="icon-btn" type="button" aria-label="Mais devagar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M11 6v12l-8-6zM20 6v12l-8-6z" />
+                    </svg>
+                </button>
+                <button id="pauseBtn" class="icon-btn play-btn" type="button" aria-pressed="false" title="Pausar (Espaço)"
+                    aria-label="Pausar o tempo">
+                    <svg class="i-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <rect x="6" y="5" width="4" height="14" rx="1" />
+                        <rect x="14" y="5" width="4" height="14" rx="1" />
+                    </svg>
+                    <svg class="i-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M7 5v14l12-7z" />
+                    </svg>
+                </button>
+                <button id="fasterBtn" class="icon-btn" type="button" aria-label="Mais rápido">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M13 6v12l8-6zM4 6v12l8-6z" />
+                    </svg>
+                </button>
+                <button id="todayBtn" class="btn ghost today-btn" type="button" title="Voltar para agora (T)">Hoje</button>
+            </div>
+            <p id="rateLabel" class="rate mono" aria-live="polite">▶ 1 dia/s</p>
+            <button id="scaleBtn" class="scale-toggle" type="button" aria-pressed="false" title="Escala de distância (E)">
+                <span>Escala</span>
+                <strong id="scaleLabel">Comprimida</strong>
+            </button>
         </footer>
 
-        <p class="hint">Arraste para orbitar · clique um mundo · <kbd>H</kbd> esconde UI</p>
+        <p id="toast" class="toast" role="status" aria-live="polite"></p>
+        <p class="hint">Arraste para orbitar · toque num mundo · <kbd>Espaço</kbd> pausa · <kbd>,</kbd> <kbd>.</kbd> velocidade · <kbd>R</kbd> inverte · <kbd>H</kbd> esconde UI</p>
         <p class="fps-badge" aria-hidden="true"><span id="fps">60</span> fps</p>
     </main>
 
     <footer class="lab-foot" data-lab-footer data-home-href="/"></footer>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="./src/main.js?v=5"></script>
+    <script type="module" src="./src/main.js?v=6"></script>
 </body>
 
 </html>

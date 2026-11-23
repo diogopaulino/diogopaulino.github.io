@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Piano — sintetizador realista de 4 oitavas | Diogo Paulino</title>
-  <meta name="description" content="Piano de quatro oitavas no navegador, com timbre realista, sensibilidade à velocidade, sustain e controle pelo teclado.">
+  <meta name="description" content="Piano de quatro oitavas no navegador, com timbre realista, sensibilidade à velocidade, sustain, multitoque, MIDI e controle pelo teclado.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/piano/">
   <meta name="author" content="Diogo Paulino">
   <meta name="robots" content="index, follow">
@@ -21,12 +21,12 @@
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/piano/">
     <meta property="og:title" content="Piano — sintetizador realista de 4 oitavas | Diogo Paulino">
-    <meta property="og:description" content="Piano de quatro oitavas no navegador, com timbre realista, sensibilidade à velocidade, sustain e controle pelo teclado.">
+    <meta property="og:description" content="Piano de quatro oitavas no navegador, com timbre realista, sensibilidade à velocidade, sustain, multitoque, MIDI e controle pelo teclado.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Piano — sintetizador realista de 4 oitavas | Diogo Paulino">
-    <meta name="twitter:description" content="Piano de quatro oitavas no navegador, com timbre realista, sensibilidade à velocidade, sustain e controle pelo teclado.">
+    <meta name="twitter:description" content="Piano de quatro oitavas no navegador, com timbre realista, sensibilidade à velocidade, sustain, multitoque, MIDI e controle pelo teclado.">
   <link rel="stylesheet" href="/labs/shared.css?v=15">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=4">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -35,7 +35,7 @@
         "@type": "WebApplication",
         "name": "Piano",
         "url": "https://diogopaulino.com.br/labs/piano/",
-        "description": "Piano de quatro oitavas no navegador, com timbre realista, sensibilidade à velocidade, sustain e controle pelo teclado.",
+        "description": "Piano de quatro oitavas no navegador, com timbre realista, sensibilidade à velocidade, sustain, multitoque, MIDI e controle pelo teclado.",
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Any",
         "inLanguage": "pt-BR",
@@ -76,70 +76,114 @@
 </head>
 
 <body>
-    <div class="container">
+  <div class="container">
     <header data-lab-header data-fullscreen data-title="Piano">
       <template data-slot="logo">
         🎹 Piano
       </template>
     </header>
 
-    <main class="piano-wrapper">
-      <div class="piano" id="piano"></div>
+    <main class="piano-stage" aria-labelledby="piano-title">
+      <h1 id="piano-title" class="sr-only">Piano de 49 teclas</h1>
+
+      <button type="button" id="audio-status" class="audio-status" data-state="idle">
+        <span class="audio-status-dot" aria-hidden="true"></span>
+        <span class="audio-status-body" aria-live="polite">
+          <span class="audio-status-text">Toque em uma tecla para ligar o som.</span>
+          <small class="audio-status-extra" hidden></small>
+        </span>
+      </button>
+
+      <div class="piano-case">
+        <div class="piano-fallboard" aria-hidden="true">
+          <span class="fallboard-brand">Diogo Paulino</span>
+          <span class="fallboard-model">Concert · 49</span>
+        </div>
+        <div class="piano-wrapper">
+          <div class="piano" id="piano" role="application"
+            aria-label="Teclado de piano. Toque nas teclas ou use o teclado do computador."></div>
+        </div>
+      </div>
+
+      <div class="keyboard-map" id="keyboard-map" tabindex="0" role="slider" aria-label="Navegar pelo teclado"
+        aria-valuemin="0" aria-valuemax="100" hidden>
+        <span class="keyboard-map-window" id="keyboard-map-window" aria-hidden="true"></span>
+      </div>
     </main>
 
-    <div class="controls">
-      <div class="control-item sustain-control">
-        <button id="sustain-btn" class="sustain-btn" type="button" aria-label="Pedal Sustain (Segurar)">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="sustain-icon">
-            <path d="M12 5V19M12 19L7 14M12 19L17 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-              stroke-linejoin="round" />
+    <section class="controls" aria-label="Controles do piano">
+      <div class="control-group pedal-group">
+        <button id="sustain-btn" class="sustain-btn" type="button" aria-pressed="false"
+          title="Pedal de sustain (segure Espaço)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M5 18h14l-2-5H7l-2 5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+            <path d="M12 13V5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
           <span class="sustain-label">Sustain</span>
         </button>
-        <button id="sustain-lock-btn" class="sustain-lock-btn" type="button" aria-pressed="false" title="Travar Sustain (ideal para celular)">
-          <span class="sustain-lock-dot" aria-hidden="true"></span>
+        <button id="sustain-lock-btn" class="chip-btn" type="button" aria-pressed="false"
+          title="Travar o pedal (ideal no celular)">
+          <span class="lock-dot" aria-hidden="true"></span>
           <span>Travar</span>
         </button>
       </div>
 
-      <div class="control-item volume-control-wrapper">
-        <div class="volume-control">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="volume-icon">
-            <path d="M11 5L6 9H2V15H6L11 19V5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-              stroke-linejoin="round" />
-            <path
-              d="M15.54 8.46C16.4774 9.39764 17.0039 10.6692 17.0039 11.995C17.0039 13.3208 16.4774 14.5924 15.54 15.53"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          <input type="range" id="volume" min="0" max="100" value="70" aria-label="Volume">
-          <span id="volume-value">70%</span>
-        </div>
+      <div class="control-group sliders-group">
+        <label class="slider">
+          <span class="slider-label">Volume</span>
+          <input type="range" id="volume" min="0" max="100" value="75" aria-label="Volume">
+          <output id="volume-value" for="volume">75%</output>
+        </label>
+        <label class="slider">
+          <span class="slider-label">Dinâmica</span>
+          <input type="range" id="dynamic" min="0" max="5" step="1" value="3"
+            aria-label="Dinâmica do teclado do computador (↑ ↓)">
+          <output id="dynamic-value" for="dynamic">mf</output>
+        </label>
+        <label class="slider">
+          <span class="slider-label">Sala</span>
+          <input type="range" id="reverb" min="0" max="100" value="30" aria-label="Reverberação da sala">
+          <output id="reverb-value" for="reverb">30%</output>
+        </label>
       </div>
 
-      <div class="control-item octave-control">
-        <button id="octave-down" class="octave-btn" aria-label="Diminuir Oitava">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      <div class="control-group octave-group" role="group" aria-label="Oitava do teclado do computador">
+        <button id="octave-down" class="octave-btn" type="button" aria-label="Oitava abaixo (←)">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </button>
-        <span id="octave-display">0</span>
-        <button id="octave-up" class="octave-btn" aria-label="Aumentar Oitava">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <span id="octave-display" class="octave-display">C3–G5</span>
+        <button id="octave-up" class="octave-btn" type="button" aria-label="Oitava acima (→)">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="m6 3 5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
+        </button>
+        <button id="midi-btn" class="chip-btn midi-btn" type="button" title="Conectar um teclado MIDI (USB/Bluetooth)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
+            <circle cx="8" cy="11" r="1.2" fill="currentColor" />
+            <circle cx="16" cy="11" r="1.2" fill="currentColor" />
+            <circle cx="12" cy="8" r="1.2" fill="currentColor" />
+            <circle cx="12" cy="15" r="1.2" fill="currentColor" />
+          </svg>
+          <span>MIDI</span>
         </button>
       </div>
-    </div>
+    </section>
 
     <div class="instructions">
-      <p>Toque • Sustain (espaço) • Oitava (← →)</p>
+      <p class="hint-touch">Deslize entre as teclas para glissando · perto da borda = mais forte · arraste a faixa
+        acima dos controles para navegar</p>
+      <p class="hint-keys"><kbd>Z</kbd>–<kbd>M</kbd> e <kbd>Q</kbd>–<kbd>]</kbd> tocam · <kbd>Espaço</kbd> sustain ·
+        <kbd>←</kbd><kbd>→</kbd> oitava · <kbd>↑</kbd><kbd>↓</kbd> dinâmica</p>
     </div>
 
     <footer data-lab-footer data-home-href="/"></footer>
   </div>
 
   <script src="/labs/shared.js?v=16" defer></script>
-  <script src="script.js?v=3" defer></script>
+  <script src="script.js?v=4" defer></script>
 </body>
 
 </html>

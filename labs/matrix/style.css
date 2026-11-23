@@ -1066,3 +1066,110 @@ body.cinema.pointer-idle .cinema-exit {
     .glyph-btn { min-height: var(--touch-target, 44px); }
     .mini-btn { width: var(--touch-target, 44px); min-height: var(--touch-target, 44px); }
 }
+
+/* --- remaster: pausa visível e acessível também no toque --- */
+.icon-btn .ic-play[hidden],
+.icon-btn .ic-pause[hidden] {
+    display: none;
+}
+
+.pause-badge {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 14;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 10px 18px;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--mx);
+    font: inherit;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 0 30px var(--mx-glow);
+    animation: pauseIn 0.25s ease-out;
+}
+
+.pause-badge[hidden] {
+    display: none;
+}
+
+.pause-badge:focus-visible {
+    outline: 2px solid var(--mx);
+    outline-offset: 3px;
+}
+
+@keyframes pauseIn {
+    from { opacity: 0; transform: translate(-50%, -40%); }
+}
+
+body.cinema .pause-badge {
+    opacity: 0.85;
+}
+
+@media (max-width: 420px) {
+    .pause-badge {
+        max-width: calc(100vw - 32px);
+        letter-spacing: 0.1em;
+        font-size: 0.66rem;
+        white-space: normal;
+        text-align: center;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .controls {
+        top: max(64px, env(safe-area-inset-top, 0px));
+        bottom: max(12px, env(safe-area-inset-bottom, 0px));
+        left: auto;
+        right: max(12px, env(safe-area-inset-right, 0px));
+        width: min(360px, 60vw);
+        max-height: none;
+    }
+
+    .hud {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pause-badge {
+        animation: none;
+    }
+}
+
+@media (max-width: 768px) {
+    /* HUD de atalhos acima do rodapé “voltar para home” (antes se sobrepunham). */
+    .hud {
+        bottom: calc(max(12px, env(safe-area-inset-bottom)) + 34px);
+    }
+}
+
+@media (max-width: 420px) {
+    /* No celular a tela cheia já cai no modo cinema; o botão extra só
+       espremia o título “MATRIX” em duas linhas. */
+    #cinema {
+        display: none;
+    }
+
+    header .app-logo {
+        white-space: nowrap;
+    }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    /* Deitado sobra pouca altura: rodapé do painel compacto para a lista rolar. */
+    .controls-header { padding-block: 10px; }
+    .control-footer { padding: 8px 12px; gap: 8px; }
+    .stats-bar { display: none; }
+    .action-btn { min-height: 40px; padding-block: 8px; }
+}

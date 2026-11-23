@@ -18,8 +18,20 @@ export async function answerExercise() {
         options.querySelector('input').value = type === 'writeWord' ? lesson.word : lesson.sentence;
         options.querySelector('.btn-submit').click();
     } else {
-        const answer = type === 'translate' ? lesson.word : lesson.fillAnswer;
-        buttons('.option-card').find(b => b.querySelector('.option-text').textContent === answer).click();
+        // Múltipla escolha: apresentação de palavra nova e tradução pedem a
+        // palavra no idioma; "o que significa?" pede a tradução; "ouça e
+        // escolha" (japonês, coreano, chinês) pede a frase ouvida.
+        const answer = {
+            introduce: lesson.word,
+            translate: lesson.word,
+            reverse: lesson.translation,
+            listenChoose: lesson.sentence,
+            fillBlank: lesson.fillAnswer
+        }[type];
+        if (answer === undefined) throw Error('Tipo de exercício sem resposta no teste: ' + type);
+        const option = buttons('.option-card').find(b => b.querySelector('.option-text').textContent === answer);
+        if (!option) throw Error(`Opção "${answer}" ausente em ${type}`);
+        option.click();
     }
     if (!DOM.feedbackArea.matches('.correct')) throw Error('Sem confirmação para ' + type);
     DOM.nextBtn.click();

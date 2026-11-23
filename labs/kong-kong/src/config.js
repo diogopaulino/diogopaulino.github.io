@@ -8,9 +8,19 @@
  *
  * Altura máxima do pulo (sem corte):  h = JUMP_VEL² / (2 * GRAVITY)
  * Tempo de subida:                     t = -JUMP_VEL / GRAVITY
- * Pulo variável: se o botão soltar com vy < 0, vy *= JUMP_CUT
+ * Pulo variável: com o botão solto e vy < 0, vy *= JUMP_CUT^(CUT_RATE·dt) (corte rápido e
+ *   independente do fps: um toque curto dá ~2,5 tiles, segurar dá ~5)
  * Coyote: ainda pode pular COYOTE s após deixar o chão
  * Buffer: pulo apertado até JUMP_BUF s antes de aterrissar dispara no pouso
+ * Virada: inverter a direção usa TURN_ACCEL (chão) / AIR_TURN (ar) — mais forte que
+ *   ACCEL, como nos plataformas clássicos: o freio é rápido, a arrancada é gradual
+ * Ápice: com o pulo preso e |vy| < APEX_VY, a gravidade cai para APEX_GRAV·g —
+ *   um instante a mais no topo para mirar o pouso
+ * Quina: bater a cabeça a até CORNER px da borda de um bloco desliza Kong para o
+ *   lado livre em vez de cortar o pulo
+ * Passo fixo: a simulação roda a STEP = 1/120 s (acumulador em main.js), então a
+ *   altura do pulo não muda com 60 Hz, 120 Hz ou um frame perdido, e a queda máxima
+ *   por passo (MAX_FALL·STEP ≈ 4,3 px) nunca atravessa uma plataforma de 16 px
  *
  * Lenço vermelho: 1ª batida solta o lenço (hit extra). Sem lenço, perde 1 vida.
  * 100 bananas = 1 vida extra.
@@ -25,10 +35,16 @@ export const PHYS = Object.freeze({
   MAX_FALL: 520,
   JUMP_VEL: -510,
   JUMP_CUT: 0.42,
+  CUT_RATE: 16,
   COYOTE: 0.1,
   JUMP_BUF: 0.12,
   ACCEL: 1600,
   AIR_ACCEL: 980,
+  TURN_ACCEL: 3000,
+  AIR_TURN: 1500,
+  APEX_VY: 60,
+  APEX_GRAV: 0.6,
+  CORNER: 5,
   FRICTION: 1900,
   MAX_VX: 178,
   ROLL_SPEED: 248,
@@ -47,6 +63,9 @@ export const PHYS = Object.freeze({
   HITBOX_W: 12,
   HITBOX_H: 18
 });
+
+/** Passo fixo da simulação (s). */
+export const STEP = 1 / 120;
 
 export const START_LIVES = 4;
 export const BANANAS_PER_LIFE = 100;

@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#fafbfc">
     <title>Calculator — cálculo científico e câmbio ao vivo | Diogo Paulino</title>
     <meta name="description"
-        content="Calculadora online com modos simples, científico e conversor de moedas em tempo real.">
+        content="Calculadora online com precedência de operações, precisão decimal exata, modo científico, histórico e conversor de moedas em tempo real.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/calculator/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -20,12 +20,12 @@
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/calculator/">
     <meta property="og:title" content="Calculator — cálculo científico e câmbio ao vivo | Diogo Paulino">
-    <meta property="og:description" content="Calculadora online com modos simples, científico e conversor de moedas em tempo real.">
+    <meta property="og:description" content="Calculadora online com precedência de operações, precisão decimal exata, modo científico, histórico e conversor de moedas em tempo real.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Calculator — cálculo científico e câmbio ao vivo | Diogo Paulino">
-    <meta name="twitter:description" content="Calculadora online com modos simples, científico e conversor de moedas em tempo real.">
+    <meta name="twitter:description" content="Calculadora online com precedência de operações, precisão decimal exata, modo científico, histórico e conversor de moedas em tempo real.">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=8">
+    <link rel="stylesheet" href="style.css?v=9">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <script type="application/ld+json">
     {
@@ -35,7 +35,7 @@
           "@type": "WebApplication",
           "name": "Calculator",
           "url": "https://diogopaulino.com.br/labs/calculator/",
-          "description": "Calculadora online com modos simples, científico e conversor de moedas em tempo real.",
+          "description": "Calculadora online com precedência de operações, precisão decimal exata, modo científico, histórico e conversor de moedas em tempo real.",
           "applicationCategory": "UtilitiesApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -85,163 +85,165 @@
                 </div>
             </template>
         </header>
-        <main class="calculator-wrapper">
-            <div class="mode-switch">
-                <button class="mode-btn active" data-mode="calculator">
+
+        <main class="calculator-wrapper" id="calc-root" data-mode="calculator">
+            <div class="mode-switch" role="tablist" aria-label="Modo da calculadora">
+                <button class="mode-btn active" type="button" role="tab" aria-selected="true" data-mode="calculator">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><rect x="7" y="5" width="10" height="4" rx="1"/><path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01"/></svg> Simples
                 </button>
-                <button class="mode-btn" data-mode="scientific">
+                <button class="mode-btn" type="button" role="tab" aria-selected="false" data-mode="scientific">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6.5L4.5 18a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 9.5V3"/><path d="M7.5 14h9"/></svg> Científica
                 </button>
-                <button class="mode-btn" data-mode="currency">
+                <button class="mode-btn" type="button" role="tab" aria-selected="false" data-mode="currency">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v4c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 14v3c0 1.7 2.7 3 6 3s6-1.3 6-3v-4"/><ellipse cx="15" cy="13" rx="6" ry="3"/></svg> Moedas
                 </button>
             </div>
 
-            <!-- Simple Calculator Section -->
-            <div class="calculator-section active" id="calculator">
-                <div class="display">
-                    <div class="previous-operand"></div>
-                    <div class="current-operand">0</div>
+            <!-- Calculadora (simples e científica compartilham display e motor) -->
+            <section class="calc-panel" id="calc-panel" aria-label="Calculadora">
+                <div class="display" id="display">
+                    <div class="display-bar">
+                        <button class="chip-btn" type="button" id="btn-history" aria-haspopup="dialog" aria-controls="history-sheet" title="Histórico (H)">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+                            <span>Histórico</span>
+                        </button>
+                        <div class="display-prev" id="display-prev" aria-hidden="true"></div>
+                        <button class="toggle-chip sci-only" type="button" id="btn-2nd" aria-pressed="false" title="Funções inversas (2nd)">2nd</button>
+                        <button class="toggle-chip sci-only" type="button" id="btn-angle" aria-pressed="false" title="Alternar graus/radianos">
+                            <span data-angle-label>DEG</span>
+                        </button>
+                        <button class="chip-btn icon-only" type="button" id="btn-copy" aria-label="Copiar resultado" title="Copiar resultado (Ctrl+C)">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>
+                        </button>
+                    </div>
+                    <div class="display-main" id="display-main" role="textbox" aria-readonly="true" aria-label="Expressão" tabindex="0">0</div>
+                    <div class="display-preview" id="display-preview" aria-hidden="true"></div>
+                    <p class="sr-only" id="calc-live" role="status" aria-live="polite"></p>
                 </div>
-                <div class="buttons">
-                    <button class="btn function" data-action="clear">AC</button>
-                    <button class="btn function" data-action="delete" aria-label="Apagar último dígito"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 5H9.5a2 2 0 0 0-1.5.7L3 12l5 6.3a2 2 0 0 0 1.5.7H20a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M17 9l-5 6M12 9l5 6"/></svg></button>
-                    <button class="btn operator" data-action="percent">%</button>
-                    <button class="btn operator" data-action="divide">÷</button>
-                    <button class="btn number">7</button>
-                    <button class="btn number">8</button>
-                    <button class="btn number">9</button>
-                    <button class="btn operator" data-action="multiply">×</button>
-                    <button class="btn number">4</button>
-                    <button class="btn number">5</button>
-                    <button class="btn number">6</button>
-                    <button class="btn operator" data-action="subtract">-</button>
-                    <button class="btn number">1</button>
-                    <button class="btn number">2</button>
-                    <button class="btn number">3</button>
-                    <button class="btn operator" data-action="add">+</button>
-                    <button class="btn number zero">0</button>
-                    <button class="btn number">.</button>
-                    <button class="btn equals" data-action="calculate">=</button>
+
+                <div class="keypad" id="keypad">
+                    <div class="sci-keys" role="group" aria-label="Funções científicas">
+                    <button class="btn sci" type="button" data-fn="sin" data-alt-fn="asin"><span data-main>sin</span><span data-alt>sin⁻¹</span></button>
+                    <button class="btn sci" type="button" data-fn="cos" data-alt-fn="acos"><span data-main>cos</span><span data-alt>cos⁻¹</span></button>
+                    <button class="btn sci" type="button" data-fn="tan" data-alt-fn="atan"><span data-main>tan</span><span data-alt>tan⁻¹</span></button>
+                    <button class="btn sci" type="button" data-key="lp" aria-label="Abre parêntese">(</button>
+                    <button class="btn sci" type="button" data-key="rp" aria-label="Fecha parêntese">)</button>
+
+                    <button class="btn sci" type="button" data-const="pi" aria-label="Pi">π</button>
+                    <button class="btn sci" type="button" data-const="e" aria-label="Número de Euler">e</button>
+                    <button class="btn sci" type="button" data-post="!" aria-label="Fatorial">n!</button>
+                    <button class="btn sci" type="button" data-post="inv" aria-label="Inverso">1/x</button>
+                    <button class="btn sci" type="button" data-fn="abs" aria-label="Módulo">|x|</button>
+                    </div>
+
+                    <div class="basic-keys">
+                        <!-- coluna científica à esquerda do teclado (só no modo científico) -->
+                    <button class="btn sci sci-col r1" type="button" data-post="sq" aria-label="Ao quadrado">x²</button>
+                    <button class="btn sci sci-col r2" type="button" data-fn="sqrt" data-alt-fn="cbrt" aria-label="Raiz quadrada"><span data-main>√</span><span data-alt>∛</span></button>
+                    <button class="btn sci sci-col r3" type="button" data-op="^" data-alt-fn="exp10" aria-label="Potência"><span data-main>x<sup>y</sup></span><span data-alt>10<sup>x</sup></span></button>
+                    <button class="btn sci sci-col r4" type="button" data-fn="log" data-alt-fn="exp" aria-label="Logaritmo"><span data-main>log</span><span data-alt>e<sup>x</sup></span></button>
+                    <button class="btn sci sci-col r5" type="button" data-fn="ln" data-alt-post="cube" aria-label="Logaritmo natural"><span data-main>ln</span><span data-alt>x³</span></button>
+                    <button class="btn fn" type="button" data-key="clear" id="btn-clear" aria-label="Limpar tudo">AC</button>
+                    <button class="btn fn" type="button" data-key="back" aria-label="Apagar">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 5H9.5a2 2 0 0 0-1.5.7L3 12l5 6.3a2 2 0 0 0 1.5.7H20a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M17 9l-5 6M12 9l5 6"/></svg>
+                    </button>
+                    <button class="btn fn" type="button" data-post="%" aria-label="Porcentagem">%</button>
+                    <button class="btn op" type="button" data-op="/" aria-label="Dividir">÷</button>
+
+                    <button class="btn num" type="button" data-digit="7">7</button>
+                    <button class="btn num" type="button" data-digit="8">8</button>
+                    <button class="btn num" type="button" data-digit="9">9</button>
+                    <button class="btn op" type="button" data-op="*" aria-label="Multiplicar">×</button>
+
+                    <button class="btn num" type="button" data-digit="4">4</button>
+                    <button class="btn num" type="button" data-digit="5">5</button>
+                    <button class="btn num" type="button" data-digit="6">6</button>
+                    <button class="btn op" type="button" data-op="-" aria-label="Subtrair">−</button>
+
+                    <button class="btn num" type="button" data-digit="1">1</button>
+                    <button class="btn num" type="button" data-digit="2">2</button>
+                    <button class="btn num" type="button" data-digit="3">3</button>
+                    <button class="btn op" type="button" data-op="+" aria-label="Somar">+</button>
+
+                    <button class="btn num" type="button" data-key="neg" aria-label="Inverter sinal">±</button>
+                    <button class="btn num" type="button" data-digit="0">0</button>
+                    <button class="btn num" type="button" data-key="dot" aria-label="Vírgula decimal">,</button>
+                    <button class="btn eq" type="button" data-key="eq" aria-label="Igual">=</button>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Scientific Calculator Section -->
-            <div class="calculator-section scientific" id="scientific-calculator">
-                <div class="display">
-                    <div class="previous-operand-sci"></div>
-                    <div class="current-operand-sci">0</div>
+                <p class="kbd-hint">
+                    Teclado: <kbd>0–9</kbd> <kbd>+ − * /</kbd> <kbd>^</kbd> <kbd>( )</kbd> <kbd>Enter</kbd> <kbd>⌫</kbd> <kbd>Esc</kbd> · <kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> copia e cola · <kbd>H</kbd> histórico
+                </p>
+
+                <!-- Histórico -->
+                <div class="history-sheet" id="history-sheet" role="dialog" aria-modal="false" aria-labelledby="history-title" hidden>
+                    <div class="history-head">
+                        <h2 id="history-title">Histórico</h2>
+                        <div class="history-actions">
+                            <button class="chip-btn" type="button" id="btn-history-clear">Limpar</button>
+                            <button class="chip-btn icon-only" type="button" id="btn-history-close" aria-label="Fechar histórico">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <ol class="history-list" id="history-list"></ol>
+                    <p class="history-empty" id="history-empty">Seus cálculos aparecem aqui. Toque em um resultado para reutilizá-lo.</p>
                 </div>
-                <div class="buttons scientific-grid">
-                    <!-- Row 1 -->
-                    <button class="btn function" data-action="sci-clear">AC</button>
-                    <button class="btn function" data-action="sci-delete" aria-label="Apagar último dígito"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 5H9.5a2 2 0 0 0-1.5.7L3 12l5 6.3a2 2 0 0 0 1.5.7H20a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M17 9l-5 6M12 9l5 6"/></svg></button>
-                    <button class="btn sci-func" data-action="sin">sin</button>
-                    <button class="btn sci-func" data-action="cos">cos</button>
-                    <button class="btn sci-func" data-action="tan">tan</button>
+            </section>
 
-                    <!-- Row 2 -->
-                    <button class="btn sci-func" data-action="pow">x^y</button>
-                    <button class="btn sci-func" data-action="log">log</button>
-                    <button class="btn sci-func" data-action="ln">ln</button>
-                    <button class="btn sci-func" data-action="open-paren">(</button>
-                    <button class="btn sci-func" data-action="close-paren">)</button>
-
-                    <!-- Row 3 -->
-                    <button class="btn sci-func" data-action="sqrt">√</button>
-                    <button class="btn sci-func" data-action="square">x²</button>
-                    <button class="btn sci-func" data-action="pi">π</button>
-                    <button class="btn sci-func" data-action="e">e</button>
-                    <button class="btn sci-func" data-action="fact">n!</button>
-
-                    <!-- Row 4 -->
-                    <button class="btn number">7</button>
-                    <button class="btn number">8</button>
-                    <button class="btn number">9</button>
-                    <button class="btn operator" data-action="divide">÷</button>
-                    <button class="btn operator" data-action="percent">%</button>
-
-                    <!-- Row 5 -->
-                    <button class="btn number">4</button>
-                    <button class="btn number">5</button>
-                    <button class="btn number">6</button>
-                    <button class="btn operator" data-action="multiply">×</button>
-                    <button class="btn sci-func" data-action="inv">1/x</button>
-
-                    <!-- Row 6 -->
-                    <button class="btn number">1</button>
-                    <button class="btn number">2</button>
-                    <button class="btn number">3</button>
-                    <button class="btn operator" data-action="subtract">-</button>
-                    <button class="btn sci-func" data-action="abs">|x|</button>
-
-                    <!-- Row 7 -->
-                    <button class="btn number">0</button>
-                    <button class="btn number">.</button>
-                    <button class="btn equals" data-action="sci-calculate">=</button>
-                    <button class="btn operator" data-action="add">+</button>
-                    <button class="btn sci-func" data-action="rand">Rnd</button>
-                </div>
-            </div>
-
-            <!-- Currency Converter Section -->
-            <div class="currency-section" id="currency">
+            <!-- Conversor de moedas -->
+            <section class="currency-section" id="currency" aria-labelledby="currency-title" hidden>
                 <div class="currency-header">
-                    <h3>Conversor de Moedas</h3>
-                    <div class="last-updated">Carregando cotações...</div>
-                    <button id="refresh-rates" class="btn-refresh" title="Atualizar cotações" aria-label="Atualizar cotações">
+                    <div>
+                        <h2 id="currency-title">Conversor de moedas</h2>
+                        <p class="last-updated" id="rates-status" role="status" aria-live="polite">Carregando cotações…</p>
+                    </div>
+                    <button id="refresh-rates" class="round-btn" type="button" title="Atualizar cotações" aria-label="Atualizar cotações">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11A8 8 0 0 0 6.3 6.3L3 9.5"/><path d="M3 4.5v5h5"/><path d="M4 13a8 8 0 0 0 13.7 4.7L21 14.5"/><path d="M21 19.5v-5h-5"/></svg>
                     </button>
                 </div>
 
                 <div class="converter-box">
-                    <div class="input-group">
-                        <label>De</label>
-                        <div class="currency-select-wrapper">
-                            <input type="text" class="currency-search" id="search-one" placeholder="Buscar moeda..."
-                                aria-label="Buscar moeda de origem">
-                            <select id="currency-one" aria-label="Moeda de origem">
-                                <option value="USD" selected>USD</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label>Valor</label>
-                        <input type="number" id="amount-one" value="1" placeholder="0" aria-label="Valor de origem">
-                    </div>
+                    <label class="field-label" for="currency-one">De</label>
+                    <select id="currency-one" class="currency-select">
+                        <option value="USD" selected>USD — Dólar americano</option>
+                    </select>
+                    <input type="text" id="amount-one" class="amount-input" value="1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Valor de origem (aceita contas, ex.: 100*3)">
                 </div>
 
                 <div class="swap-container">
-                    <button class="btn-swap" id="swap" aria-label="Inverter as moedas">
+                    <button class="round-btn accent" id="swap" type="button" aria-label="Inverter as moedas" title="Inverter (S)">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v18"/><path d="M3.5 17.5 7 21l3.5-3.5"/><path d="M17 21V3"/><path d="M13.5 6.5 17 3l3.5 3.5"/></svg>
                     </button>
-                    <div class="rate-info" id="rate">1 USD = ...</div>
+                    <div class="rate-info" id="rate">—</div>
                 </div>
 
                 <div class="converter-box">
-                    <div class="input-group">
-                        <label>Para</label>
-                        <div class="currency-select-wrapper">
-                            <input type="text" class="currency-search" id="search-two" placeholder="Buscar moeda..."
-                                aria-label="Buscar moeda de destino">
-                            <select id="currency-two" aria-label="Moeda de destino">
-                                <option value="BRL" selected>BRL</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label>Convertido</label>
-                        <input type="number" id="amount-two" placeholder="0" aria-label="Valor convertido">
-                    </div>
+                    <label class="field-label" for="currency-two">Para</label>
+                    <select id="currency-two" class="currency-select">
+                        <option value="BRL" selected>BRL — Real brasileiro</option>
+                    </select>
+                    <input type="text" id="amount-two" class="amount-input" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Valor convertido">
                 </div>
-            </div>
+
+                <div class="quick-pairs" role="group" aria-label="Pares rápidos">
+                    <button type="button" class="pair-chip" data-pair="USD-BRL">USD → BRL</button>
+                    <button type="button" class="pair-chip" data-pair="EUR-BRL">EUR → BRL</button>
+                    <button type="button" class="pair-chip" data-pair="GBP-BRL">GBP → BRL</button>
+                    <button type="button" class="pair-chip" data-pair="BRL-ARS">BRL → ARS</button>
+                    <button type="button" class="pair-chip" data-pair="USD-EUR">USD → EUR</button>
+                </div>
+                <p class="currency-note">Cotações de referência (médias de mercado), não incluem IOF nem spread bancário. O campo de valor aceita contas: <kbd>250*4</kbd>.</p>
+            </section>
+
+            <div class="calc-toast" id="calc-toast" role="status" aria-live="polite" hidden></div>
         </main>
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=2" defer></script>
+    <script type="module" src="script.js?v=3"></script>
 </body>
 
 </html>

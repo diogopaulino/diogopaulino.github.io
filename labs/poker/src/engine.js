@@ -1,19 +1,28 @@
 /**
- * Motor Texas Hold'em heads-up.
+ * Motor Texas Hold'em de 2 a 6 lugares (no-limit), com potes paralelos.
  *
  * Regras documentadas:
- * - Blinds: no HU o botão (dealer) paga small blind; o outro paga big blind.
- * - Ordem pré-flop: SB age primeiro; pós-flop: BB age primeiro (fora do botão).
+ * - Botão gira no sentido horário (assento seguinte com fichas).
+ *   Heads-up (2 vivos): o botão paga small blind e age primeiro no pré-flop.
+ *   3+ vivos: SB = 1º à esquerda do botão, BB = 2º; abre o pré-flop quem
+ *   está à esquerda do BB ("under the gun").
+ * - Pós-flop: age primeiro o 1º assento vivo à esquerda do botão.
  * - Ruas: preflop → flop (3) → turn (1) → river (1) → showdown.
  * - Ranking (maior → menor): royal flush, straight flush, quadra, full house,
- *   flush, straight, trinca, dois pares, par, high card.
- * - Empate: split pot. Com o refund abaixo as contribuições ficam iguais e o
- *   pote é sempre par; se um dia sobrar ficha ímpar, ela vai para o BB.
- * - All-in: com 2 jogadores não há side pot de verdade. No showdown, a parte
- *   que o rival não cobriu volta para quem apostou a mais (refund) e o resto
- *   é um pote único.
+ *   flush, sequência, trinca, dois pares, par, carta alta.
+ * - No-limit: aposta mínima = BB; aumento mínimo = tamanho do último aumento
+ *   completo. All-in menor que um aumento completo NÃO reabre a rodada para
+ *   quem já agiu (só pagar ou desistir) — regra de torneio (TDA).
+ * - Potes paralelos (side pots): no showdown, as contribuições da mão são
+ *   fatiadas por nível de all-in. A fatia do nível L vale
+ *       Σ_j min(contrib_j, L) − Σ_j min(contrib_j, L_anterior)
+ *   e só concorre a ela quem cobriu L sem desistir. Ficha de quem desistiu
+ *   fica no pote (dead money). Fatia com um só concorrente é aposta não
+ *   coberta e volta para o dono.
+ * - Empate num pote: divide igual; fichas ímpares vão para o primeiro
+ *   vencedor à esquerda do botão.
  * - Blinds sobem: a cada BLIND_EVERY mãos o nível dobra (5/10 → 10/20 →
- *   20/40 …). Assim toda sessão termina — alguém fica sem fichas.
+ *   20/40 …). Assim toda sessão termina — alguém fica com todas as fichas.
  *   nível = floor((mão − 1) / BLIND_EVERY);  SB = sb0 · 2^nível;  BB = 2 · SB.
  */
 
@@ -361,26 +370,33 @@ export function estimateEquity(heroHole, villainHole, board, samples = 120, rng 
 }
 
 /**
- * Equity contra uma mão aleatória: sorteia as 2 cartas do rival e o resto da
- * mesa. Não espia ninguém — serve à IA e ao medidor de força do jogador.
- * Retorna 0–1 (empate conta meio).
+ * Equity contra mãos aleatórias: sorteia as 2 cartas de cada rival e o resto
+ * da mesa. Não espia ninguém — serve à IA e ao medidor de força do jogador.
+ * opponents > 1: só vence quem bate todos (empate divide). Retorna 0–1.
  */
-export function equityVsRandom(hole, board, samples = 160, rng = Math.random) {
+export function equityVsRandom(hole, board, samples = 160, rng = Math.random, opponents = 1) {
     const used = new Set([...hole, ...board]);
     const remaining = createDeck().filter((c) => !used.has(c));
     const need = 5 - board.length;
+    const opp = Math.max(1, Math.min(5, opponents | 0));
+    const pick = need + 2 * opp;
     let total = 0;
     for (let i = 0; i < samples; i++) {
-        // Fisher–Yates parcial: só as 2 + need primeiras posições.
-        const pick = need + 2;
+        // Fisher–Yates parcial: só as posições que serão usadas.
         for (let j = 0; j < pick; j++) {
             const k = j + Math.floor(rng() * (remaining.length - j));
             [remaining[j], remaining[k]] = [remaining[k], remaining[j]];
         }
-        const villain = [remaining[0], remaining[1]];
-        const full = board.concat(remaining.slice(2, pick));
-        const cmp = compareScores(evaluateHand([...hole, ...full]), evaluateHand([...villain, ...full]));
-        total += cmp > 0 ? 1 : cmp === 0 ? 0.5 : 0;
+        const full = board.concat(remaining.slice(2 * opp, pick));
+        const mine = evaluateHand([...hole, ...full]);
+        let ties = 0;
+        let lost = false;
+        for (let o = 0; o < opp && !lost; o++) {
+            const cmp = compareScores(mine, evaluateHand([remaining[2 * o], remaining[2 * o + 1], ...full]));
+            if (cmp < 0) lost = true;
+            else if (cmp === 0) ties += 1;
+        }
+        if (!lost) total += 1 / (ties + 1);
     }
     return total / samples;
 }
@@ -398,44 +414,67 @@ export function potOdds(toCall, pot) {
     return toCall / (pot + toCall);
 }
 
+export const AI_NAMES = ['Lia', 'Bruno', 'Taís', 'Caio', 'Nina'];
+
 export function createMatch({
     startingStack = 1000,
     smallBlind = 5,
     bigBlind = 10,
     heroSeat = 0,
+    seats = 2,
     rng = Math.random
 } = {}) {
+    const n = Math.max(2, Math.min(6, seats | 0));
+    const players = [{ id: 0, name: 'Você', isHero: true }];
+    for (let i = 1; i < n; i++) players.push({ id: i, name: AI_NAMES[i - 1] || `IA ${i}`, isHero: false });
     return {
         startingStack,
         smallBlind,
         bigBlind,
         baseSmallBlind: smallBlind,
         biggestPot: 0,
-        handsWon: [0, 0],
+        handsWon: new Array(n).fill(0),
         heroSeat,
         rng,
-        button: 1, // AI começa no botão; hero recebe BB na 1ª mão
+        seats: n,
+        // Na 1ª mão o botão avança para o assento 1: no heads-up a IA abre
+        // no botão (SB) e o herói recebe o BB, como sempre foi.
+        button: 0,
         handNumber: 0,
-        stacks: [startingStack, startingStack],
-        players: [
-            { id: 0, name: 'Você', isHero: true },
-            { id: 1, name: 'Dealer IA', isHero: false }
-        ],
+        stacks: new Array(n).fill(startingStack),
+        players,
         hand: null,
         log: [],
         lastResult: null
     };
 }
 
+/** Assentos com fichas (ainda no torneio). */
+export function aliveSeats(match) {
+    return match.stacks.map((s, i) => (s > 0 ? i : -1)).filter((i) => i >= 0);
+}
+
+/** A sessão continua enquanto o herói tem fichas e há ao menos um rival com fichas. */
 export function canContinue(match) {
-    return match.stacks[0] > 0 && match.stacks[1] > 0;
+    if (match.stacks[match.heroSeat] <= 0) return false;
+    return match.stacks.some((s, i) => i !== match.heroSeat && s > 0);
+}
+
+function nextSeat(match, from, pred) {
+    const n = match.seats;
+    for (let k = 1; k <= n; k++) {
+        const s = (from + k) % n;
+        if (pred(s)) return s;
+    }
+    return -1;
 }
 
 export function startHand(match) {
-    if (!canContinue(match)) return null;
+    const alive = aliveSeats(match);
+    if (alive.length < 2 || !canContinue(match)) return null;
 
-    match.button = match.handNumber === 0 ? match.button : 1 - match.button;
     match.handNumber += 1;
+    match.button = nextSeat(match, match.button, (s) => match.stacks[s] > 0);
     const blinds = blindsFor(match, match.handNumber);
     if (blinds.bb !== match.bigBlind && match.handNumber > 1) {
         pushLog(match, `Blinds sobem para ${blinds.sb}/${blinds.bb}`);
@@ -443,36 +482,45 @@ export function startHand(match) {
     match.smallBlind = blinds.sb;
     match.bigBlind = blinds.bb;
 
+    const n = match.seats;
+    const live = (s) => match.stacks[s] > 0;
+    const headsUp = alive.length === 2;
+    const sbSeat = headsUp ? match.button : nextSeat(match, match.button, live);
+    const bbSeat = nextSeat(match, sbSeat, live);
+
     const deck = shuffle(createDeck(), match.rng);
-    const sbSeat = match.button; // HU: botão = SB
-    const bbSeat = 1 - match.button;
+    const holes = Array.from({ length: n }, () => []);
+    // Distribui uma carta por vez, começando à esquerda do botão.
+    for (let round = 0; round < 2; round++) {
+        let s = match.button;
+        for (let k = 0; k < alive.length; k++) {
+            s = nextSeat(match, s, live);
+            holes[s].push(deck.pop());
+        }
+    }
 
-    const sbAmt = Math.min(match.smallBlind, match.stacks[sbSeat]);
-    const bbAmt = Math.min(match.bigBlind, match.stacks[bbSeat]);
-
-    match.stacks[sbSeat] -= sbAmt;
-    match.stacks[bbSeat] -= bbAmt;
-
-    const holes = [[], []];
-    holes[0].push(deck.pop(), deck.pop());
-    holes[1].push(deck.pop(), deck.pop());
-
+    const zeros = () => new Array(n).fill(0);
     const hand = {
         deck,
         board: [],
         holes,
         street: STREET.PREFLOP,
-        pot: sbAmt + bbAmt,
-        bets: [0, 0],
-        contrib: [0, 0],
-        streetContrib: [0, 0],
-        currentBet: Math.max(sbAmt, bbAmt),
+        pot: 0,
+        bets: zeros(),
+        contrib: zeros(),
+        streetContrib: zeros(),
+        currentBet: 0,
         minRaise: match.bigBlind,
         lastAggressor: bbSeat,
-        toAct: sbSeat,
-        acted: [false, false],
-        folded: [false, false],
-        allIn: [match.stacks[0] === 0, match.stacks[1] === 0],
+        toAct: -1,
+        acted: new Array(n).fill(false),
+        // Pode aumentar? Falso para quem já agiu e só viu um all-in incompleto.
+        canRaise: new Array(n).fill(true),
+        // Fora da mão desde o início (sem fichas) conta como desistente.
+        folded: match.stacks.map((s) => s <= 0),
+        out: match.stacks.map((s) => s <= 0),
+        allIn: new Array(n).fill(false),
+        lastAction: new Array(n).fill(null),
         sbSeat,
         bbSeat,
         button: match.button,
@@ -480,23 +528,52 @@ export function startHand(match) {
         showdown: false,
         pendingAdvance: false
     };
-    hand.bets[sbSeat] = sbAmt;
-    hand.bets[bbSeat] = bbAmt;
-    hand.contrib[sbSeat] = sbAmt;
-    hand.contrib[bbSeat] = bbAmt;
-    hand.streetContrib[sbSeat] = sbAmt;
-    hand.streetContrib[bbSeat] = bbAmt;
-
     match.hand = hand;
     match.lastResult = null;
+
+    const sbAmt = Math.min(match.smallBlind, match.stacks[sbSeat]);
+    const bbAmt = Math.min(match.bigBlind, match.stacks[bbSeat]);
+    commit(match, sbSeat, sbAmt);
+    commit(match, bbSeat, bbAmt);
+    hand.lastAction[sbSeat] = { type: 'blind', amount: sbAmt };
+    hand.lastAction[bbSeat] = { type: 'blind', amount: bbAmt };
+    // Regra TDA: mesmo com o BB all-in por menos, quem entra paga o BB
+    // inteiro. O excedente não coberto volta no showdown (buildPots).
+    hand.currentBet = match.bigBlind;
+
     pushLog(match, `Mão #${match.handNumber} — blinds ${sbAmt}/${bbAmt}`);
-    if (bothCommittedOrAllIn(match)) runoutToShowdown(match);
-    return hand;
+    const first = headsUp ? sbSeat : nextSeat(match, bbSeat, live);
+    hand.toAct = first;
+    return settle(match, first) && hand;
 }
 
 function pushLog(match, msg) {
     match.log.unshift({ t: Date.now(), msg });
     if (match.log.length > 40) match.log.length = 40;
+}
+
+/** Assentos ainda disputando o pote (não desistiram). */
+function contenders(h) {
+    const out = [];
+    for (let s = 0; s < h.folded.length; s++) if (!h.folded[s]) out.push(s);
+    return out;
+}
+
+/** Quem ainda pode decidir algo (na mão e com fichas). */
+function actors(h) {
+    return contenders(h).filter((s) => !h.allIn[s]);
+}
+
+/**
+ * Precisa agir? Ainda não igualou a aposta, ou não agiu nesta rua e existe
+ * outro jogador capaz de responder (se todos os outros estão all-in e ele
+ * já cobriu, não há o que decidir).
+ */
+function needsAction(h, s) {
+    if (h.folded[s] || h.allIn[s]) return false;
+    if (h.streetContrib[s] < h.currentBet) return true;
+    if (h.acted[s]) return false;
+    return actors(h).some((o) => o !== s);
 }
 
 export function legalActions(match) {
@@ -505,35 +582,30 @@ export function legalActions(match) {
     if (h.pendingAdvance) return [];
 
     const seat = h.toAct;
-    if (h.folded[seat] || h.allIn[seat]) return [];
+    if (seat < 0 || h.folded[seat] || h.allIn[seat]) return [];
 
-    const toCall = h.currentBet - h.streetContrib[seat];
+    const toCall = Math.max(0, h.currentBet - h.streetContrib[seat]);
     const stack = match.stacks[seat];
+    const othersCanAct = actors(h).some((o) => o !== seat);
     const actions = [];
 
     if (toCall <= 0) {
         actions.push({ type: 'check', label: 'Check', amount: 0 });
-        if (stack > 0) {
+        if (stack > 0 && othersCanAct) {
             const minBet = Math.min(stack, Math.max(match.bigBlind, h.minRaise));
-            actions.push({ type: 'bet', label: 'Apostar', min: minBet, max: stack, amount: minBet });
-            if (stack > minBet) actions.push({ type: 'allin', label: 'All-in', amount: stack });
+            if (minBet < stack) actions.push({ type: 'bet', label: 'Apostar', min: minBet, max: stack, amount: minBet });
+            actions.push({ type: 'allin', label: 'All-in', amount: stack });
         }
     } else {
         actions.push({ type: 'fold', label: 'Fold', amount: 0 });
         const callAmt = Math.min(stack, toCall);
         actions.push({ type: 'call', label: callAmt >= stack ? 'All-in (call)' : 'Call', amount: callAmt });
-        if (stack > toCall && !h.allIn[1 - seat]) {
+        if (stack > toCall && othersCanAct && h.canRaise[seat]) {
             const minRaiseTotal = h.currentBet + h.minRaise;
             const minPut = minRaiseTotal - h.streetContrib[seat];
             const minAmt = Math.min(stack, Math.max(toCall + 1, minPut));
             if (minAmt < stack) {
-                actions.push({
-                    type: 'raise',
-                    label: 'Raise',
-                    min: minAmt,
-                    max: stack,
-                    amount: minAmt
-                });
+                actions.push({ type: 'raise', label: 'Raise', min: minAmt, max: stack, amount: minAmt });
             }
             actions.push({ type: 'allin', label: 'All-in', amount: stack });
         }
@@ -542,13 +614,12 @@ export function legalActions(match) {
 }
 
 /**
- * Aplica ação do jogador toAct.
- * amount: chips a colocar nesta ação (além do já contribuído na rua para bet/raise = total put this street action).
- * Para bet/raise/allin, amount = chips adicionais a enviar agora.
+ * Aplica a ação de quem tem a vez (h.toAct).
+ * Para bet/raise, amount = fichas colocadas AGORA (além do que já está na rua).
  */
 export function applyAction(match, action) {
     const h = match.hand;
-    if (!h) return { ok: false, error: 'Sem mão' };
+    if (!h || !action) return { ok: false, error: 'Sem mão' };
     const seat = h.toAct;
     const legal = legalActions(match);
     let found = legal.find((a) => a.type === action.type);
@@ -560,75 +631,80 @@ export function applyAction(match, action) {
             || legal.find((a) => a.type === 'call' && a.amount === stack);
         if (found) action = { type: found.type, amount: stack };
     }
+    if (!found && (action.type === 'bet' || action.type === 'raise')) {
+        // Valor ≥ stack num spot onde só existe "tudo": vira all-in.
+        const all = legal.find((a) => a.type === 'allin');
+        if (all && Number(action.amount) >= match.stacks[seat]) { found = all; action = { type: 'allin' }; }
+    }
     if (!found) return { ok: false, error: 'Ação ilegal' };
 
-    let put = 0;
     const name = match.players[seat].name;
+    let put = 0;
 
     switch (action.type) {
-        case 'fold': {
+        case 'fold':
             h.folded[seat] = true;
             h.acted[seat] = true;
-            pushLog(match, `${name} desiste (fold)`);
-            return finishByFold(match, 1 - seat);
-        }
-        case 'check': {
-            h.acted[seat] = true;
-            pushLog(match, `${name} dá check`);
+            h.lastAction[seat] = { type: 'fold', amount: 0 };
+            pushLog(match, `${name} desiste`);
             break;
-        }
-        case 'call': {
+        case 'check':
+            h.acted[seat] = true;
+            h.lastAction[seat] = { type: 'check', amount: 0 };
+            pushLog(match, `${name} passa`);
+            break;
+        case 'call':
             put = Math.min(match.stacks[seat], h.currentBet - h.streetContrib[seat]);
             commit(match, seat, put);
             h.acted[seat] = true;
-            pushLog(match, `${name} paga ${put}`);
+            h.lastAction[seat] = { type: h.allIn[seat] ? 'allin' : 'call', amount: h.streetContrib[seat] };
+            pushLog(match, `${name} paga ${put}${h.allIn[seat] ? ' (all-in)' : ''}`);
             break;
-        }
-        case 'bet': {
-            put = clampAmount(action.amount, found.min, found.max);
-            commit(match, seat, put);
-            h.currentBet = h.streetContrib[seat];
-            h.minRaise = put;
-            h.lastAggressor = seat;
-            h.acted = [false, false];
-            h.acted[seat] = true;
-            pushLog(match, `${name} aposta ${put}`);
-            break;
-        }
+        case 'bet':
         case 'raise': {
             put = clampAmount(action.amount, found.min, found.max);
-            const prevBet = h.currentBet;
-            commit(match, seat, put);
-            const raiseSize = h.streetContrib[seat] - prevBet;
-            h.minRaise = Math.max(match.bigBlind, raiseSize);
-            h.currentBet = h.streetContrib[seat];
-            h.lastAggressor = seat;
-            h.acted = [false, false];
-            h.acted[seat] = true;
-            pushLog(match, `${name} aumenta para ${h.currentBet} (+${put})`);
+            raiseTo(match, seat, put);
+            // Pré-flop o BB já é a aposta: "apostar" ali é, na mesa, aumentar.
+            h.lastAction[seat] = { type: h.street === STREET.PREFLOP ? 'raise' : action.type, amount: h.streetContrib[seat] };
+            pushLog(match, action.type === 'bet' ? `${name} aposta ${put}` : `${name} aumenta para ${h.currentBet}`);
             break;
         }
         case 'allin': {
             put = match.stacks[seat];
-            const prevBet = h.currentBet;
-            commit(match, seat, put);
-            if (h.streetContrib[seat] > h.currentBet) {
-                const raiseSize = h.streetContrib[seat] - prevBet;
-                h.minRaise = Math.max(match.bigBlind, raiseSize);
-                h.currentBet = h.streetContrib[seat];
-                h.lastAggressor = seat;
-                h.acted = [false, false];
-            }
-            h.acted[seat] = true;
-            h.allIn[seat] = true;
-            pushLog(match, `${name} vai all-in (${put})`);
+            raiseTo(match, seat, put);
+            h.lastAction[seat] = { type: 'allin', amount: h.streetContrib[seat] };
+            pushLog(match, `${name} vai all-in (${h.streetContrib[seat]})`);
             break;
         }
         default:
             return { ok: false, error: 'Ação desconhecida' };
     }
+    return afterAction(match, seat);
+}
 
-    return afterAction(match);
+/** Coloca `put` fichas e trata aumento completo × all-in incompleto. */
+function raiseTo(match, seat, put) {
+    const h = match.hand;
+    const prevBet = h.currentBet;
+    commit(match, seat, put);
+    h.acted[seat] = true;
+    h.canRaise[seat] = false;
+    const total = h.streetContrib[seat];
+    if (total <= prevBet) return; // all-in que nem chega a pagar: é um call curto
+    const raiseSize = total - prevBet;
+    h.currentBet = total;
+    h.lastAggressor = seat;
+    // Primeira aposta da rua sempre abre a ação; depois, só aumento completo.
+    const full = prevBet === 0 || raiseSize >= h.minRaise;
+    for (let s = 0; s < h.acted.length; s++) {
+        if (s === seat || h.folded[s] || h.allIn[s]) continue;
+        // Todos precisam responder ao valor novo. Só um aumento completo
+        // devolve o direito de aumentar a quem já tinha agido.
+        if (full) h.canRaise[s] = true;
+        else if (!h.acted[s]) h.canRaise[s] = true;
+        h.acted[s] = false;
+    }
+    if (full) h.minRaise = Math.max(match.bigBlind, raiseSize);
 }
 
 function clampAmount(v, min, max) {
@@ -639,7 +715,7 @@ function clampAmount(v, min, max) {
 
 function commit(match, seat, amount) {
     const h = match.hand;
-    const put = Math.min(amount, match.stacks[seat]);
+    const put = Math.max(0, Math.min(amount, match.stacks[seat]));
     match.stacks[seat] -= put;
     h.streetContrib[seat] += put;
     h.contrib[seat] += put;
@@ -648,54 +724,33 @@ function commit(match, seat, amount) {
     if (match.stacks[seat] === 0) h.allIn[seat] = true;
 }
 
-function afterAction(match) {
-    const h = match.hand;
+function afterAction(match, seat) {
+    return settle(match, nextSeat(match, seat, () => true));
+}
 
-    // Ambos all-in ou um all-in e o outro cobriu → runout
-    if (bettingRoundClosed(match)) {
-        if (h.folded[0] || h.folded[1]) {
-            // já tratado
+/**
+ * Decide o próximo passo a partir do assento `from`: vitória por desistência,
+ * próximo a agir, nova rua, runout (todos all-in) ou showdown. Nunca deixa a
+ * mão parada sem ninguém para agir.
+ */
+function settle(match, from) {
+    const h = match.hand;
+    for (let guard = 0; guard < 8; guard++) {
+        const alive = contenders(h);
+        if (alive.length === 1) return finishByFold(match, alive[0]);
+
+        const next = nextSeat(match, from - 1 + match.seats, (s) => needsAction(h, s));
+        if (next >= 0) {
+            h.toAct = next;
             return { ok: true };
         }
-        if (bothCommittedOrAllIn(match) && h.street !== STREET.RIVER) {
-            return runoutToShowdown(match);
-        }
-        if (h.street === STREET.RIVER) {
-            return goShowdown(match);
-        }
-        return advanceStreet(match);
+        // Rodada fechada.
+        if (actors(h).length <= 1) return runoutToShowdown(match);
+        if (h.street === STREET.RIVER) return goShowdown(match);
+        advanceStreet(match);
+        from = nextSeat(match, h.button, () => true);
     }
-
-    h.toAct = 1 - h.toAct;
-    // Pular quem fold/all-in
-    if (h.folded[h.toAct] || (h.allIn[h.toAct] && h.streetContrib[h.toAct] >= h.currentBet)) {
-        if (bettingRoundClosed(match)) {
-            if (h.street === STREET.RIVER) return goShowdown(match);
-            if (bothCommittedOrAllIn(match)) return runoutToShowdown(match);
-            return advanceStreet(match);
-        }
-    }
-    return { ok: true };
-}
-
-function bothCommittedOrAllIn(match) {
-    const h = match.hand;
-    const a0 = h.allIn[0] || h.streetContrib[0] >= h.currentBet;
-    const a1 = h.allIn[1] || h.streetContrib[1] >= h.currentBet;
-    return (h.allIn[0] || h.allIn[1]) && a0 && a1;
-}
-
-function bettingRoundClosed(match) {
-    const h = match.hand;
-    if (h.folded[0] || h.folded[1]) return true;
-
-    for (let s = 0; s < 2; s++) {
-        if (h.folded[s]) continue;
-        if (h.allIn[s]) continue;
-        if (!h.acted[s]) return false;
-        if (h.streetContrib[s] < h.currentBet && match.stacks[s] > 0) return false;
-    }
-    return true;
+    return goShowdown(match);
 }
 
 function finishByFold(match, winner) {
@@ -706,24 +761,33 @@ function finishByFold(match, winner) {
     match.handsWon[winner] += 1;
     h.winners = [winner];
     h.street = STREET.DONE;
+    h.toAct = -1;
     h.showdown = false;
+    const payouts = new Array(match.seats).fill(0);
+    payouts[winner] = pot;
     match.lastResult = {
         winners: [winner],
         pot,
         reason: 'fold',
-        hands: null
+        hands: null,
+        pots: [{ amount: pot, eligible: [winner], winners: [winner] }],
+        payouts
     };
-    pushLog(match, `${match.players[winner].name} leva ${pot} (fold)`);
+    pushLog(match, `${match.players[winner].name} leva ${pot} (os outros desistiram)`);
     return { ok: true, handOver: true };
 }
 
 function advanceStreet(match) {
     const h = match.hand;
-    h.streetContrib = [0, 0];
-    h.bets = [0, 0];
+    h.streetContrib.fill(0);
+    h.bets.fill(0);
     h.currentBet = 0;
     h.minRaise = match.bigBlind;
-    h.acted = [false, false];
+    h.acted.fill(false);
+    h.canRaise.fill(true);
+    for (let s = 0; s < h.lastAction.length; s++) {
+        if (!h.folded[s] && !h.allIn[s]) h.lastAction[s] = null;
+    }
 
     if (h.street === STREET.PREFLOP) {
         h.street = STREET.FLOP;
@@ -737,74 +801,109 @@ function advanceStreet(match) {
         h.street = STREET.RIVER;
         h.board.push(h.deck.pop());
         pushLog(match, `River: ${h.board[4]}`);
-    } else {
-        return goShowdown(match);
     }
-
-    // Pós-flop: primeiro a agir é o não-botão (BB no HU)
-    h.toAct = 1 - h.button;
-    if (h.allIn[0] && h.allIn[1]) return runoutToShowdown(match);
-    if (h.allIn[h.toAct]) h.toAct = 1 - h.toAct;
     return { ok: true, streetAdvanced: true };
 }
 
 function runoutToShowdown(match) {
     const h = match.hand;
-    while (h.board.length < 5) {
-        h.board.push(h.deck.pop());
-    }
-    if (h.street === STREET.PREFLOP) pushLog(match, `All-in runout: ${h.board.join(' ')}`);
-    else pushLog(match, `Runout: ${h.board.join(' ')}`);
+    const before = h.board.length;
+    while (h.board.length < 5) h.board.push(h.deck.pop());
+    if (h.board.length > before) pushLog(match, `Mesa até o fim: ${h.board.join(' ')}`);
     h.street = STREET.RIVER;
     return goShowdown(match);
+}
+
+/**
+ * Fatia as contribuições em pote principal + potes paralelos (ver topo).
+ * Devolve [{ amount, eligible: [assentos] }], do principal ao último.
+ */
+export function buildPots(contrib, folded) {
+    const levels = [...new Set(contrib.filter((c, s) => c > 0 && !folded[s]))].sort((a, b) => a - b);
+    const pots = [];
+    let prev = 0;
+    for (const level of levels) {
+        let amount = 0;
+        for (const c of contrib) amount += Math.max(0, Math.min(c, level) - Math.min(c, prev));
+        const eligible = [];
+        for (let s = 0; s < contrib.length; s++) if (!folded[s] && contrib[s] >= level) eligible.push(s);
+        if (amount > 0) pots.push({ amount, eligible });
+        prev = level;
+    }
+    // Ficha morta acima do maior nível vivo (desistente que apostou mais) vai pro último pote.
+    let dead = 0;
+    for (const c of contrib) dead += Math.max(0, c - prev);
+    if (dead > 0 && pots.length) pots[pots.length - 1].amount += dead;
+    return pots;
 }
 
 function goShowdown(match) {
     const h = match.hand;
     h.street = STREET.SHOWDOWN;
     h.showdown = true;
+    h.toAct = -1;
 
-    const hand0 = evaluateHand([...h.holes[0], ...h.board]);
-    const hand1 = evaluateHand([...h.holes[1], ...h.board]);
-    const cmp = compareScores(hand0, hand1);
-    // Em heads-up, só o valor coberto pelos dois pode ser disputado.
-    const excess = h.contrib[0] - h.contrib[1];
-    if (excess !== 0) {
-        const seat = excess > 0 ? 0 : 1;
-        const refund = Math.abs(excess);
-        match.stacks[seat] += refund;
-        h.contrib[seat] -= refund;
-        h.streetContrib[seat] -= refund;
-        h.bets[seat] = h.streetContrib[seat];
-        h.pot -= refund;
-        pushLog(match, `${match.players[seat].name} recebe ${refund} de volta (aposta sem cobertura)`);
+    const n = match.seats;
+    const hands = new Array(n).fill(null);
+    for (const s of contenders(h)) hands[s] = evaluateHand([...h.holes[s], ...h.board]);
+
+    const payouts = new Array(n).fill(0);
+    const pots = buildPots(h.contrib, h.folded);
+    const results = [];
+    // Ordem de desempate das fichas ímpares: a partir da esquerda do botão.
+    const order = [];
+    for (let k = 1; k <= n; k++) order.push((h.button + k) % n);
+
+    for (let i = 0; i < pots.length; i++) {
+        const pot = pots[i];
+        if (pot.eligible.length === 1) {
+            // Aposta sem cobertura: volta para quem apostou.
+            const s = pot.eligible[0];
+            payouts[s] += pot.amount;
+            results.push({ ...pot, winners: [s], refund: true });
+            pushLog(match, `${match.players[s].name} recebe ${pot.amount} de volta (aposta sem cobertura)`);
+            continue;
+        }
+        let best = null;
+        let winners = [];
+        for (const s of pot.eligible) {
+            const cmp = best ? compareScores(hands[s], best) : 1;
+            if (cmp > 0) { best = hands[s]; winners = [s]; } else if (cmp === 0) winners.push(s);
+        }
+        const share = Math.floor(pot.amount / winners.length);
+        let odd = pot.amount - share * winners.length;
+        for (const s of order) {
+            if (!winners.includes(s)) continue;
+            payouts[s] += share + (odd > 0 ? 1 : 0);
+            if (odd > 0) odd -= 1;
+        }
+        results.push({ ...pot, winners, hand: best });
+        const label = pots.length > 1 ? (i === 0 ? 'pote principal' : `pote paralelo ${i}`) : 'o pote';
+        pushLog(match, winners.length > 1
+            ? `${label} (${pot.amount}) dividido — ${describeHand(best)}`
+            : `${match.players[winners[0]].name} leva ${label} (${pot.amount}) com ${describeHand(best)}`);
     }
-    const pot = h.pot;
-    let winners;
-    if (cmp > 0) winners = [0];
-    else if (cmp < 0) winners = [1];
-    else winners = [0, 1];
 
-    if (winners.length === 2) {
-        const half = Math.floor(pot / 2);
-        const odd = pot - half * 2;
-        match.stacks[h.bbSeat] += half + odd;
-        match.stacks[h.sbSeat] += half;
-        pushLog(match, `Split pot ${pot} — ${describeHand(hand0)}`);
-    } else {
-        match.stacks[winners[0]] += pot;
-        pushLog(match, `${match.players[winners[0]].name} vence ${pot} com ${describeHand(winners[0] === 0 ? hand0 : hand1)}`);
-    }
+    for (let s = 0; s < n; s++) match.stacks[s] += payouts[s];
+    // Pote "de verdade" = tudo menos devoluções.
+    const contested = results.filter((r) => !r.refund);
+    const potTotal = contested.reduce((a, r) => a + r.amount, 0);
+    h.pot = potTotal;
+    const mainWinners = contested.length ? contested[0].winners : results[0]?.winners || [];
+    const allWinners = [...new Set(contested.flatMap((r) => r.winners))];
 
-    h.winners = winners;
+    h.winners = allWinners;
     h.street = STREET.DONE;
-    match.biggestPot = Math.max(match.biggestPot || 0, pot);
-    if (winners.length === 1) match.handsWon[winners[0]] += 1;
+    match.biggestPot = Math.max(match.biggestPot || 0, potTotal);
+    if (mainWinners.length === 1) match.handsWon[mainWinners[0]] += 1;
     match.lastResult = {
-        winners,
-        pot,
+        winners: mainWinners,
+        allWinners,
+        pot: potTotal,
         reason: 'showdown',
-        hands: [hand0, hand1]
+        hands,
+        pots: results,
+        payouts
     };
     return { ok: true, handOver: true, showdown: true };
 }

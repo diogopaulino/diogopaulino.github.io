@@ -1,11 +1,12 @@
 /**
  * Entrada unificada: teclado, mouse, toque e gamepad.
  *
- * O jogo lê apenas `input.steer`, `input.boost`, `input.brake` e
- * `input.consumeFire()` — de onde veio o comando é problema deste módulo.
+ * O jogo lê `input.steer` (leme, −1…1), `input.consumeGear()` (telégrafo de remo:
+ * +1 / −1 por toque) e `input.consumeFire()` — de onde veio o comando é problema
+ * deste módulo. `boost`/`brake` seguem disponíveis por compatibilidade.
  */
 
-import { clamp } from './utils.js?v=50';
+import { clamp } from './utils.js?v=60';
 
 const KEY_MAP = {
     ArrowLeft: 'left',
@@ -41,6 +42,9 @@ export class Input {
         this.enabled = true;
         this.touchOrigin = null;
         this.gamepadIndex = null;
+        /** Toques acumulados no telégrafo desde o último quadro. */
+        this.gearQueue = 0;
+        this._padGear = { up: false, down: false };
 
         this._bind();
     }
@@ -69,6 +73,8 @@ export class Input {
             if (!key) return;
             e.preventDefault();
             this.keys.add(key);
+            if (key === 'boost') this.gearQueue = Math.min(3, this.gearQueue + 1);
+            else if (key === 'brake') this.gearQueue = Math.max(-3, this.gearQueue - 1);
             if (key === 'fire') {
                 this.firePressed = true;
                 this.fireHeld = true;
@@ -145,6 +151,12 @@ export class Input {
                 if (control === 'throw') {
                     this.firePressed = true;
                     this.fireHeld = true;
+                } else if (control === 'gearUp') {
+                    this.gearQueue += 1;
+                    navigator.vibrate?.(8);
+                } else if (control === 'gearDown') {
+                    this.gearQueue -= 1;
+                    navigator.vibrate?.(8);
                 } else if (control === 'boost') {
                     this.touchBoost = true;
                 }
@@ -198,6 +210,26 @@ export class Input {
         return this.keys.has('brake') || Boolean(pad?.buttons[6]?.pressed);
     }
 
+    /**
+     * Mudança de marcha pendente (−1, 0 ou +1 por quadro; toques extras ficam na fila).
+     * Gamepad: RB / D-pad ↑ sobe, LB / D-pad ↓ desce (detecção de borda).
+     */
+    consumeGear() {
+        const pad = this._gamepad();
+        if (pad) {
+            const up = Boolean(pad.buttons[5]?.pressed || pad.buttons[12]?.pressed);
+            const down = Boolean(pad.buttons[4]?.pressed || pad.buttons[13]?.pressed);
+            if (up && !this._padGear.up) this.gearQueue += 1;
+            if (down && !this._padGear.down) this.gearQueue -= 1;
+            this._padGear.up = up;
+            this._padGear.down = down;
+        }
+        if (!this.gearQueue) return 0;
+        const step = Math.sign(this.gearQueue);
+        this.gearQueue -= step;
+        return step;
+    }
+
     /** Verdadeiro apenas uma vez por toque/clique/tecla. */
     consumeFire() {
         const pad = this._gamepad();
@@ -224,6 +256,7 @@ export class Input {
 
     reset() {
         this.keys.clear();
+        this.gearQueue = 0;
         this.firePressed = false;
         this.fireHeld = false;
         this.pointerFire = false;

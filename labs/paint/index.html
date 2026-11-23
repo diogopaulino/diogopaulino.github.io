@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Paint Lab — pincel, formas e PNG no navegador | Diogo Paulino</title>
     <meta name="description"
-        content="Editor de desenho no navegador: pincel, borracha, balde de tinta, conta-gotas, formas, opacidade, desfazer/refazer e exportação em PNG.">
+        content="Editor de desenho no navegador com pressão de caneta, suavização de traço, camadas, zoom, balde com tolerância, formas, desfazer e exportação em PNG.">
     <meta name="theme-color" content="#fafbfc">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/paint/">
     <meta name="author" content="Diogo Paulino">
@@ -15,11 +15,11 @@
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:image:alt" content="Diogo Paulino">
     <meta name="twitter:title" content="Paint Lab — pincel, formas e PNG no navegador | Diogo Paulino">
-    <meta name="twitter:description" content="Editor de desenho vanilla em Canvas: pincel, formas, balde de tinta, conta-gotas e exportação em PNG.">
+    <meta name="twitter:description" content="Editor de desenho no navegador com pressão de caneta, suavização de traço, camadas, zoom, balde com tolerância, formas, desfazer e exportação em PNG.">
     <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
     <meta property="og:title" content="Paint Lab — pincel, formas e PNG no navegador | Diogo Paulino">
     <meta property="og:description"
-        content="Editor de desenho vanilla em Canvas: pincel, formas, balde de tinta, conta-gotas e exportação em PNG.">
+        content="Editor de desenho no navegador com pressão de caneta, suavização de traço, camadas, zoom, balde com tolerância, formas, desfazer e exportação em PNG.">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/paint/">
     <meta property="og:type" content="website">
     <meta property="og:locale" content="pt_BR">
@@ -27,7 +27,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -36,7 +36,7 @@
           "@type": "WebApplication",
           "name": "Paint Lab",
           "url": "https://diogopaulino.com.br/labs/paint/",
-          "description": "Editor de desenho no navegador: pincel, borracha, balde de tinta, conta-gotas, formas, opacidade, desfazer/refazer e exportação em PNG.",
+          "description": "Editor de desenho no navegador com pressão de caneta, suavização de traço, camadas, zoom, balde com tolerância, formas, desfazer e exportação em PNG.",
           "applicationCategory": "UtilitiesApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -140,11 +140,68 @@
                 <path d="M8 11l4 4 4-4" />
                 <path d="M5 19h14" />
             </g>
+                    <g id="i-hand" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M8 13V5.5a1.5 1.5 0 013 0V12" />
+                <path d="M11 11.5V4a1.5 1.5 0 013 0v7.5" />
+                <path d="M14 11.5V6a1.5 1.5 0 013 0v8a6 6 0 01-6 6h-1a6 6 0 01-5-2.7L3.3 14a1.5 1.5 0 012.5-1.7L8 15" />
+            </g>
+            <g id="i-layers" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M12 3l9 5-9 5-9-5z" />
+                <path d="M3 13l9 5 9-5" />
+            </g>
+            <g id="i-plus" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M12 5v14M5 12h14" />
+            </g>
+            <g id="i-eye" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                <circle cx="12" cy="12" r="3" />
+            </g>
+            <g id="i-eye-off" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M3 3l18 18" />
+                <path d="M10.6 5.1A9.8 9.8 0 0112 5c6.5 0 10 7 10 7a17 17 0 01-3.2 4.2M6.6 6.6A16.5 16.5 0 002 12s3.5 7 10 7a9.6 9.6 0 005.4-1.6" />
+            </g>
+            <g id="i-up" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M12 19V5M6 11l6-6 6 6" />
+            </g>
+            <g id="i-down" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M12 5v14M6 13l6 6 6-6" />
+            </g>
+            <g id="i-image" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="M21 15l-5-5L5 21" />
+            </g>
+            <g id="i-sliders" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" />
+                <circle cx="16" cy="6" r="2" />
+                <circle cx="10" cy="12" r="2" />
+                <circle cx="18" cy="18" r="2" />
+            </g>
+            <g id="i-zoom-in" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M8 11h6M11 8v6M20 20l-3.5-3.5" />
+            </g>
+            <g id="i-zoom-out" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M8 11h6M20 20l-3.5-3.5" />
+            </g>
+            <g id="i-copy" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round">
+                <rect x="8" y="8" width="12" height="12" rx="2" />
+                <path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" />
+            </g>
         </defs>
     </svg>
 
     <div class="app-container">
-        <header data-lab-header data-title="Paint Lab">
+        <header data-lab-header data-fullscreen data-title="Paint Lab">
             <template data-slot="logo">
                 <div class="app-logo">
                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -153,158 +210,194 @@
                     Paint Lab
                 </div>
             </template>
-            <template data-slot="actions">
-                <div class="header-status">
-                    <span class="tool-readout">
-                        <span class="tool-readout-label">Ferramenta</span>
-                        <strong id="activeToolName">Pincel</strong>
-                    </span>
-                    <span class="canvas-readout" id="canvasReadout">800 × 600</span>
-                </div>
-                <div class="header-tools">
-                    <button id="undoBtn" type="button" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled>
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-undo"></use>
-                        </svg>
-                    </button>
-                    <button id="redoBtn" type="button" title="Refazer (Ctrl+Y)" aria-label="Refazer" disabled>
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-redo"></use>
-                        </svg>
-                    </button>
-                    <div class="separator" aria-hidden="true"></div>
-                    <button id="clearBtn" type="button" title="Limpar tela" aria-label="Limpar tela">
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-trash"></use>
-                        </svg>
-                    </button>
-                    <button id="saveBtn" class="primary-btn" type="button" title="Baixar como PNG">
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-download"></use>
-                        </svg>
-                        <span>Salvar</span>
-                    </button>
-                </div>
-            </template>
         </header>
 
-        <main class="workspace">
-            <aside class="toolbar side-bar left" aria-label="Ferramentas">
-                <div class="tool-group" role="group" aria-label="Ferramentas de desenho">
-                    <button class="tool-btn active" type="button" data-tool="brush" data-name="Pincel"
-                        title="Pincel (B)" aria-label="Pincel" aria-pressed="true">
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-brush"></use>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" type="button" data-tool="eraser" data-name="Borracha"
-                        title="Borracha (E)" aria-label="Borracha" aria-pressed="false">
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-eraser"></use>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" type="button" data-tool="fill" data-name="Balde de tinta"
-                        title="Balde de tinta (G)" aria-label="Balde de tinta" aria-pressed="false">
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-fill"></use>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" type="button" data-tool="picker" data-name="Conta-gotas"
-                        title="Conta-gotas (I)" aria-label="Conta-gotas" aria-pressed="false">
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-picker"></use>
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="separator" aria-hidden="true"></div>
-
-                <div class="tool-group" role="group" aria-label="Formas">
-                    <button class="tool-btn" type="button" data-tool="rect" data-name="Retângulo"
-                        title="Retângulo (R)" aria-label="Retângulo" aria-pressed="false">
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-rect"></use>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" type="button" data-tool="circle" data-name="Círculo"
-                        title="Círculo (C)" aria-label="Círculo" aria-pressed="false">
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-circle"></use>
-                        </svg>
-                    </button>
-                    <button class="tool-btn" type="button" data-tool="line" data-name="Linha" title="Linha (L)"
-                        aria-label="Linha" aria-pressed="false">
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <use href="#i-line"></use>
-                        </svg>
-                    </button>
-                </div>
-            </aside>
-
-            <div class="canvas-container">
-                <canvas id="canvas" width="800" height="600" aria-label="Tela de desenho" role="img"></canvas>
+        <main class="paint-app" id="paintApp" data-tool="brush">
+            <!-- Barra superior -->
+            <div class="topbar" role="toolbar" aria-label="Ações">
+                <button class="icon-btn" id="undoBtn" type="button" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled>
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo"></use></svg>
+                </button>
+                <button class="icon-btn" id="redoBtn" type="button" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer" disabled>
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-redo"></use></svg>
+                </button>
+                <span class="bar-sep" aria-hidden="true"></span>
+                <button class="icon-btn hide-sm" id="zoomOutBtn" type="button" title="Diminuir zoom (−)" aria-label="Diminuir zoom">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom-out"></use></svg>
+                </button>
+                <button class="icon-btn zoom-readout" id="zoomFitBtn" type="button" title="Ajustar à tela (0)" aria-label="Ajustar à tela">100%</button>
+                <button class="icon-btn hide-sm" id="zoomInBtn" type="button" title="Aumentar zoom (+)" aria-label="Aumentar zoom">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom-in"></use></svg>
+                </button>
+                <span class="bar-spacer"></span>
+                <span class="canvas-readout hide-sm" id="canvasReadout">1600 × 1200</span>
+                <button class="icon-btn" id="importBtn" type="button" title="Importar imagem como camada (Ctrl+O)" aria-label="Importar imagem">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"></use></svg>
+                </button>
+                <input type="file" id="importInput" accept="image/*" hidden>
+                <button class="icon-btn" id="clearBtn" type="button" title="Limpar camada (Delete)" aria-label="Limpar camada atual">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"></use></svg>
+                </button>
+                <button class="icon-btn panel-toggle" id="panelToggle" type="button" title="Cor, pincel e camadas" aria-label="Abrir painel de cor, pincel e camadas" aria-expanded="false" aria-controls="sidePanel">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"></use></svg>
+                </button>
+                <button id="saveBtn" class="primary-btn" type="button" title="Baixar PNG (Ctrl+S)">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"></use></svg>
+                    <span>Salvar</span>
+                </button>
             </div>
 
-            <aside class="toolbar side-bar right" aria-label="Propriedades">
-                <div class="property-group">
-                    <label for="colorPicker">Cor</label>
-                    <div class="color-picker-wrapper">
-                        <input type="color" id="colorPicker" value="#000000">
-                    </div>
-                    <div class="color-palette" role="group" aria-label="Paleta rápida">
-                        <button type="button" class="color-swatch is-active" style="--swatch: #000000"
-                            data-color="#000000" aria-label="Preto" aria-pressed="true"></button>
-                        <button type="button" class="color-swatch" style="--swatch: #ffffff" data-color="#ffffff"
-                            aria-label="Branco" aria-pressed="false"></button>
-                        <button type="button" class="color-swatch" style="--swatch: #ff3b30" data-color="#ff3b30"
-                            aria-label="Vermelho" aria-pressed="false"></button>
-                        <button type="button" class="color-swatch" style="--swatch: #ff9500" data-color="#ff9500"
-                            aria-label="Laranja" aria-pressed="false"></button>
-                        <button type="button" class="color-swatch" style="--swatch: #ffcc00" data-color="#ffcc00"
-                            aria-label="Amarelo" aria-pressed="false"></button>
-                        <button type="button" class="color-swatch" style="--swatch: #4cd964" data-color="#4cd964"
-                            aria-label="Verde" aria-pressed="false"></button>
-                        <button type="button" class="color-swatch" style="--swatch: #5ac8fa" data-color="#5ac8fa"
-                            aria-label="Azul claro" aria-pressed="false"></button>
-                        <button type="button" class="color-swatch" style="--swatch: #007aff" data-color="#007aff"
-                            aria-label="Azul" aria-pressed="false"></button>
-                        <button type="button" class="color-swatch" style="--swatch: #5856d6" data-color="#5856d6"
-                            aria-label="Roxo" aria-pressed="false"></button>
-                    </div>
+            <div class="workspace">
+                <!-- Ferramentas -->
+                <div class="toolbar" role="toolbar" aria-label="Ferramentas" id="toolbar">
+                    <button class="tool-btn" type="button" data-tool="brush" data-name="Pincel" title="Pincel (B)" aria-label="Pincel" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-brush"></use></svg>
+                    </button>
+                    <button class="tool-btn" type="button" data-tool="eraser" data-name="Borracha" title="Borracha (E)" aria-label="Borracha" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eraser"></use></svg>
+                    </button>
+                    <button class="tool-btn" type="button" data-tool="fill" data-name="Balde de tinta" title="Balde de tinta (G)" aria-label="Balde de tinta" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-fill"></use></svg>
+                    </button>
+                    <button class="tool-btn" type="button" data-tool="picker" data-name="Conta-gotas" title="Conta-gotas (I)" aria-label="Conta-gotas" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-picker"></use></svg>
+                    </button>
+                    <span class="tool-sep" aria-hidden="true"></span>
+                    <button class="tool-btn" type="button" data-tool="line" data-name="Linha" title="Linha (L)" aria-label="Linha" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-line"></use></svg>
+                    </button>
+                    <button class="tool-btn" type="button" data-tool="rect" data-name="Retângulo" title="Retângulo (R)" aria-label="Retângulo" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-rect"></use></svg>
+                    </button>
+                    <button class="tool-btn" type="button" data-tool="circle" data-name="Elipse" title="Elipse (C)" aria-label="Elipse" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-circle"></use></svg>
+                    </button>
+                    <span class="tool-sep" aria-hidden="true"></span>
+                    <button class="tool-btn" type="button" data-tool="hand" data-name="Mover a tela" title="Mover a tela (H)" aria-label="Mover a tela" aria-pressed="false">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hand"></use></svg>
+                    </button>
+                    <button class="quick-color" id="quickColor" type="button" aria-label="Cor atual — abrir painel" title="Cor e pincel">
+                        <span class="quick-color-dot" id="quickColorDot"></span>
+                    </button>
                 </div>
 
-                <div class="separator" aria-hidden="true"></div>
-
-                <div class="property-group">
-                    <label for="brushSize">Tamanho <span id="brushSizeVal">5px</span></label>
-                    <input type="range" id="brushSize" min="1" max="50" value="5">
+                <!-- Tela -->
+                <div class="viewport" id="viewport">
+                    <canvas id="canvas" aria-label="Tela de desenho" role="img"></canvas>
+                    <div class="brush-cursor" id="brushCursor" aria-hidden="true"></div>
+                    <div class="tool-hud" id="toolHud" aria-live="polite"><span id="activeToolName">Pincel</span> · <span id="hudSize">12 px</span></div>
+                    <div class="drop-hint" id="dropHint" hidden>Solte para importar como camada</div>
                 </div>
 
-                <div class="property-group">
-                    <label for="opacity">Opacidade <span id="opacityVal">100%</span></label>
-                    <input type="range" id="opacity" min="1" max="100" value="100">
-                </div>
+                <!-- Painel lateral / folha inferior -->
+                <aside class="side-panel" id="sidePanel" aria-label="Cor, pincel e camadas">
+                    <div class="sheet-grip" aria-hidden="true"></div>
+                    <button class="icon-btn sheet-close" id="panelClose" type="button" aria-label="Fechar painel">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </button>
 
-                <div class="property-group shape-fill-group">
-                    <label class="switch-field" for="fillShapes">
-                        <input type="checkbox" id="fillShapes">
-                        <span>Preencher formas</span>
-                    </label>
-                </div>
+                    <section class="panel-section" aria-labelledby="color-title">
+                        <h2 class="panel-title" id="color-title">Cor</h2>
+                        <div class="color-row">
+                            <label class="color-well" title="Escolher qualquer cor">
+                                <input type="color" id="colorPicker" value="#111111" aria-label="Escolher cor">
+                                <span class="color-well-dot" id="colorWellDot"></span>
+                            </label>
+                            <div class="color-palette" role="group" aria-label="Paleta rápida">
+                            <button type="button" class="color-swatch" style="--swatch: #111111" data-color="#111111" aria-label="Preto"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #ffffff" data-color="#ffffff" aria-label="Branco"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #ff3b30" data-color="#ff3b30" aria-label="Vermelho"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #ff9500" data-color="#ff9500" aria-label="Laranja"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #ffcc00" data-color="#ffcc00" aria-label="Amarelo"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #34c759" data-color="#34c759" aria-label="Verde"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #5ac8fa" data-color="#5ac8fa" aria-label="Azul claro"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #007aff" data-color="#007aff" aria-label="Azul"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #5856d6" data-color="#5856d6" aria-label="Roxo"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #ff2d55" data-color="#ff2d55" aria-label="Rosa"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #a2845e" data-color="#a2845e" aria-label="Marrom"></button>
+                            <button type="button" class="color-swatch" style="--swatch: #8e8e93" data-color="#8e8e93" aria-label="Cinza"></button>
+                            </div>
+                        </div>
+                        <div class="recent-colors" id="recentColors" role="group" aria-label="Cores recentes"></div>
+                    </section>
 
-                <p class="shortcuts-hint">
-                    <strong>Atalhos</strong>
-                    <span><kbd>B</kbd> pincel · <kbd>E</kbd> borracha · <kbd>G</kbd> balde · <kbd>I</kbd>
-                        conta-gotas</span>
-                    <span><kbd>R</kbd> <kbd>C</kbd> <kbd>L</kbd> formas · <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfazer</span>
-                </p>
-            </aside>
+                    <section class="panel-section" aria-labelledby="brush-title">
+                        <h2 class="panel-title" id="brush-title">Pincel</h2>
+                        <div class="property-group">
+                            <label for="brushSize">Tamanho <output id="brushSizeVal">12 px</output></label>
+                            <input type="range" id="brushSize" min="1" max="200" value="12">
+                        </div>
+                        <div class="property-group">
+                            <label for="opacity">Opacidade <output id="opacityVal">100%</output></label>
+                            <input type="range" id="opacity" min="1" max="100" value="100">
+                        </div>
+                        <div class="property-group" data-for="brush eraser">
+                            <label for="hardness">Dureza <output id="hardnessVal">85%</output></label>
+                            <input type="range" id="hardness" min="0" max="100" value="85">
+                        </div>
+                        <div class="property-group" data-for="brush eraser line rect circle">
+                            <label for="smoothing">Suavização <output id="smoothingVal">40%</output></label>
+                            <input type="range" id="smoothing" min="0" max="90" value="40">
+                        </div>
+                        <div class="property-group" data-for="fill">
+                            <label for="tolerance">Tolerância do balde <output id="toleranceVal">24</output></label>
+                            <input type="range" id="tolerance" min="0" max="128" value="24">
+                        </div>
+                        <label class="switch-field" data-for="brush eraser">
+                            <input type="checkbox" id="pressureToggle" checked>
+                            <span>Pressão da caneta (tamanho do traço)</span>
+                        </label>
+                        <label class="switch-field" data-for="rect circle">
+                            <input type="checkbox" id="fillShapes">
+                            <span>Preencher formas</span>
+                        </label>
+                    </section>
+
+                    <section class="panel-section layers-section" aria-labelledby="layers-title">
+                        <div class="panel-head">
+                            <h2 class="panel-title" id="layers-title">Camadas</h2>
+                            <div class="layer-actions">
+                                <button class="icon-btn small" id="layerAdd" type="button" title="Nova camada (Ctrl+Shift+N)" aria-label="Nova camada">
+                                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"></use></svg>
+                                </button>
+                                <button class="icon-btn small" id="layerDup" type="button" title="Duplicar camada" aria-label="Duplicar camada">
+                                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"></use></svg>
+                                </button>
+                                <button class="icon-btn small" id="layerUp" type="button" title="Subir camada" aria-label="Subir camada">
+                                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-up"></use></svg>
+                                </button>
+                                <button class="icon-btn small" id="layerDown" type="button" title="Descer camada" aria-label="Descer camada">
+                                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-down"></use></svg>
+                                </button>
+                                <button class="icon-btn small danger" id="layerDelete" type="button" title="Excluir camada" aria-label="Excluir camada">
+                                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"></use></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <ol class="layer-list" id="layerList" aria-label="Lista de camadas"></ol>
+                        <div class="property-group">
+                            <label for="layerOpacity">Opacidade da camada <output id="layerOpacityVal">100%</output></label>
+                            <input type="range" id="layerOpacity" min="0" max="100" value="100">
+                        </div>
+                        <button class="text-btn" id="newDocBtn" type="button">Novo desenho</button>
+                    </section>
+
+                    <p class="shortcuts-hint">
+                        <strong>Atalhos</strong>
+                        <span><kbd>B</kbd> pincel · <kbd>E</kbd> borracha · <kbd>G</kbd> balde · <kbd>I</kbd> conta-gotas (ou <kbd>Alt</kbd>)</span>
+                        <span><kbd>L</kbd> <kbd>R</kbd> <kbd>C</kbd> formas (<kbd>Shift</kbd> trava) · <kbd>[</kbd> <kbd>]</kbd> tamanho · <kbd>1</kbd>–<kbd>0</kbd> opacidade</span>
+                        <span><kbd>Espaço</kbd>+arrastar move · roda/pinça zoom · <kbd>0</kbd> ajustar · <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfazer</span>
+                    </p>
+                </aside>
+                <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+            </div>
+            <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
         </main>
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=5" defer></script>
+    <script type="module" src="script.js?v=6"></script>
 </body>
 
 </html>

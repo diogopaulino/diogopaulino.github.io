@@ -89,6 +89,19 @@ Cada afirmação traz **confiança** (`alta` · `média` · `baixa`) e fonte. De
 
 ---
 
+## 5b. Dinâmica e velocidades (física da cena)
+
+Valores de **engenharia naval / biomecânica**, não documentos do dia: servem para o movimento ser crível. Fórmulas em `src/config.js`, `src/life.js` e `src/rail.js`.
+
+| ID | Afirmação | Confiança | Fonte |
+| --- | --- | --- | --- |
+| N01 | Vapor de ~123 m sobe o canal do estuário em marcha de manobra, **~6–8 nós** (adotado: 7 nós = 3,6 m/s), bem abaixo dos ~14,5 nós de serviço (K02). | média | Prática portuária; velocidades de canal usuais para cargueiros do período |
+| N02 | Com máquina parada/a ré e o casco freando, um navio de ~9.000 t de deslocamento desacelera a **~0,01–0,02 m/s²** (adotado 0,012 m/s² ≈ 110 kN): ~5 minutos e ~540 m para parar. Nos últimos ~45 m o rebocador empurra a popa e o navio gira até ficar paralelo ao cais (~0,3–0,7 °/s). O filme corta o tempo entre os planos; dentro de cada plano a velocidade é real. | média | Dinâmica de manobra (F = m·a, resistência ~½ρSC·v²); K07 |
+| N03 | Marcha humana **~1,2–1,4 m/s**; estivador com saca de 60 kg no ombro **~0,95–1,1 m/s**, volta vazio **~1,3–1,45 m/s**; carroça de mula ao passo **~1,25 m/s**. | média | Biomecânica da marcha com carga; P03, H05 |
+| N04 | Trem a vapor arrancando com vagões: aceleração **~0,2 m/s²** (rampa sem tranco), velocidade de pátio **~12 km/h**. Guindaste a vapor gira a **≤ 6 °/s**. | baixa | Ordem de grandeza de locomotivas e guindastes do período; P05, P08 |
+
+---
+
 ## 6. O que este lab **não** afirma
 
 - Planta cadastral milimétrica do cais 14 em 18/jun/1908 (usamos tipologias fotográficas).

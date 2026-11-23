@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#060a08">
   <title>Poker — Texas Hold'em vs IA que ensina | Diogo Paulino</title>
   <meta name="description"
-    content="Texas Hold'em heads-up hiper-realista: mesa 3D com feltro texturizado, cartas, fichas e IA que ensina ranking, blinds e pot odds. Um lab de Diogo Paulino.">
+    content="Texas Hold'em hiper-realista contra 1 a 3 rivais de IA: mesa 3D com feltro, cartas, fichas, all-in com potes paralelos e um mestre que ensina ranking, blinds e pot odds. Um lab de Diogo Paulino.">
   <link rel="canonical" href="https://diogopaulino.com.br/labs/poker/">
   <meta name="author" content="Diogo Paulino">
   <meta name="robots" content="index, follow">
@@ -17,19 +17,19 @@
   <meta property="og:url" content="https://diogopaulino.com.br/labs/poker/">
   <meta property="og:title" content="Poker — Texas Hold'em vs IA que ensina | Diogo Paulino">
   <meta property="og:description"
-    content="Mesa heads-up 3D com feltro, cartas, fichas, Dealer IA e lições de ranking, blinds e pot odds.">
+    content="Mesa 3D de Texas Hold'em contra 1 a 3 rivais de IA, com potes paralelos e lições de ranking, blinds e pot odds.">
   <meta property="og:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
   <meta property="og:image:alt" content="Diogo Paulino">
   <meta property="og:locale" content="pt_BR">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Poker — Texas Hold'em vs IA que ensina | Diogo Paulino">
   <meta name="twitter:description"
-    content="Mesa heads-up 3D com feltro, cartas, fichas, Dealer IA e lições de ranking, blinds e pot odds.">
+    content="Mesa 3D de Texas Hold'em contra 1 a 3 rivais de IA, com potes paralelos e lições de ranking, blinds e pot odds.">
   <meta name="twitter:image" content="https://diogopaulino.com.br/assets/img/diogo.jpeg">
   <link rel="stylesheet" href="/assets/fonts/cormorant-garamond/font.css">
   <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
   <link rel="stylesheet" href="/labs/shared.css?v=15">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -38,7 +38,7 @@
         "@type": "WebApplication",
         "name": "Poker",
         "url": "https://diogopaulino.com.br/labs/poker/",
-        "description": "Texas Hold'em heads-up hiper-realista com mesa 3D, fichas, IA e academia que ensina ranking, blinds, pot odds e estratégia.",
+        "description": "Texas Hold'em hiper-realista contra 1 a 3 rivais de IA, com mesa 3D, fichas, potes paralelos e academia que ensina ranking, blinds, pot odds e estratégia.",
         "applicationCategory": "GameApplication",
         "operatingSystem": "Any",
         "inLanguage": "pt-BR",
@@ -123,24 +123,8 @@
           <p id="streetLabel" class="street-pill">—</p>
         </div>
 
-        <article class="seat seat--ai" aria-label="Dealer IA">
-          <div class="avatar avatar--ai" aria-hidden="true">
-            <span class="avatar-ring"></span>
-            <span class="avatar-face">♠</span>
-          </div>
-          <div class="seat-info">
-            <span id="aiDealer" class="dealer-btn" hidden title="Botão">D</span>
-            <span id="aiBlind" class="blind-tag"></span>
-            <h2 class="seat-name">Dealer IA</h2>
-            <p class="seat-stack"><span id="aiStack">1.000</span> <small>fichas</small></p>
-            <p id="aiHandName" class="hand-name hand-name--ai"></p>
-          </div>
-          <div id="aiCards" class="hole-cards" aria-label="Cartas da IA"></div>
-          <div class="bet-zone">
-            <div id="aiChipStack" class="chip-stack" aria-hidden="true"></div>
-            <p class="seat-bet">Aposta <strong id="aiBet">0</strong></p>
-          </div>
-        </article>
+        <!-- Rivais: 1 a 3 assentos gerados em main.js (renderSeats). -->
+        <div id="opponents" class="opponents" data-count="1" role="group" aria-label="Rivais"></div>
 
         <div class="board-wrap">
           <div class="pot-cluster">
@@ -203,6 +187,14 @@
       <aside class="panel tray" aria-label="Partida">
         <p class="eyebrow">PARTIDA</p>
         <label class="diff-field">
+          <span>Rivais <small id="seatsNote" class="field-note" hidden>· vale na próxima mão</small></span>
+          <select id="seats" aria-label="Quantos rivais na mesa">
+            <option value="2">1 · mano a mano</option>
+            <option value="3">2 rivais</option>
+            <option value="4">3 rivais</option>
+          </select>
+        </label>
+        <label class="diff-field">
           <span>Nível da IA</span>
           <select id="difficulty" aria-label="Dificuldade da IA">
             <option value="easy" selected>Fácil · crianças</option>
@@ -251,20 +243,30 @@
         </div>
         <p class="eyebrow"><i></i> Texas Hold'em</p>
         <h1 id="introTitle">Poker</h1>
-        <p class="lede">Você e a IA começam com 1.000 fichas. Quem ficar com todas, vence.</p>
+        <p class="lede">Todos começam com 1.000 fichas. Quem ficar com todas, vence.</p>
         <ol class="howto" aria-label="Como jogar">
-          <li><b>Você recebe 2 cartas.</b> Depois, 5 cartas abrem no meio da mesa, para os dois.</li>
+          <li><b>Você recebe 2 cartas.</b> Depois, 5 cartas abrem no meio da mesa, para todos.</li>
           <li><b>Junte as melhores 5</b> das 7 cartas: par, trinca, sequência… O botão Ranking mostra a ordem.</li>
           <li><b>Aposte quando estiver forte, desista quando estiver fraca.</b> Em dúvida, toque em Dica.</li>
         </ol>
-        <label class="diff-field intro-diff">
-          <span>Mesa</span>
-          <select id="introDifficulty" aria-label="Dificuldade da IA">
-            <option value="easy" selected>Fácil · crianças</option>
-            <option value="normal">Intermediária</option>
-            <option value="hard">Agressiva</option>
-          </select>
-        </label>
+        <div class="intro-fields">
+          <label class="diff-field intro-diff">
+            <span>Mesa</span>
+            <select id="introDifficulty" aria-label="Dificuldade da IA">
+              <option value="easy" selected>Fácil · crianças</option>
+              <option value="normal">Intermediária</option>
+              <option value="hard">Agressiva</option>
+            </select>
+          </label>
+          <label class="diff-field intro-diff">
+            <span>Rivais</span>
+            <select id="introSeats" aria-label="Quantos rivais na mesa">
+              <option value="2">1 · mano a mano</option>
+              <option value="3">2 rivais</option>
+              <option value="4" selected>3 rivais</option>
+            </select>
+          </label>
+        </div>
         <div class="intro-actions">
           <button id="btnStart" class="dock-btn accent" type="button">Sentar à mesa</button>
           <button id="btnAcademyIntro" class="dock-btn" type="button">Começar aprendendo</button>
@@ -303,7 +305,7 @@
   </footer>
 
   <script src="/labs/shared.js?v=16" defer></script>
-  <script type="module" src="src/main.js?v=4"></script>
+  <script type="module" src="src/main.js?v=5"></script>
 </body>
 
 </html>

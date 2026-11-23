@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#fafbfc">
     <title>Image Optimizer — compressão local no navegador | Diogo Paulino</title>
-    <meta name="description" content="Comprima, redimensione e converta várias imagens para JPG, PNG ou WebP direto no navegador, sem enviar arquivos a um servidor.">
+    <meta name="description" content="Comprima, redimensione e converta várias imagens para JPG, PNG, WebP ou AVIF no navegador, com comparação antes/depois e download em ZIP, sem enviar nada a um servidor.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/image-optimizer/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -19,12 +19,12 @@
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/image-optimizer/">
     <meta property="og:title" content="Image Optimizer — compressão local no navegador | Diogo Paulino">
-    <meta property="og:description" content="Comprima, redimensione e converta várias imagens para JPG, PNG ou WebP direto no navegador, sem enviar arquivos a um servidor.">
+    <meta property="og:description" content="Comprima, redimensione e converta várias imagens para JPG, PNG, WebP ou AVIF no navegador, com comparação antes/depois e download em ZIP, sem enviar nada a um servidor.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Image Optimizer — compressão local no navegador | Diogo Paulino">
-    <meta name="twitter:description" content="Comprima, redimensione e converta várias imagens para JPG, PNG ou WebP direto no navegador, sem enviar arquivos a um servidor.">
+    <meta name="twitter:description" content="Comprima, redimensione e converta várias imagens para JPG, PNG, WebP ou AVIF no navegador, com comparação antes/depois e download em ZIP, sem enviar nada a um servidor.">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <script type="application/ld+json">
     {
@@ -34,7 +34,7 @@
           "@type": "WebApplication",
           "name": "Image Optimizer",
           "url": "https://diogopaulino.com.br/labs/image-optimizer/",
-          "description": "Comprima, redimensione e converta várias imagens para JPG, PNG ou WebP direto no navegador, sem enviar arquivos a um servidor.",
+          "description": "Comprima, redimensione e converta várias imagens para JPG, PNG, WebP ou AVIF no navegador, com comparação antes/depois e download em ZIP, sem enviar nada a um servidor.",
           "applicationCategory": "UtilitiesApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -78,65 +78,134 @@
     <div class="container">
         <header data-lab-header data-fullscreen data-title="Image Optimizer">
             <template data-slot="logo">
-                🖼️ Image Optimizer
+                <div class="app-logo">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.6"/><path d="m21 15-4.5-4.5L7 20"/></svg>
+                    Image Optimizer
+                </div>
             </template>
         </header>
 
-        <main class="app-container">
-            <div class="upload-zone" id="dropZone">
+        <main class="app-container" id="app" data-state="empty">
+            <!-- Entrada -->
+            <section class="upload-zone" id="dropZone" aria-label="Adicionar imagens">
                 <input type="file" id="fileInput" multiple accept="image/*" aria-label="Selecionar imagens">
                 <div class="upload-content">
-                    <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                    <h3>Arraste imagens aqui</h3>
-                    <p>ou clique para selecionar</p>
-                    <span class="supported-formats">JPG, PNG, WEBP</span>
+                    <span class="upload-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+                    </span>
+                    <div class="upload-text">
+                        <h2 class="upload-title">Solte as imagens aqui</h2>
+                        <p class="upload-sub"><span class="when-empty">ou toque para escolher · cole com <kbd>Ctrl</kbd>+<kbd>V</kbd></span><span class="when-filled">Adicionar mais imagens</span></p>
+                    </div>
+                    <span class="supported-formats when-empty">JPG · PNG · WebP · AVIF · GIF · BMP</span>
                 </div>
+            </section>
+
+            <p class="privacy-note when-empty">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                Tudo roda no seu aparelho. Nada é enviado — e os metadados (EXIF, GPS) saem da imagem final.
+            </p>
+
+            <div class="workspace">
+                <!-- Ajustes -->
+                <aside class="controls-panel" id="controlsPanel" aria-label="Ajustes de saída">
+                    <div class="settings-group">
+                        <span class="settings-label" id="format-label">Formato</span>
+                        <div class="segmented" role="radiogroup" aria-labelledby="format-label" id="formatGroup">
+                            <button type="button" role="radio" class="seg-btn" data-format="original" aria-checked="true">Original</button>
+                            <button type="button" role="radio" class="seg-btn" data-format="image/jpeg" aria-checked="false">JPG</button>
+                            <button type="button" role="radio" class="seg-btn" data-format="image/webp" aria-checked="false">WebP</button>
+                            <button type="button" role="radio" class="seg-btn" data-format="image/avif" aria-checked="false" hidden>AVIF</button>
+                            <button type="button" role="radio" class="seg-btn" data-format="image/png" aria-checked="false">PNG</button>
+                        </div>
+                        <p class="settings-hint" id="formatHint">Mantém o formato de cada arquivo.</p>
+                    </div>
+
+                    <div class="settings-group" id="qualityGroup">
+                        <label class="settings-label" for="qualityRange">Qualidade <output id="qualityValue" for="qualityRange">80</output></label>
+                        <input type="range" id="qualityRange" min="10" max="100" step="1" value="80">
+                        <div class="range-ticks" aria-hidden="true"><span>menor</span><span>equilíbrio</span><span>melhor</span></div>
+                    </div>
+
+                    <div class="settings-group">
+                        <label class="settings-label" for="maxSide">Redimensionar (lado maior)</label>
+                        <select id="maxSide">
+                            <option value="0">Tamanho original</option>
+                            <option value="3840">3840 px · 4K</option>
+                            <option value="2560">2560 px</option>
+                            <option value="1920">1920 px · Full HD</option>
+                            <option value="1280">1280 px · web</option>
+                            <option value="1080">1080 px · redes sociais</option>
+                            <option value="800">800 px</option>
+                            <option value="512">512 px · miniatura</option>
+                        </select>
+                        <p class="settings-hint">Só reduz — nunca amplia. Proporção sempre mantida.</p>
+                    </div>
+
+                    <label class="switch-row">
+                        <input type="checkbox" id="keepSmaller" checked>
+                        <span>Se ficar maior, manter o original</span>
+                    </label>
+
+                    <div class="engine-badge" id="engineBadge" aria-live="polite">Preparando…</div>
+                </aside>
+
+                <!-- Resultados -->
+                <section class="results" aria-labelledby="results-title">
+                    <div class="summary-bar" id="summaryBar">
+                        <div class="summary-text">
+                            <h2 id="results-title" class="summary-title">Imagens</h2>
+                            <p class="summary-stats" id="summaryStats" aria-live="polite"></p>
+                        </div>
+                        <div class="summary-actions">
+                            <button id="clearListBtn" class="ghost-btn" type="button">Limpar</button>
+                            <button id="downloadAllBtn" class="primary-btn" type="button" disabled>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 19h14"/></svg>
+                                <span>Baixar tudo</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="summary-progress" aria-hidden="true"><span id="summaryProgress"></span></div>
+                    <ul class="results-grid" id="resultsGrid"></ul>
+                </section>
             </div>
 
             <div class="toast-banner" id="toastBanner" role="status" aria-live="polite" hidden></div>
-
-            <div class="controls-panel" id="controlsPanel" style="display: none;">
-                <div class="settings-group">
-                    <label>Formato de Saída</label>
-                    <div class="format-options">
-                        <button class="format-btn active" data-format="original">Original</button>
-                        <button class="format-btn" data-format="image/jpeg">JPG</button>
-                        <button class="format-btn" data-format="image/png">PNG</button>
-                        <button class="format-btn" data-format="image/webp">WEBP</button>
-                    </div>
-                </div>
-
-                <div class="settings-group">
-                    <label for="qualityRange">Qualidade: <span id="qualityValue">80%</span></label>
-                    <input type="range" id="qualityRange" min="1" max="100" value="80">
-                </div>
-
-                <div class="settings-group">
-                    <label for="maxWidth">Redimensionar (largura máxima)</label>
-                    <input type="number" id="maxWidth" placeholder="Auto" min="100">
-                </div>
-
-                <div class="batch-actions">
-                    <button id="processBtn" class="action-btn">Processar Imagens</button>
-                    <button id="downloadAllBtn" class="secondary-action-btn" type="button" hidden>Baixar Todas</button>
-                    <button id="clearListBtn" class="secondary-action-btn danger-btn" type="button">Limpar Lista</button>
-                </div>
-            </div>
-
-            <div class="results-grid" id="resultsGrid">
-                <!-- Preview cards will be added here -->
-            </div>
         </main>
 
         <footer data-lab-footer data-home-href="/"></footer>
     </div>
+
+    <!-- Comparação antes/depois -->
+    <dialog class="compare-dialog" id="compareDialog" aria-labelledby="compareTitle">
+        <div class="compare-head">
+            <h2 id="compareTitle" class="compare-title">Comparar</h2>
+            <div class="compare-tools">
+                <button type="button" class="ghost-btn small" id="zoomFitBtn" title="Ajustar à tela (0)">Ajustar</button>
+                <button type="button" class="ghost-btn small" id="zoom100Btn" title="Pixel real (1)">100%</button>
+                <button type="button" class="icon-round" id="compareClose" aria-label="Fechar comparação">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="compare-viewport" id="compareViewport">
+            <div class="compare-layer" id="layerAfter"><img id="imgAfter" alt="Resultado otimizado" draggable="false"></div>
+            <div class="compare-clip" id="compareClip">
+                <div class="compare-layer" id="layerBefore"><img id="imgBefore" alt="Original" draggable="false"></div>
+            </div>
+            <div class="compare-handle" id="compareHandle" role="slider" tabindex="0" aria-label="Divisor antes/depois" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+                <span class="handle-knob" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6-6 6 6 6M15 6l6 6-6 6"/></svg>
+                </span>
+            </div>
+            <span class="compare-tag left" id="tagBefore">Original</span>
+            <span class="compare-tag right" id="tagAfter">Otimizada</span>
+        </div>
+        <p class="compare-help">Arraste o divisor · roda do mouse ou pinça para zoom · arraste a imagem para mover</p>
+    </dialog>
+
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=4" defer></script>
+    <script type="module" src="script.js?v=5"></script>
 </body>
 
 </html>

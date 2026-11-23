@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#fafbfc">
     <title>Lunar Lander — pouso lunar com física realista | Diogo Paulino</title>
-    <meta name="description" content="Pouso lunar com física realista: gravidade, inércia, consumo de combustível e terreno gerado por procedimento. Desça devagar e no ângulo certo.">
+    <meta name="description" content="Pouse o Módulo Lunar da Apollo com física real: gravidade de 1,62 m/s², motor de 45 kN acelerável, propelente em kg e pouso seguro abaixo de 2 m/s.">
     <link rel="canonical" href="https://diogopaulino.com.br/labs/lander/">
     <meta name="author" content="Diogo Paulino">
     <meta name="robots" content="index, follow">
@@ -19,12 +19,12 @@
     <meta property="og:site_name" content="Diogo Paulino · Labs">
     <meta property="og:url" content="https://diogopaulino.com.br/labs/lander/">
     <meta property="og:title" content="Lunar Lander — pouso lunar com física realista | Diogo Paulino">
-    <meta property="og:description" content="Pouso lunar com física realista: gravidade, inércia, consumo de combustível e terreno gerado por procedimento. Desça devagar e no ângulo certo.">
+    <meta property="og:description" content="Pouse o Módulo Lunar da Apollo com física real: gravidade de 1,62 m/s², motor de 45 kN acelerável, propelente em kg e pouso seguro abaixo de 2 m/s.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Lunar Lander — pouso lunar com física realista | Diogo Paulino">
-    <meta name="twitter:description" content="Pouso lunar com física realista: gravidade, inércia, consumo de combustível e terreno gerado por procedimento. Desça devagar e no ângulo certo.">
+    <meta name="twitter:description" content="Pouse o Módulo Lunar da Apollo com física real: gravidade de 1,62 m/s², motor de 45 kN acelerável, propelente em kg e pouso seguro abaixo de 2 m/s.">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=8">
     <link rel="stylesheet" href="/assets/fonts/vt323/font.css">
     <script type="application/ld+json">
     {
@@ -34,7 +34,7 @@
           "@type": "WebApplication",
           "name": "Lunar Lander",
           "url": "https://diogopaulino.com.br/labs/lander/",
-          "description": "Pouso lunar com física realista: gravidade, inércia, consumo de combustível e terreno gerado por procedimento. Desça devagar e no ângulo certo.",
+          "description": "Pouse o Módulo Lunar da Apollo com física real: gravidade de 1,62 m/s², motor de 45 kN acelerável, propelente em kg e pouso seguro abaixo de 2 m/s.",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any",
           "inLanguage": "pt-BR",
@@ -115,7 +115,7 @@
                         <button id="btnNewGame" class="menu-item" type="button"><u>N</u>ovo jogo</button>
                         <button id="btnPause" class="menu-item" type="button" disabled><u>P</u>ausa</button>
                     </div>
-                    <span class="menu-help fine-only">R: reiniciar · P: pausa</span>
+                    <span class="menu-help fine-only">Z/X: acelerador · R: reiniciar · P: pausa</span>
                 </div>
                 <div class="game-viewport">
                     <canvas id="gameCanvas" width="800" height="600" aria-label="Área de pouso lunar">
@@ -124,68 +124,91 @@
 
                     <!-- HUD Overlay -->
                     <div class="hud-layer">
-                        <div class="hud-stats">
+                        <div class="hud-stats" aria-live="off">
                             <div class="stat-row meta">
                                 <span class="label">Missão</span>
                                 <span class="value" id="hudMission">01</span>
+                            </div>
+                            <div class="stat-row meta extra">
+                                <span class="label" title="Tempo de missão">T+</span>
+                                <span class="value" id="hudTime">00:00</span>
                             </div>
                             <div class="stat-row meta">
                                 <span class="label">Pontos</span>
                                 <span class="value" id="hudScore">000000</span>
                             </div>
                             <div class="hud-separator"></div>
-                            <div class="stat-row extra">
-                                <span class="label">Altura</span>
+                            <div class="stat-row">
+                                <span class="label" title="Altitude de radar, da sapata ao chão">Alt <i>m</i></span>
                                 <span class="value" id="hudAlt">0</span>
                             </div>
                             <div class="stat-row">
-                                <span class="label">Lado ↔</span>
-                                <span class="value" id="hudHSpeed">0.0</span>
+                                <span class="label" title="Velocidade vertical">Vert <i>m/s</i></span>
+                                <span class="value" id="hudVSpeed">↓0,0</span>
                             </div>
                             <div class="stat-row">
-                                <span class="label">Queda ↓</span>
-                                <span class="value" id="hudVSpeed">0.0</span>
+                                <span class="label" title="Velocidade horizontal">Horiz <i>m/s</i></span>
+                                <span class="value" id="hudHSpeed">→0,0</span>
                             </div>
                             <div class="stat-row extra">
                                 <span class="label">Ângulo</span>
                                 <span class="value" id="hudAngle">+0°</span>
                             </div>
                             <div class="stat-row fuel-row">
-                                <span class="label">Gás</span>
+                                <span class="label" title="Propelente restante">Prop <i>kg</i></span>
                                 <span class="fuel-bar" aria-hidden="true"><i id="hudFuelBar"></i></span>
-                                <span class="value" id="hudFuel">1000</span>
+                                <span class="value" id="hudFuel">700</span>
+                            </div>
+                            <div class="stat-row fuel-row">
+                                <span class="label" title="Acelerador (Z/X). O motor segue com atraso">Acel</span>
+                                <span class="fuel-bar thr-bar" aria-hidden="true"><i id="hudThrottleBar"></i></span>
+                                <span class="value" id="hudThrottle">60%</span>
+                            </div>
+                            <div class="stat-row extra">
+                                <span class="label" title="Empuxo/peso no acelerador atual: acima de 1 a nave sobe">TWR</span>
+                                <span class="value" id="hudTwr">2,20</span>
                             </div>
                             <div id="hudStatus" class="flight-status">PRONTO</div>
-                            <div class="safe-readout" id="safeReadout">POUSO SEGURO: ↔ ≤ 24 · ↓ ≤ 34 · ±10°</div>
+                            <div class="safe-readout" id="safeReadout">POUSO SEGURO: ↓ ≤ 3,0 · ↔ ≤ 1,5 m/s · ±12°</div>
                         </div>
 
                         <div id="startMsg" class="center-msg">
                             <strong>LANDER</strong>
-                            <small class="lead">Pouse a nave <b>devagar</b> e <b>reta</b> numa plataforma
-                                amarela.</small>
-                            <small class="fine-only">↑ ou Espaço: motor · ← →: girar · P: pausa</small>
-                            <small class="touch-only">Segure ▲ para ligar o motor · ◀ ▶ giram a nave</small>
+                            <small class="lead">Pouse o Módulo Lunar <b>devagar</b> e <b>reto</b> numa plataforma
+                                amarela. Gravidade lunar: 1,62 m/s².</small>
+                            <small class="fine-only">↑ ou Espaço: motor · ← →: girar · Z / X: acelerador · P: pausa</small>
+                            <small class="touch-only">Segure MOTOR · ◀ ▶ giram · − + ajustam o acelerador</small>
+                            <small class="tip">Dica: cerca de 28% de acelerador segura a nave parada no ar.</small>
                             <div class="mode-pick" role="group" aria-label="Dificuldade">
                                 <button type="button" class="mode-btn" data-mode="easy" aria-pressed="true">FÁCIL
-                                    <em>nave se endireita sozinha</em></button>
+                                    <em>auto-nivela · 1.100 kg</em></button>
                                 <button type="button" class="mode-btn" data-mode="normal" aria-pressed="false">NORMAL
-                                    <em>física clássica</em></button>
+                                    <em>Apollo · 700 kg</em></button>
                             </div>
                             <button id="btnStart" class="start-button" type="button">▶ COMEÇAR</button>
+                            <small id="bestScore" class="best"></small>
                         </div>
                         <div id="gameOverMsg" class="center-msg hidden">
                             <div id="missionResult" role="status"></div>
                             <button id="btnContinue" class="start-button" type="button">TENTAR DE NOVO</button>
+                            <button id="btnMenu" class="text-button" type="button">Menu e dificuldade</button>
                         </div>
                         <div id="pauseMsg" class="center-msg hidden">
                             <strong>PAUSA</strong>
                             <button id="btnResume" class="start-button" type="button">▶ CONTINUAR</button>
+                            <button id="btnRestart" class="text-button" type="button">↻ Recomeçar a missão</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="touch-pad touch-pad-right" aria-label="Motor">
+            <div class="touch-pad touch-pad-right" aria-label="Motor e acelerador">
+                <div class="throttle-pad" role="group" aria-label="Acelerador">
+                    <button id="btnThrottleUp" class="control-btn control-small" type="button"
+                        aria-label="Aumentar acelerador" title="Aumentar acelerador (X)">+</button>
+                    <button id="btnThrottleDown" class="control-btn control-small" type="button"
+                        aria-label="Diminuir acelerador" title="Diminuir acelerador (Z)">−</button>
+                </div>
                 <button id="btnThrust" class="control-btn control-thrust" type="button"
                     aria-label="Ligar o motor (segure)" title="Ligar o motor (segure)">
                     <div class="thrust-icon" aria-hidden="true">
@@ -202,7 +225,7 @@
     </div>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=7" defer></script>
+    <script src="script.js?v=8" defer></script>
 </body>
 
 </html>

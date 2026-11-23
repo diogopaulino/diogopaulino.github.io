@@ -25,13 +25,14 @@
     --muted: rgba(220, 230, 245, 0.48);
 }
 
+/* A cena é sempre noturna: no tema claro do site o painel continua escuro
+   (um dock branco sobre o céu polar quebrava o contraste e a imersão). */
 [data-theme="light"] {
-    --panel: rgba(255, 255, 255, 0.78);
-    --panel-solid: rgba(255, 255, 255, 0.94);
-    --border: rgba(0, 0, 0, 0.1);
-    --text: rgba(10, 16, 28, 0.92);
-    --muted: rgba(10, 16, 28, 0.48);
-    --glow: rgba(0, 168, 107, 0.28);
+    --panel: rgba(6, 10, 18, 0.72);
+    --panel-solid: rgba(7, 11, 20, 0.94);
+    --border: rgba(255, 255, 255, 0.1);
+    --text: rgba(245, 250, 255, 0.94);
+    --muted: rgba(220, 230, 245, 0.48);
 }
 
 *,
@@ -579,11 +580,14 @@ footer[data-lab-footer] {
 }
 
 @media (max-width: 420px) {
+    /* O trilho rola: cada chip mostra o nome inteiro em vez de "TEMPEST…". */
     .scene-chip span:not(.scene-swatch) {
-        max-width: 72px;
-        overflow: hidden;
-        text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .scene-rail {
+        mask-image: linear-gradient(90deg, #000 85%, transparent);
+        -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent);
     }
 
     .hud-scene {
@@ -671,5 +675,17 @@ footer[data-lab-footer] {
 
     .hint {
         opacity: 0.7;
+    }
+}
+
+.hint.is-gone {
+    animation: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hint {
+        animation: none;
     }
 }

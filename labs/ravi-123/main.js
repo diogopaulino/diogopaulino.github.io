@@ -85,7 +85,8 @@ function onKeyDown(event) {
 function onPointerDown(event) {
   const point = toBuffer(event.clientX, event.clientY);
   if (!point) return;
-  const n = hitTest(currentSpots(), point.x, point.y);
+  // Dedo (criança pequena) ganha margem maior que o mouse.
+  const n = hitTest(currentSpots(), point.x, point.y, event.pointerType === 'mouse' ? 5 : 10);
   event.preventDefault();
   handleNumber(n === null ? -1 : n);
 }
@@ -144,6 +145,10 @@ async function boot() {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(fit, 80);
     });
+
+    // Perdeu o foco (outra janela/app): som suspende; volta ao focar.
+    window.addEventListener('blur', () => Audio.suspend());
+    window.addEventListener('focus', () => { if (!document.hidden) Audio.resume(); });
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {

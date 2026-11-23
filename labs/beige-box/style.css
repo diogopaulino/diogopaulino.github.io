@@ -484,3 +484,70 @@ button {
 @media (max-width: 768px) {
   html, body { overflow-x: clip; }
 }
+
+/* --- remaster: teclado no celular, alvos de toque e HUD compacto --- */
+.dos-input {
+    /* Fora da vista, mas focável: o iOS só abre o teclado para campos “visíveis”.
+       16px evita o zoom automático. */
+    position: fixed;
+    left: 50%;
+    bottom: calc(0.5rem + var(--safe-bottom));
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    font-size: 16px;
+    pointer-events: none;
+}
+
+.icon-button--kbd {
+    font-size: 1.1rem;
+}
+
+@media (pointer: fine) {
+    .icon-button--kbd { display: none; }
+}
+
+.dos-chip {
+    min-height: 36px;
+}
+
+@media (pointer: coarse) {
+    .dos-chip { min-height: 44px; padding-inline: 0.7rem; }
+}
+
+@media (max-width: 480px) {
+    .hud { padding-top: calc(4rem + var(--safe-top)); }
+    .hud-left { padding: 0.55rem 0.7rem; }
+    .status-line { font-size: 0.85rem; }
+    .eyebrow { font-size: 0.6rem; letter-spacing: 0.12em; }
+    .hint-bar { max-width: calc(100vw - 2rem); text-align: center; white-space: normal; }
+    .tooltip { margin-bottom: 4.4rem; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hud { padding-top: calc(3.6rem + var(--safe-top)); }
+    .hud-left { padding: 0.45rem 0.65rem; }
+    .eyebrow { display: none; }
+    .status-line { font-size: 0.8rem; }
+    .dos-chips { margin-top: 0.35rem; }
+    .tooltip { margin-bottom: 0.4rem; padding: 0.45rem 0.8rem; }
+}
+
+/* O lab é sempre noturno: o switch de tema do header só roubava espaço do título. */
+.game-shell > header .theme-toggle { display: none !important; }
+
+/* HUD nunca encosta no rodapé “voltar para home”. */
+.hud { padding-bottom: calc(2.4rem + var(--safe-bottom)); }
+
+@media (max-width: 480px), (max-height: 520px) and (orientation: landscape) {
+    .dos-chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .dos-chips::-webkit-scrollbar { display: none; }
+    .dos-chip { flex: 0 0 auto; }
+}

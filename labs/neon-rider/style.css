@@ -1,30 +1,38 @@
 /* ================================================================
    Neon Rider — CRT + synthwave
    Paleta: magenta, ciano, asfalto, fósforo.
+   Layout do HUD: um grid em tela cheia (.hud) com áreas nomeadas.
+     desktop  → placar · chegada · rádio  no topo; painel da moto embaixo no centro.
+     toque    → painel da moto no topo à esquerda (os pedais ocupam a base).
    ================================================================ */
 
 :root {
     --neon-a: #ff2bd6;
     --neon-b: #00f0ff;
+    --gold: #ffd84a;
+    --danger: #ff5470;
     --ink: #06010c;
     --ink-deep: #040008;
     --text: #f4f0ff;
     --text-soft: #c9c0e0;
-    --text-dim: #8a809c;
+    --text-dim: #8f86a3;
 
-    --panel: color-mix(in oklab, #12081c 62%, transparent);
-    --panel-strong: color-mix(in oklab, #0c0614 82%, transparent);
+    --panel: color-mix(in oklab, #12081c 66%, transparent);
+    --panel-strong: color-mix(in oklab, #0c0614 84%, transparent);
     --line: color-mix(in oklab, var(--neon-b) 38%, transparent);
-    --line-soft: color-mix(in oklab, #ffffff 10%, transparent);
+    --line-soft: color-mix(in oklab, #ffffff 11%, transparent);
 
     --radius: 14px;
     --radius-lg: 22px;
-    --blur: 18px;
+    --blur: 16px;
 
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
+    /* altura reservada para os botões do header (voltar, tela cheia, tema) */
+    --header-h: 4.1rem;
+    --gutter: 1rem;
 
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
     --font-display: 'Audiowide', 'Outfit', sans-serif;
@@ -41,6 +49,7 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: clip;
+    overflow-x: clip;
     overscroll-behavior: none;
     background: var(--ink-deep);
 }
@@ -71,14 +80,6 @@ button {
     font-variant-numeric: tabular-nums;
 }
 
-.sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-}
-
 :focus-visible {
     outline: 2px solid var(--neon-b);
     outline-offset: 3px;
@@ -100,7 +101,7 @@ button {
     touch-action: none;
 }
 
-/* CRT */
+/* ---------------- CRT ---------------- */
 .crt-overlay {
     position: absolute;
     inset: 0;
@@ -111,13 +112,9 @@ button {
 .scanlines {
     position: absolute;
     inset: 0;
-    background: repeating-linear-gradient(
-        to bottom,
-        rgba(255, 255, 255, 0.035) 0 1px,
-        transparent 1px 3px
-    );
+    background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px);
     mix-blend-mode: overlay;
-    opacity: 0.55;
+    opacity: 0.5;
 }
 
 .vignette {
@@ -136,18 +133,12 @@ button {
     pointer-events: none;
     opacity: 0;
     background:
-        repeating-linear-gradient(
-            180deg,
-            transparent 0 2px,
-            rgba(0, 240, 255, 0.08) 2px 3px
-        ),
+        repeating-linear-gradient(180deg, transparent 0 2px, rgba(0, 240, 255, 0.08) 2px 3px),
         linear-gradient(90deg, rgba(255, 43, 214, 0.25), transparent 40%, rgba(0, 240, 255, 0.25));
     mix-blend-mode: screen;
 }
 
-.glitch-layer.is-on {
-    animation: vhsHit 0.42s steps(3) both;
-}
+.glitch-layer.is-on { animation: vhsHit 0.42s steps(3) both; }
 
 @keyframes vhsHit {
     0% { opacity: 0.9; transform: translateX(-6px); }
@@ -156,12 +147,12 @@ button {
     100% { opacity: 0; transform: none; }
 }
 
-/* header */
+/* ---------------- header / footer do site ---------------- */
 .game-shell > header {
     position: absolute;
     top: calc(0.9rem + var(--safe-top));
-    left: calc(1rem + var(--safe-left));
-    right: calc(1rem + var(--safe-right));
+    left: calc(var(--gutter) + var(--safe-left));
+    right: calc(var(--gutter) + var(--safe-right));
     z-index: 80;
     margin: 0;
     padding: 0;
@@ -171,9 +162,7 @@ button {
     gap: 0.6rem;
 }
 
-.game-shell > header > * {
-    pointer-events: auto;
-}
+.game-shell > header > * { pointer-events: auto; }
 
 .game-shell > header .back-link {
     background: var(--panel-strong);
@@ -224,29 +213,38 @@ button {
     pointer-events: auto;
 }
 
-body[data-state="playing"] .lab-foot,
-body[data-state="playing"] .game-shell > header .app-logo {
+body[data-state="playing"] .game-shell > header .app-logo,
+body[data-state="paused"] .game-shell > header .app-logo {
     opacity: 0;
     transition: opacity 0.5s var(--ease);
 }
 
 /* Invisível mas ainda clicável tirava o jogador do jogo: some de verdade. */
-body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none; }
+body[data-state="playing"] .lab-foot,
+body[data-state="paused"] .lab-foot { visibility: hidden; pointer-events: none; }
 
-/* HUD */
+/* ---------------- HUD (grid em tela cheia) ---------------- */
 .hud {
     position: absolute;
     inset: 0;
     z-index: 20;
     pointer-events: none;
     display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
-    padding: calc(4.2rem + var(--safe-top)) calc(1rem + var(--safe-right)) calc(1rem + var(--safe-bottom))
-        calc(1rem + var(--safe-left));
-    gap: 0.75rem;
+    grid-template-areas:
+        "score goal radio"
+        ".     .    .    "
+        ".     dash actions";
+    gap: 0.6rem 0.75rem;
+    padding: calc(var(--header-h) + var(--safe-top)) calc(var(--gutter) + var(--safe-right))
+        calc(var(--gutter) + var(--safe-bottom)) calc(var(--gutter) + var(--safe-left));
 }
 
 .hud[hidden] { display: none; }
+
+/* .hud-top é só um agrupador semântico: os filhos entram direto no grid do .hud */
+.hud-top { display: contents; }
 
 .panel {
     background: var(--panel);
@@ -255,60 +253,23 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     border: 1px solid var(--line-soft);
     border-radius: var(--radius);
     box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    padding: 0.6rem 0.85rem;
+    padding: 0.55rem 0.8rem;
 }
 
 .hud-label {
     font-family: var(--font-display);
     font-size: 0.55rem;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--neon-b);
     opacity: 0.9;
 }
 
-.hud-top {
-    display: grid;
-    grid-template-columns: minmax(140px, 1fr) minmax(200px, 1.4fr) minmax(140px, 1fr);
-    align-items: start;
-    gap: 0.75rem;
-}
-
-.speed-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-}
-
-.speed-num {
-    font-size: 2.1rem;
-    line-height: 1;
-    color: var(--text);
-    text-shadow: 0 0 16px var(--neon-a);
-}
-
 .hud-unit {
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--text-dim);
-}
-
-.radio-panel {
-    justify-self: center;
-    width: min(280px, 100%);
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-}
-
-.radio-panel strong {
-    font-family: var(--font-display);
-    letter-spacing: 0.12em;
-    font-size: 1.05rem;
-    color: var(--neon-a);
-    text-shadow: 0 0 14px var(--neon-a);
 }
 
 .hud-tag {
@@ -316,29 +277,14 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     color: var(--text-dim);
 }
 
-.boost-meter {
-    margin-top: 0.35rem;
-    height: 7px;
-    border-radius: 99px;
-    background: rgba(255, 255, 255, 0.08);
-    overflow: hidden;
-    border: 1px solid var(--line-soft);
-}
-
-.boost-meter i {
-    display: block;
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--neon-a), var(--neon-b));
-    box-shadow: 0 0 12px var(--neon-b);
-}
-
+/* placar */
 .score-panel {
-    justify-self: end;
-    min-width: 148px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
+    grid-area: score;
+    justify-self: start;
+    align-self: start;
+    min-width: 150px;
+    display: grid;
+    gap: 0.15rem;
 }
 
 .score-row {
@@ -349,8 +295,9 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
 }
 
 .score-row strong {
-    font-size: 1.05rem;
+    font-size: 1rem;
     color: var(--text);
+    white-space: nowrap;
 }
 
 .lives {
@@ -359,15 +306,294 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     text-shadow: 0 0 10px var(--neon-a);
 }
 
+/* rádio */
+.radio-panel {
+    grid-area: radio;
+    justify-self: end;
+    align-self: start;
+    min-width: 0;
+    max-width: 240px;
+    text-align: right;
+    display: grid;
+    gap: 0.1rem;
+}
+
+.radio-panel strong {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    font-size: 1rem;
+    color: var(--neon-a);
+    text-shadow: 0 0 14px var(--neon-a);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* barra de chegada */
+.goal-track {
+    grid-area: goal;
+    justify-self: center;
+    align-self: start;
+    width: min(460px, 100%);
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+}
+
+.goal-label {
+    font-family: var(--font-display);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+}
+
+.goal-bar {
+    position: relative;
+    flex: 1;
+    min-width: 40px;
+    height: 8px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.1);
+    background-image: linear-gradient(90deg, transparent calc(100% - 10px), rgba(255, 216, 74, 0.7) calc(100% - 10px));
+}
+
+.goal-bar i {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--neon-a), var(--neon-b));
+    box-shadow: 0 0 10px var(--neon-b);
+    transform-origin: left center;
+    transform: scaleX(0);
+}
+
+.goal-bar b {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    translate: -50% -50%;
+    font-size: 0.8rem;
+    color: #fff;
+    text-shadow: 0 0 8px var(--neon-a);
+}
+
+.goal-text { font-size: 0.8rem; color: var(--text-soft); white-space: nowrap; }
+
+/* ---------------- painel da moto ---------------- */
+.dash {
+    grid-area: dash;
+    justify-self: center;
+    align-self: end;
+    position: relative;
+    width: min(340px, 100%);
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.65rem 0.85rem 0.6rem;
+    border-radius: 18px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 40%),
+        var(--panel-strong);
+    border: 1px solid var(--line-soft);
+    backdrop-filter: blur(var(--blur)) saturate(1.2);
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* conta-giros: barra segmentada, faixa vermelha a partir do redline */
+.dash-rpm {
+    position: relative;
+    height: 10px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.07);
+    overflow: hidden;
+    -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(5% - 2px), transparent calc(5% - 2px) 5%);
+    mask: repeating-linear-gradient(90deg, #000 0 calc(5% - 2px), transparent calc(5% - 2px) 5%);
+}
+
+.dash-rpm-fill {
+    position: absolute;
+    inset: 0;
+    transform-origin: left center;
+    transform: scaleX(0);
+    background: linear-gradient(90deg, var(--neon-b) 0%, #7dffb0 55%, var(--gold) 78%, var(--danger) 92%);
+    transition: transform 60ms linear;
+}
+
+.dash-rpm-red {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 88%;
+    background: rgba(255, 84, 112, 0.35);
+}
+
+.dash-main {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.dash-gear {
+    display: grid;
+    justify-items: center;
+    min-width: 2.8rem;
+    padding: 0.2rem 0.35rem;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.dash-gear .hud-label { font-size: 0.45rem; letter-spacing: 0.12em; }
+
+.dash-gear strong {
+    font-size: 1.7rem;
+    line-height: 1;
+    color: var(--neon-b);
+    text-shadow: 0 0 12px var(--neon-b);
+}
+
+.dash-speed {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.dash-speed strong {
+    font-size: clamp(2.2rem, 5vw, 2.9rem);
+    line-height: 1;
+    color: var(--text);
+    text-shadow: 0 0 16px var(--neon-a);
+}
+
+.dash-side {
+    display: grid;
+    gap: 0.2rem;
+    justify-items: end;
+}
+
+.dash-mini {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+}
+
+.dash-mini b {
+    font-size: 0.9rem;
+    font-weight: 400;
+    color: var(--text-soft);
+    min-width: 3.3ch;
+    text-align: right;
+}
+
+.dash-bars {
+    display: grid;
+    grid-template-columns: 3.2rem minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.dash-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.meter {
+    position: relative;
+    flex: 1;
+    height: 6px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.09);
+    overflow: hidden;
+}
+
+.meter i {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    transform-origin: left center;
+    transform: scaleX(0);
+}
+
+.boost-fill {
+    background: linear-gradient(90deg, var(--neon-a), var(--neon-b));
+    box-shadow: 0 0 12px var(--neon-b);
+}
+
+.grip-fill {
+    background: linear-gradient(90deg, #7dffb0, var(--gold) 70%, var(--danger));
+    transition: transform 90ms linear;
+}
+
+/* inclinação: linha do horizonte da moto */
+.dash-bar--lean {
+    position: relative;
+    height: 22px;
+    border-radius: 8px;
+    border: 1px solid var(--line-soft);
+    background: rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    justify-content: center;
+}
+
+.lean-needle {
+    width: 3px;
+    height: 16px;
+    border-radius: 2px;
+    background: var(--neon-a);
+    box-shadow: 0 0 8px var(--neon-a);
+    transform-origin: 50% 100%;
+    translate: 0 -2px;
+}
+
+.dash-bike {
+    position: absolute;
+    top: -0.6rem;
+    left: 1rem;
+    padding: 0.05rem 0.5rem;
+    border-radius: 99px;
+    font-family: var(--font-display);
+    font-size: 0.5rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: linear-gradient(120deg, var(--neon-a), var(--neon-b));
+}
+
+/* luz de troca: pisca perto do redline */
+.dash.is-shift .dash-rpm { animation: shiftLight 0.16s steps(2) infinite; }
+.dash.is-shift .dash-gear { border-color: var(--danger); box-shadow: 0 0 14px rgba(255, 84, 112, 0.55); }
+.dash.is-grip-hot .grip-fill { box-shadow: 0 0 10px var(--danger); }
+.dash.is-nitro { border-color: color-mix(in oklab, var(--neon-a) 70%, transparent); box-shadow: 0 0 30px color-mix(in oklab, var(--neon-a) 40%, transparent); }
+
+@keyframes shiftLight { 50% { filter: brightness(1.9); } }
+
+/* ---------------- mensagens e contagem ---------------- */
 .message {
     position: absolute;
     left: 50%;
-    top: 42%;
+    top: 40%;
     translate: -50% 0;
+    width: max-content;
+    max-width: calc(100% - 2rem);
     margin: 0;
+    text-align: center;
     font-family: var(--font-display);
-    font-size: clamp(1.4rem, 4vw, 2.6rem);
-    letter-spacing: 0.18em;
+    font-size: clamp(1rem, 3.4vw, 2rem);
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--text);
     text-shadow: 0 0 22px var(--neon-b), 0 0 40px var(--neon-a);
@@ -378,8 +604,33 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
 
 .message[data-show="true"] { opacity: 1; }
 
+.countdown {
+    position: absolute;
+    left: 50%;
+    top: 30%;
+    translate: -50% 0;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(3.5rem, 16vw, 8rem);
+    line-height: 1;
+    color: var(--text);
+    text-shadow: 0 0 30px var(--neon-a), 0 0 60px var(--neon-b);
+    pointer-events: none;
+}
+
+.countdown[hidden] { display: none; }
+.countdown[data-go="true"] { color: var(--gold); text-shadow: 0 0 30px var(--gold), 0 0 70px var(--neon-a); }
+.countdown.is-pulse { animation: countPulse 0.7s var(--ease) both; }
+
+@keyframes countPulse {
+    0% { transform: scale(1.6); opacity: 0; }
+    25% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.85; }
+}
+
+/* ---------------- botões do HUD ---------------- */
 .hud-actions {
-    grid-row: 3;
+    grid-area: actions;
     justify-self: end;
     align-self: end;
     display: flex;
@@ -396,23 +647,19 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     border-radius: 12px;
     background: var(--panel);
     backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
     border: 1px solid var(--line-soft);
     color: var(--text-soft);
-    transition: all 0.22s var(--ease);
+    transition: color 0.22s var(--ease), border-color 0.22s var(--ease), transform 0.22s var(--ease);
 }
 
-.icon-button:hover {
-    color: var(--neon-b);
-    border-color: var(--neon-b);
-}
+.icon-button:hover { color: var(--neon-b); border-color: var(--neon-b); }
+.icon-button:active { transform: scale(0.94); }
+.icon-button[aria-pressed="false"] { opacity: 0.5; }
 
-.icon-button[aria-pressed="false"] { opacity: 0.45; }
+.fps { font-size: 0.7rem; color: var(--text-dim); }
 
-.fps {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-}
-
+/* ---------------- controles de toque ---------------- */
 .touch-controls {
     position: absolute;
     inset: auto 0 0 0;
@@ -420,7 +667,7 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     align-items: flex-end;
     justify-content: space-between;
     gap: 1rem;
-    padding: 0 calc(1rem + var(--safe-right)) calc(1.1rem + var(--safe-bottom)) calc(1rem + var(--safe-left));
+    padding: 0 calc(var(--gutter) + var(--safe-right)) calc(1rem + var(--safe-bottom)) calc(var(--gutter) + var(--safe-left));
     pointer-events: none;
 }
 
@@ -432,7 +679,7 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     touch-action: none;
     position: relative;
     width: min(46%, 300px);
-    height: 92px;
+    height: 88px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -445,6 +692,8 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 
+.steer-zone.is-active { border-color: var(--neon-b); }
+
 .steer-arrow {
     font-size: 1.3rem;
     color: var(--neon-b);
@@ -456,9 +705,9 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 58px;
-    height: 58px;
-    margin: -29px 0 0 -29px;
+    width: 56px;
+    height: 56px;
+    margin: -28px 0 0 -28px;
     border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #fff8, transparent 55%), linear-gradient(135deg, var(--neon-a), var(--neon-b));
     box-shadow: 0 0 22px color-mix(in oklab, var(--neon-a) 60%, transparent);
@@ -469,63 +718,100 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
 
 .touch-buttons {
     display: flex;
+    align-items: flex-end;
     gap: 0.7rem;
     pointer-events: auto;
 }
 
 .pad {
-    width: 78px;
-    height: 78px;
+    width: 76px;
+    height: 76px;
     border-radius: 50%;
     background: var(--panel-strong);
     border: 1px solid var(--line);
     font-family: var(--font-display);
     font-size: 0.62rem;
     letter-spacing: 0.1em;
+    touch-action: none;
+    transition: transform 0.12s var(--ease), filter 0.12s var(--ease);
 }
 
+.pad-brake { color: var(--text-soft); }
+
 .pad-boost {
-    width: 92px;
-    height: 92px;
+    width: 90px;
+    height: 90px;
     color: var(--neon-a);
     box-shadow: 0 0 24px color-mix(in oklab, var(--neon-a) 40%, transparent);
 }
 
-.pad { touch-action: none; }
 .pad:active,
 .pad.is-held { transform: scale(0.92); filter: brightness(1.35); }
 
-/* overlays */
+/* Toque: painel da moto sobe para o topo; som/câmera/pausa ficam acima dos pedais */
+.hud.is-touch {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "dash goal score"
+        ".    .    .    "
+        ".    .    .    ";
+}
+
+.hud.is-touch .radio-panel { display: none; }
+.hud.is-touch .dash { justify-self: start; align-self: start; width: 14.5rem; }
+.hud.is-touch .dash-side,
+.hud.is-touch .dash-bike { display: none; }
+.hud.is-touch .score-panel { justify-self: end; }
+
+.hud.is-touch .hud-actions {
+    position: absolute;
+    right: calc(var(--gutter) + var(--safe-right));
+    bottom: calc(1rem + 90px + 0.7rem + var(--safe-bottom));
+    flex-direction: column;
+}
+
+.hud.is-touch .fps { display: none; }
+
+/* ---------------- overlays ---------------- */
 .overlay {
     position: absolute;
     inset: 0;
     z-index: 50;
     display: grid;
     place-items: center;
-    padding: calc(1.2rem + var(--safe-top)) 1.2rem calc(1.2rem + var(--safe-bottom));
+    padding: calc(var(--header-h) + var(--safe-top)) calc(1.2rem + var(--safe-right)) calc(1.2rem + var(--safe-bottom)) calc(1.2rem + var(--safe-left));
     background:
         radial-gradient(80% 60% at 50% 0%, color-mix(in oklab, var(--neon-a) 18%, transparent), transparent 55%),
         rgba(4, 0, 8, 0.42);
     backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
 }
 
 .overlay[hidden] { display: none; }
 
+.loading-overlay { padding-top: calc(1.2rem + var(--safe-top)); }
+
 .overlay-card {
     max-height: min(92dvh, 900px);
+    max-height: min(calc(100dvh - var(--header-h) - 1.4rem - var(--safe-top) - var(--safe-bottom)), 900px);
     overflow-y: auto;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
     width: min(760px, 100%);
-    background: color-mix(in oklab, #0c0614 78%, transparent);
+    max-width: 100%;
+    background: color-mix(in oklab, #0c0614 80%, transparent);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 40px color-mix(in oklab, var(--neon-a) 20%, transparent);
     padding: 1.4rem 1.5rem 1.2rem;
     backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    user-select: text;
 }
 
 .compact-card {
-    width: min(440px, 100%);
+    width: min(460px, 100%);
     text-align: center;
 }
 
@@ -536,7 +822,7 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     margin: 0.2rem 0 0.6rem;
-    font-size: clamp(1.8rem, 5vw, 3.1rem);
+    font-size: clamp(1.7rem, 5vw, 3rem);
     line-height: 1.05;
 }
 
@@ -558,6 +844,8 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     color: var(--neon-a);
 }
 
+.compact-card .eyebrow { justify-content: center; }
+
 .eyebrow i {
     width: 8px;
     height: 8px;
@@ -567,12 +855,13 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     animation: pulse 1.4s ease-in-out infinite;
 }
 
-@keyframes pulse {
-    50% { opacity: 0.35; }
-}
+@keyframes pulse { 50% { opacity: 0.35; } }
 
-.eyebrow--danger { color: #ff6b8a; }
-.eyebrow--danger i { background: #ff6b8a; box-shadow: 0 0 10px #ff6b8a; }
+.eyebrow--danger { color: var(--danger); }
+.eyebrow--danger i { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+.eyebrow--gold { color: var(--gold); }
+.eyebrow--gold i { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+.win-card h2 { color: var(--gold); text-shadow: 0 0 24px var(--gold); }
 
 .lede {
     margin: 0;
@@ -581,21 +870,76 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     max-width: 52ch;
 }
 
-.menu-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin: 1.2rem 0 1rem;
+.compact-card .lede { margin: 0 auto; }
+
+/* menu principal — `.menu-head` é um <header>: o shared.css dá grid de 3 colunas a todo header */
+.menu-card .menu-head {
+    display: block;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    text-align: center;
 }
+
+.menu-card .menu-head .eyebrow { justify-content: center; }
+.menu-card .menu-head h1 { grid-area: auto; max-width: none; overflow: visible; font-size: clamp(2rem, 7vw, 3.3rem); }
+.menu-card .menu-head .lede { margin: 0 auto; font-size: 1.02rem; color: var(--text); }
+
+.howto {
+    list-style: none;
+    margin: 1.1rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+
+.howto li {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--line-soft);
+    min-width: 0;
+}
+
+.howto-icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    color: var(--neon-b);
+    background: color-mix(in oklab, var(--neon-b) 14%, transparent);
+    text-shadow: 0 0 10px var(--neon-b);
+}
+
+.howto-icon--tape { color: var(--neon-a); background: color-mix(in oklab, var(--neon-a) 14%, transparent); text-shadow: 0 0 10px var(--neon-a); font-size: 1.3rem; }
+.howto-icon--flag { color: var(--gold); background: rgba(255, 216, 74, 0.12); font-size: 1.3rem; }
+.howto li > span { display: grid; gap: 0.1rem; min-width: 0; }
+.howto strong { font-size: 0.92rem; }
+.howto small { font-size: 0.76rem; color: var(--text-dim); }
+
+@media (pointer: coarse) { .howto .only-board, .keys--board { display: none; } }
+@media not all and (pointer: coarse) { .howto .only-touch, .keys--touch { display: none; } }
 
 .menu-section h2 {
     font-family: var(--font-display);
     font-size: 0.72rem;
+    font-weight: 400;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--neon-b);
     margin: 0 0 0.55rem;
 }
+
+.menu-difficulty { margin: 1rem 0 0; text-align: center; }
+.menu-difficulty .chip-row { justify-content: center; }
 
 .chip-row {
     display: flex;
@@ -604,14 +948,18 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
 }
 
 .chip {
-    padding: 0.4rem 0.7rem;
+    min-height: 44px;
+    padding: 0.5rem 1.1rem;
     border-radius: 99px;
     border: 1px solid var(--line-soft);
     background: rgba(255, 255, 255, 0.04);
-    font-size: 0.82rem;
+    font-size: 0.9rem;
+    transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
 }
 
-.chip[aria-pressed="true"] {
+.chip:hover { border-color: var(--neon-b); }
+
+.chip[aria-checked="true"] {
     border-color: var(--neon-a);
     color: var(--ink);
     background: linear-gradient(120deg, var(--neon-a), var(--neon-b));
@@ -623,6 +971,27 @@ body[data-state="playing"] .lab-foot { visibility: hidden; pointer-events: none;
     font-size: 0.82rem;
     color: var(--text-dim);
     line-height: 1.45;
+}
+
+.menu-foot { display: flex; justify-content: center; margin: 0.9rem 0 0.2rem; }
+
+.menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 0.9rem 0 0;
+}
+
+.menu-disclosure summary {
+    cursor: pointer;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--neon-b);
 }
 
 .keys {
@@ -645,10 +1014,7 @@ kbd {
     font-size: 0.75rem;
 }
 
-.settings-grid {
-    display: grid;
-    gap: 0.7rem;
-}
+.settings-grid { display: grid; gap: 0.7rem; }
 
 .field {
     display: grid;
@@ -660,6 +1026,7 @@ kbd {
 .field select,
 .field input[type="range"] {
     width: 100%;
+    min-height: 40px;
     accent-color: var(--neon-a);
 }
 
@@ -670,22 +1037,81 @@ kbd {
     padding: 0.4rem 0.55rem;
 }
 
-.menu-foot {
+/* interruptor (checkbox nativo estilizado, alvo ≥ 44 px) */
+.switch {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 44px;
+    font-size: 0.82rem;
+    color: var(--text-soft);
+    cursor: pointer;
 }
+
+.switch small { color: var(--text-dim); }
+
+.switch input {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: none;
+    position: relative;
+    width: 48px;
+    height: 44px;              /* alvo de toque ≥ 44 px; o trilho visível tem 26 px */
+    margin: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+}
+
+.switch input::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    top: 9px;
+    height: 26px;
+    border-radius: 99px;
+    border: 1px solid var(--line-soft);
+    background: rgba(255, 255, 255, 0.08);
+    transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.switch input::after {
+    content: '';
+    position: absolute;
+    top: 13px;
+    left: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text-soft);
+    transition: transform 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.switch input:checked::before {
+    background: linear-gradient(120deg, var(--neon-a), var(--neon-b));
+    border-color: transparent;
+}
+
+.switch input:checked::after { transform: translateX(18px); background: #fff; }
+
+.switch input:focus-visible { outline: none; }
+.switch input:focus-visible::before { outline: 2px solid var(--neon-b); outline-offset: 2px; }
 
 .primary-button,
 .ghost-button {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.55rem;
+    min-height: 44px;
     padding: 0.75rem 1.15rem;
     border-radius: 999px;
     font-family: var(--font-display);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-size: 0.85rem;
+    transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), color 0.2s var(--ease);
 }
 
 .primary-button {
@@ -696,10 +1122,18 @@ kbd {
 
 .primary-button:hover { transform: translateY(-2px); }
 
+.primary-button--big {
+    min-height: 56px;
+    padding: 0.95rem 2.2rem;
+    font-size: 1.05rem;
+}
+
 .ghost-button {
     border: 1px solid var(--line-soft);
     color: var(--text-soft);
 }
+
+.ghost-button:hover { border-color: var(--neon-b); color: var(--text); }
 
 .card-actions {
     display: flex;
@@ -709,9 +1143,11 @@ kbd {
     margin-top: 1rem;
 }
 
+.compact-card .card-actions .primary-button { order: -1; }
+
 .stats {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.55rem 1rem;
     margin: 1rem 0 0.2rem;
     text-align: left;
@@ -719,7 +1155,7 @@ kbd {
 
 .stats span {
     display: block;
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--text-dim);
@@ -727,15 +1163,18 @@ kbd {
 
 .stats b {
     font-family: var(--font-mono);
-    font-size: 1.15rem;
+    font-size: 1.12rem;
+    font-weight: 400;
 }
 
-.loading-card {
-    text-align: center;
-}
+.stats .stats-wide { grid-column: 1 / -1; }
+.stats-record b { color: var(--gold); font-family: var(--font-display); font-size: 0.9rem; letter-spacing: 0.08em; }
+
+.loading-card { text-align: center; }
 
 .loading-card h1 {
     font-family: var(--font-display);
+    font-weight: 400;
     letter-spacing: 0.18em;
     font-size: 1.8rem;
     margin: 0.4rem 0;
@@ -762,295 +1201,142 @@ kbd {
     height: 100%;
     width: 0;
     background: linear-gradient(90deg, var(--neon-a), var(--neon-b));
+    transition: width 0.3s var(--ease);
 }
+
+/* ================================================================
+   Responsivo
+   ================================================================ */
 
 @media (max-width: 860px) {
-    .menu-grid { grid-template-columns: 1fr; }
-    .hud-top { grid-template-columns: 1fr 1fr; }
-    .radio-panel { grid-column: 1 / -1; justify-self: stretch; width: auto; }
-    .speed-num { font-size: 1.6rem; }
+    .menu-grid { grid-template-columns: 1fr; gap: 0.2rem; }
+    .hud { grid-template-columns: auto minmax(0, 1fr) auto; }
 }
 
-@media (max-width: 560px) {
-    .overlay-card { padding: 1rem; }
-    .menu-head h1 { font-size: 1.7rem; }
-    .hud-top { gap: 0.45rem; }
-    .panel { padding: 0.45rem 0.6rem; }
-}
-/* --- lab-responsive-pass --- */
-@media (max-width: 560px) {
-    .hud-actions {
-        position: absolute;
-        top: calc(0.85rem + var(--safe-top, env(safe-area-inset-top, 0px)));
-        right: calc(1rem + var(--safe-right, env(safe-area-inset-right, 0px)));
-        bottom: auto;
-        grid-row: auto;
-        z-index: 22;
-    }
-}
-
-/* --- mobile: HUD, toque, landscape curto --- */
-@media (pointer: coarse) {
-    .icon-button,
-    .icon-btn {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-        min-height: 44px;
-    }
-}
-
-@media (max-width: 560px) {
-    .overlay,
-    .overlay-card,
-    .menu-card {
-        max-height: min(92dvh, 900px);
-    }
-    .overlay-card,
-    .menu-card {
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-}
-
-@media (max-height: 520px) and (orientation: landscape) {
-    .hud {
-        padding: calc(2.75rem + var(--safe-top, env(safe-area-inset-top, 0px)))
-            calc(0.6rem + var(--safe-right, env(safe-area-inset-right, 0px)))
-            calc(0.35rem + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))
-            calc(0.6rem + var(--safe-left, env(safe-area-inset-left, 0px)));
-        gap: 0.3rem;
-    }
-    .panel { padding: 0.35rem 0.55rem; }
-    .hud-actions {
-        position: static;
-        top: auto;
-        bottom: auto;
-        right: auto;
-    }
-    .icon-button,
-    .icon-btn {
-        width: 44px;
-        height: 44px;
-    }
-    .touch-controls {
-        height: min(42%, 38dvh);
-    }
-}
-
-/* agent-responsive-768 */
 @media (max-width: 768px) {
-  html, body { overflow-x: clip; }
-  .hud, .overlay, .menu-overlay, .overlay-card {
-    max-width: 100%;
-  }
+    .hud, .overlay, .overlay-card { max-width: 100%; }
 }
 
-/* --- 2026-11: menu infantil, meta de chegada, vitória ------------------------- */
-/* `.menu-head` é um <header>: o shared.css dá grid de 3 colunas a todo header. */
-.menu-card .menu-head {
-    display: block;
-    width: auto;
-    max-width: none;
-    margin: 0;
-    padding: 0;
-    text-align: center;
-}
-.menu-card .menu-head .eyebrow { justify-content: center; }
-.menu-card .menu-head h1 { grid-area: auto; max-width: none; overflow: visible; font-size: clamp(2.2rem, 7vw, 3.4rem); }
-.menu-card .menu-head .lede { margin: 0 auto; font-size: 1.05rem; color: var(--text); }
-
-.howto {
-    list-style: none;
-    margin: 1.1rem 0 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.6rem;
-}
-.howto li {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 0.7rem 0.8rem;
-    border-radius: var(--radius);
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--line-soft);
-    min-width: 0;
-}
-.howto-icon {
-    flex: none;
-    display: grid;
-    place-items: center;
-    width: 2.6rem;
-    height: 2.6rem;
-    border-radius: 12px;
-    font-size: 0.95rem;
-    color: var(--neon-b);
-    background: color-mix(in oklab, var(--neon-b) 14%, transparent);
-    text-shadow: 0 0 10px var(--neon-b);
-}
-.howto-icon--tape { color: var(--neon-a); background: color-mix(in oklab, var(--neon-a) 14%, transparent); text-shadow: 0 0 10px var(--neon-a); font-size: 1.3rem; }
-.howto-icon--flag { color: #ffd84a; background: rgba(255, 216, 74, 0.12); font-size: 1.3rem; }
-.howto li > span { display: grid; gap: 0.1rem; min-width: 0; }
-.howto strong { font-size: 0.92rem; }
-.howto small { font-size: 0.76rem; color: var(--text-dim); }
-@media (pointer: coarse) { .howto .only-board { display: none; } }
-@media not all and (pointer: coarse) { .howto .only-touch { display: none; } }
-
-.menu-foot { justify-content: center; }
-.primary-button--big {
-    min-height: 56px;
-    padding: 0.95rem 2.2rem;
-    font-size: 1.05rem;
-}
-
-/* Barra de chegada: sempre visível, logo abaixo dos painéis (última linha do grid do topo). */
-.goal-track {
-    grid-column: 1 / -1;
-    justify-self: center;
-    width: min(440px, 100%);
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.35rem 0.75rem;
-    border-radius: 999px;
-    background: var(--panel);
-    border: 1px solid var(--line-soft);
-    backdrop-filter: blur(var(--blur));
-    -webkit-backdrop-filter: blur(var(--blur));
-    pointer-events: none;
-}
-.goal-label {
-    font-family: var(--font-display);
-    font-size: 0.55rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: #ffd84a;
-}
-.goal-bar {
-    position: relative;
-    flex: 1;
-    height: 8px;
-    border-radius: 99px;
-    background: rgba(255, 255, 255, 0.1);
-    background-image: linear-gradient(90deg, transparent calc(100% - 10px), rgba(255, 216, 74, 0.7) calc(100% - 10px));
-}
-.goal-bar i {
-    display: block;
-    height: 100%;
-    width: 0;
-    border-radius: inherit;
-    background: linear-gradient(90deg, var(--neon-a), var(--neon-b));
-    box-shadow: 0 0 10px var(--neon-b);
-}
-.goal-bar b {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    translate: -50% -50%;
-    font-size: 0.8rem;
-    color: #fff;
-    text-shadow: 0 0 8px var(--neon-a);
-}
-.goal-text { font-size: 0.8rem; color: var(--text-soft); white-space: nowrap; }
-
-.eyebrow--gold { color: #ffd84a; }
-.eyebrow--gold i { background: #ffd84a; box-shadow: 0 0 10px #ffd84a; }
-.win-card h2 { color: #ffd84a; text-shadow: 0 0 24px #ffd84a; }
-.compact-card .lede { margin: 0 auto; }
-.stats .stats-wide { grid-column: 1 / -1; }
-.compact-card .card-actions .primary-button { order: -1; }
-
-
-@media (max-width: 640px) {
+/* celular em pé: painel da moto + placar numa linha, barra de chegada embaixo */
+@media (max-width: 600px) {
+    :root { --gutter: 0.75rem; }
+    .overlay-card { padding: 1rem; }
     .howto { grid-template-columns: 1fr; gap: 0.45rem; }
     .howto li { padding: 0.5rem 0.7rem; }
-    .menu-card .menu-head h1 { font-size: 2.2rem; }
-    /* celular em pé: só o essencial no topo (velocidade, créditos), a rádio vira uma linha */
-    .radio-panel .hud-tag { display: none; }
-    .radio-panel strong { font-size: 0.85rem; }
-    .speed-num { font-size: 1.35rem; }
-    .score-panel { min-width: 0; }
-    .steer-zone { width: min(56%, 240px); height: 80px; }
-    .steer-knob { width: 52px; height: 52px; margin: -26px 0 0 -26px; }
-    .pad { width: 70px; height: 70px; }
-    .pad-boost { width: 82px; height: 82px; }
-}
 
-@media (max-height: 520px) and (orientation: landscape) {
-    /* os painéis começam abaixo dos botões do header (voltar, tela cheia, tema) */
-    .hud { padding-top: calc(3.6rem + var(--safe-top)); }
-    .menu-card .menu-head h1 { font-size: 1.8rem; margin: 0.1rem 0 0.3rem; }
-    .menu-card .menu-head .lede { font-size: 0.92rem; }
-    .howto { margin-top: 0.6rem; }
-    .howto li { padding: 0.45rem 0.6rem; }
-    .howto-icon { width: 2.1rem; height: 2.1rem; }
-    .menu-grid { margin: 0.6rem 0; }
-    .hud-top { grid-template-columns: auto minmax(0, 1fr) auto; }
-    .radio-panel { grid-column: auto; }
-    .radio-panel .hud-tag,
-    .speed-panel .hud-label,
-    .radio-panel .hud-label { display: none; }
-    .message { top: 54%; }
-    .speed-num { font-size: 1.3rem; }
-    .steer-zone { height: 70px; width: min(40%, 260px); }
-    .steer-knob { width: 48px; height: 48px; margin: -24px 0 0 -24px; }
-    .pad { width: 62px; height: 62px; }
-    .pad-boost { width: 70px; height: 70px; }
-}
-
-/* Menu: dificuldade + Jogar logo depois do "como jogar"; comandos e ajustes recolhidos embaixo. */
-.menu-difficulty { margin: 1rem 0 0; text-align: center; }
-.menu-difficulty .chip-row { justify-content: center; }
-.menu-difficulty .chip { min-height: 44px; padding: 0.5rem 1.1rem; font-size: 0.9rem; }
-.menu-foot { margin: 0.9rem 0 0.2rem; }
-.menu-card .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0.9rem 0 0; }
-
-@media (max-width: 860px) {
-    .menu-card .menu-grid { grid-template-columns: 1fr; gap: 0.2rem; }
-}
-
-/* Celular em pé: HUD numa linha só (velocidade · rádio/nitro · placar) + barra de chegada;
-   som/pausa sobem para cima dos pedais (antes ficavam escondidos sob os botões do header). */
-@media (max-width: 560px) {
-    .hud-top { grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.4rem; }
-    .radio-panel { grid-column: auto; justify-self: stretch; width: auto; padding: 0.4rem 0.5rem; }
-    .speed-panel .hud-label,
-    .radio-panel .hud-label,
-    .radio-panel .hud-tag { display: none; }
-    .speed-num { font-size: 1.3rem; }
-    .hud-unit { font-size: 0.55rem; }
-    .radio-panel strong { font-size: 0.78rem; letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .score-panel { gap: 0.05rem; }
+    .hud,
+    .hud.is-touch {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto auto 1fr auto;
+        grid-template-areas:
+            "dash  score"
+            "goal  goal"
+            ".     ."
+            ".     actions";
+        gap: 0.45rem;
+    }
+    .radio-panel { display: none; }
+    .goal-track { width: 100%; padding: 0.3rem 0.65rem; }
+    .score-panel { min-width: 0; padding: 0.4rem 0.6rem; }
     .score-row .hud-label { font-size: 0.48rem; letter-spacing: 0.08em; }
     .score-row strong { font-size: 0.82rem; }
-    .hud-actions {
-        top: auto;
-        bottom: calc(1.1rem + 82px + 0.7rem + var(--safe-bottom));
-        right: calc(1rem + var(--safe-right));
+
+    .dash,
+    .hud.is-touch .dash {
+        justify-self: start;
+        align-self: start;
+        width: min(13rem, 100%);
+        padding: 0.5rem 0.6rem 0.45rem;
+        gap: 0.3rem;
     }
+    .dash-side, .dash-bike, .dash-bar--lean, .dash-bars .dash-bar:nth-child(2) { display: none; }
+    .dash-bars { grid-template-columns: 1fr; }
+    .dash-speed strong { font-size: 2rem; }
+    .dash-gear { min-width: 2.3rem; }
+    .dash-gear strong { font-size: 1.35rem; }
+
+    .steer-zone { width: min(54%, 240px); height: 80px; }
+    .steer-knob { width: 52px; height: 52px; margin: -26px 0 0 -26px; }
+    .pad { width: 68px; height: 68px; }
+    .pad-boost { width: 80px; height: 80px; }
+    .hud.is-touch .hud-actions { bottom: calc(1rem + 80px + 0.6rem + var(--safe-bottom)); }
+    .message { top: 46%; }
+    .countdown { top: 36%; }
 }
 
+/* landscape curto (celular deitado): tudo compacto, painel da moto no topo à esquerda */
 @media (max-height: 520px) and (orientation: landscape) {
-    .hud-actions {
-        position: absolute;
-        top: auto;
-        right: calc(1rem + var(--safe-right));
-        bottom: calc(1.1rem + 70px + 0.6rem + var(--safe-bottom));
+    :root { --header-h: 3.5rem; --gutter: 0.75rem; }
+    .hud,
+    .hud.is-touch {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-rows: auto 1fr auto;
+        grid-template-areas:
+            "dash goal score"
+            ".    .    .    "
+            ".    .    actions";
+        gap: 0.35rem 0.5rem;
+        padding-bottom: calc(0.5rem + var(--safe-bottom));
     }
-    /* o cartão começa abaixo do header; título e passos bastam (sem eyebrow/lede) */
-    .overlay { padding-top: calc(3.3rem + var(--safe-top)); padding-bottom: calc(0.6rem + var(--safe-bottom)); }
+    .radio-panel { display: none; }
+    .panel { padding: 0.3rem 0.55rem; }
+    .score-row strong { font-size: 0.8rem; }
+    .score-row .hud-label { font-size: 0.48rem; }
+    .dash,
+    .hud.is-touch .dash {
+        justify-self: start;
+        align-self: start;
+        width: 11.5rem;
+        padding: 0.4rem 0.55rem;
+        gap: 0.25rem;
+    }
+    .dash-side, .dash-bike, .dash-bar--lean, .dash-bars .dash-bar:nth-child(2) { display: none; }
+    .dash-bars { grid-template-columns: 1fr; }
+    .dash-speed strong { font-size: 1.6rem; }
+    .dash-gear { min-width: 2.1rem; padding: 0.1rem 0.3rem; }
+    .dash-gear .hud-label { display: none; }
+    .dash-gear strong { font-size: 1.2rem; }
+    .goal-track { align-self: start; }
+    .message { top: 48%; }
+    .countdown { top: 26%; font-size: 4rem; }
+
+    .touch-controls { padding-bottom: calc(0.6rem + var(--safe-bottom)); }
+    .steer-zone { height: 68px; width: min(38%, 260px); }
+    .steer-knob { width: 46px; height: 46px; margin: -23px 0 0 -23px; }
+    .pad { width: 60px; height: 60px; }
+    .pad-boost { width: 68px; height: 68px; }
+    /* em pé de lado: botões em linha, à esquerda dos pedais (não sobre a moto) */
+    .hud.is-touch .hud-actions {
+        flex-direction: row;
+        bottom: calc(0.6rem + var(--safe-bottom));
+        right: calc(var(--gutter) + var(--safe-right) + 60px + 68px + 1.6rem);
+    }
+
+    .overlay { padding-top: calc(var(--header-h) + var(--safe-top)); padding-bottom: calc(0.6rem + var(--safe-bottom)); }
+    .overlay-card { max-height: calc(100dvh - var(--header-h) - 0.8rem - var(--safe-top) - var(--safe-bottom)); padding: 0.9rem 1rem; }
     .menu-card .menu-head .eyebrow,
     .menu-card .menu-head .lede,
-    .menu-difficulty h2 { display: none; }
-    .overlay-card { max-height: calc(100dvh - 4rem - var(--safe-top) - var(--safe-bottom)); }
-    .menu-difficulty { margin-top: 0.6rem; }
+    .menu-difficulty h2,
     .menu-difficulty .section-note { display: none; }
+    .menu-card .menu-head h1 { font-size: 1.7rem; margin: 0.1rem 0 0.3rem; }
+    .howto { margin-top: 0.5rem; }
+    .howto li { padding: 0.4rem 0.55rem; }
+    .howto-icon { width: 2rem; height: 2rem; }
+    .menu-difficulty { margin-top: 0.5rem; }
     .menu-foot { margin-top: 0.5rem; }
-    .menu-card .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .menu-card .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0.4rem; }
+    .compact-card h2 { font-size: 1.5rem; margin: 0.1rem 0 0.3rem; }
+    .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 0.5rem; }
 }
 
 @media (pointer: coarse) {
     .fps { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .eyebrow i,
+    .dash.is-shift .dash-rpm,
+    .countdown.is-pulse { animation: none; }
+    .glitch-layer.is-on { animation-duration: 0.01s; }
+    .dash-rpm-fill, .grip-fill, .steer-knob, .pad, .primary-button { transition: none; }
 }

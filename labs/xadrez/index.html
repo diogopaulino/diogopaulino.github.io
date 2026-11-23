@@ -30,7 +30,7 @@
     <link rel="preconnect" href="https://cdn.babylonjs.com" crossorigin>
     <link rel="stylesheet" href="/assets/fonts/cinzel/font.css">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -110,6 +110,10 @@
             </nav>
             <aside class="tray" aria-label="Partida">
                 <div class="player-heading"><span class="player-avatar" aria-hidden="true">♚</span><div><p class="eyebrow">PARTIDA</p><p id="opponentName" class="opponent-name">Máquina · praticante</p></div></div>
+                <div id="clocks" class="clocks" role="group" aria-label="Relógio" hidden>
+                    <div class="clock" data-side="w"><span>Brancas</span><b>5:00</b></div>
+                    <div class="clock" data-side="b"><span>Pretas</span><b>5:00</b></div>
+                </div>
                 <p id="statusLine" aria-live="polite" class="status">Brancas jogam</p>
                 <div id="captured" class="captured" aria-label="Peças capturadas"></div>
                 <details class="history-panel" open><summary>Lances <span aria-hidden="true">⌄</span></summary><ol id="moves" class="moves" aria-label="Histórico de lances"></ol></details>
@@ -180,6 +184,16 @@
                         </select>
                     </label>
                     <label class="field">
+                        <span>Relógio</span>
+                        <select id="clockSelect">
+                            <option value="off">Sem relógio</option>
+                            <option value="3+2">Blitz 3+2</option>
+                            <option value="5+3">Blitz 5+3</option>
+                            <option value="10+5">Rápida 10+5</option>
+                            <option value="15+10">Rápida 15+10</option>
+                        </select>
+                    </label>
+                    <label class="field">
                         <span>Qualidade</span>
                         <select id="qualitySelect">
                             <option value="auto">Automática</option>
@@ -241,6 +255,10 @@
                 <h2>O atelier não abriu.</h2>
                 <p class="lede" id="errorText">Este laboratório precisa de WebGL. Tente um navegador
                     atualizado ou reative a aceleração de hardware.</p>
+                <footer class="card-actions">
+                    <button id="errorRetry" class="primary-button" type="button">Tentar de novo <span aria-hidden="true">↻</span></button>
+                    <a class="dock-btn error-back" href="/labs/">Voltar aos labs</a>
+                </footer>
             </div>
         </div>
 
@@ -250,7 +268,7 @@
     <script src="https://cdn.babylonjs.com/v9.25.0/babylon.js"></script>
     
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="src/main.js?v=5"></script>
+    <script type="module" src="src/main.js?v=6"></script>
 </body>
 
 </html>

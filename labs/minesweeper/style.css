@@ -508,3 +508,135 @@ body {
     width: max-content;
     margin-inline: auto;
 }
+
+/* --- Remaster: sem chute, acorde, onda de abertura ----------------------- */
+
+/* Caixa de seleção no estilo Win95 ao lado da dificuldade. Alvo de 44px. */
+.win-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--touch-target, 44px);
+    padding: 0 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+    color: #000;
+}
+
+.win-check input {
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    background: #fff;
+    border: 2px solid;
+    border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+    box-shadow: inset 1px 1px 0 #000;
+    display: grid;
+    place-content: center;
+    cursor: pointer;
+}
+
+.win-check input::after {
+    content: '';
+    width: 7px;
+    height: 4px;
+    border: solid #000;
+    border-width: 0 0 2px 2px;
+    transform: rotate(-45deg) translate(1px, -1px);
+    opacity: 0;
+}
+
+.win-check input:checked::after {
+    opacity: 1;
+}
+
+.win-check input:focus-visible {
+    outline: 1px dotted #000;
+    outline-offset: 2px;
+}
+
+#difficulty-select {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+}
+
+/* Números proporcionais à célula (no celular a célula passa de 40px). */
+.cell {
+    font-size: calc(var(--cell-size) * 0.56);
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Onda de abertura: cada célula entra com atraso pela distância do toque. */
+.cell.revealed {
+    animation: cell-open 0.16s ease-out backwards;
+    animation-delay: var(--d, 0ms);
+}
+
+@keyframes cell-open {
+    from {
+        background-color: #e8e8e8;
+        transform: scale(0.88);
+    }
+}
+
+/* Prévia do acorde: vizinhos fechados "afundam" enquanto o número é segurado. */
+.cell.pressed {
+    border: none;
+    border-top: 1px solid var(--win-dark);
+    border-left: 1px solid var(--win-dark);
+    padding: 2px;
+}
+
+.cell.revealed[data-num]:not(.mine) {
+    cursor: pointer;
+}
+
+.cell.mine {
+    background: #ff1d1d;
+    animation: mine-hit 0.45s ease-out;
+}
+
+@keyframes mine-hit {
+    0% { background: #fff; }
+    30% { background: #ff1d1d; transform: scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cell.revealed,
+    .cell.mine {
+        animation: none;
+    }
+}
+
+@media (pointer: coarse) {
+    .face-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+        padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+    }
+
+    .cell {
+        font-size: calc(var(--cell-size) * 0.56);
+    }
+
+    .menu-bar {
+        flex-wrap: wrap;
+        gap: 4px 8px;
+    }
+
+    #difficulty-select {
+        flex-basis: 100%;
+    }
+}

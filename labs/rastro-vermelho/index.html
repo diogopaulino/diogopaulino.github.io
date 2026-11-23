@@ -157,7 +157,7 @@
                 <p id="saveNote" class="section-note">O progresso é salvo em cada destino.</p>
                 <details class="settings"><summary>Controles e preferências <span>+</span></summary>
                     <div class="settings-content">
-                        <div class="keys"><span><kbd>WASD</kbd> / setas · cavalgar e frear</span><span><kbd>Shift</kbd> disparada · <kbd>G</kbd> marcha automática</span><span><kbd>E</kbd> interagir · <kbd>F</kbd> / clique · atirar</span><span><kbd>Q</kbd> concentração · <kbd>R</kbd> recarregar</span><span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span><span>Arraste para olhar · roda para aproximar</span><span>Controle: analógicos · RT tiro · A galope · X recarga · Y interação · LB foco · Start pausa</span></div>
+                        <div class="keys"><span><kbd>WASD</kbd> / setas · cavalgar, frear e recuar</span><span><kbd>Shift</kbd> disparada · <kbd>G</kbd> marcha automática</span><span><kbd>E</kbd> interagir · <kbd>F</kbd> / clique · atirar</span><span><kbd>Q</kbd> concentração · <kbd>R</kbd> recarregar</span><span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span><span>Arraste para olhar · roda para aproximar</span><span>Controle: analógicos · RT tiro · A galope · X recarga · Y interação · LB foco · Start pausa</span></div>
                         <div class="settings-grid">
                             <label class="field"><span>Qualidade</span><select id="qualitySelect"><option value="auto">Automática</option><option value="low">Desempenho</option><option value="medium">Equilibrada</option><option value="high">Cinemática</option></select></label>
                             <label class="field"><span>Volume <b id="volumeValue">70%</b></span><input id="volumeSlider" type="range" min="0" max="100" value="70"></label>
@@ -172,7 +172,7 @@
         </div>
 
         <div id="pauseOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="pauseTitle" hidden>
-            <div class="overlay-card compact-card"><p class="eyebrow">O CAVALO ESPERA</p><h2 id="pauseTitle">Um respiro<br>na estrada.</h2><p class="lede">Sua jornada está pausada.</p><div class="card-actions"><button id="resumeButton" class="primary-button" type="button">Continuar →</button><button id="pauseMenuButton" class="ghost-button" type="button">Controles e preferências</button></div></div>
+            <div class="overlay-card compact-card"><p class="eyebrow">O CAVALO ESPERA</p><h2 id="pauseTitle">Um respiro<br>na estrada.</h2><p class="lede">Sua jornada está pausada.</p><div class="card-actions"><button id="resumeButton" class="primary-button" type="button">Continuar →</button><button id="pauseCheckpointButton" class="ghost-button" type="button">Voltar ao último destino</button><button id="pauseMenuButton" class="ghost-button" type="button">Controles e preferências</button></div></div>
         </div>
         <div id="endOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="endTitle" hidden>
             <div class="overlay-card compact-card"><p id="endEyebrow" class="eyebrow">A FRONTEIRA SE LEMBRA</p><h2 id="endTitle">Promessa<br>cumprida.</h2><p id="endText" class="lede"></p><div class="card-actions"><button id="retryButton" class="primary-button primary-button--big" type="button">Continuar explorando →</button><button id="endNewButton" class="ghost-button" type="button" hidden>Jogar de novo</button><button id="endMenuButton" class="ghost-button" type="button">Voltar ao menu</button></div></div>
@@ -192,6 +192,6 @@
             document.getElementById('errorOverlay').hidden = false;
         };
     </script>
-    <script type="module" src="src/main.js?v=15" onerror="rastroLoadError()"></script>
+    <script type="module" src="src/main.js?v=16" onerror="rastroLoadError()"></script>
 </body>
 </html>

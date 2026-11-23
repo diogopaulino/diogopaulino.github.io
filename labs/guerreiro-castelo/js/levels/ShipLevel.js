@@ -3,18 +3,23 @@
  *
  * Fases: explore (conversar, horizonte, leme, Teco) → storm (cabo preso no leme; Teco solta)
  * → helm (Dico ao leme desvia da rocha) → clear.
- * Ao leme: guinada s ∈ [−1, 1] (s += entrada·1,4·dt), o navio avança 16 m/s em −Z e deriva
- * 7·s m/s em X. Bater = passar a menos de 7,5 m do centro da rocha; livrar = 10 m além dela.
+ * Ao leme (física de veleiro, escala real): leme s ∈ [−1, 1] (s += entrada·1,4·dt; solto,
+ * volta ao centro com e^(−0,6·dt)). Um fluyt holandês faz 5–7 m/s (10–14 nós) com vento
+ * de tempestade: o navio avança SHIP_SPEED = 6,5 m/s em −Z e o leme cheio dá rumo de até
+ * ~26° → deriva lateral 3,2·s m/s. O casco gira para o rumo real: ψ = atan(deriva/avanço).
+ * Bater = passar a menos de 7,5 m do centro da rocha; livrar = 10 m além dela (~13 s ao leme).
  */
 
 import * as THREE from 'three';
-import { Level } from './Level.js?v=40';
-import { buildShip, addShipColliders, updateShip, setShipLamps, SHIP_MARKS, deckY } from '../world/Ship.js?v=40';
-import { makeFriend } from '../characters/cast.js?v=40';
-import { makeCrag } from '../world/Build.js?v=40';
+import { Level } from './Level.js?v=50';
+import { buildShip, addShipColliders, updateShip, setShipLamps, SHIP_MARKS, deckY } from '../world/Ship.js?v=50';
+import { makeFriend } from '../characters/cast.js?v=50';
+import { makeCrag } from '../world/Build.js?v=50';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const ROCK_Z = -130;
+const ROCK_Z = -78;
+const SHIP_SPEED = 6.5;
+const DRIFT = 3.2;
 
 export class ShipLevel extends Level {
     get id() {
@@ -51,7 +56,6 @@ export class ShipLevel extends Level {
                     game.dialogue.say(lines[i][0], lines[i][1]);
                     game.audio.play('speech');
                     game.story.notify('talk_friends');
-                    game.quests.complete('talk_crew');
                 }
             });
         });
@@ -249,7 +253,8 @@ export class ShipLevel extends Level {
         this.ship.position.y = wave.y * k;
         this.ship.rotation.x = wave.pitch * k;
         this.ship.rotation.z = wave.roll * k + this.steer * 0.05;
-        this.ship.rotation.y = wave.yaw - this.steer * 0.12;
+        this.heading = Math.atan2(this.steer * DRIFT, SHIP_SPEED) * (this.phase === 'helm' ? 1 : 0.3);
+        this.ship.rotation.y = wave.yaw - this.heading;
         this.ship.userData.helm.rotation.z = this.steer * 2.4 + (stormy && !g.story.flags.ropeFreed ? Math.sin(this.time * 9) * 0.04 : 0);
         updateShip(this.ship, dt, stormy ? 2 : 1, 1);
 
@@ -264,8 +269,8 @@ export class ShipLevel extends Level {
             this.steer += input.move.x * dt * 1.4;
             if (Math.abs(input.move.x) < 0.1) this.steer *= Math.exp(-dt * 0.6);
             this.steer = Math.max(-1, Math.min(1, this.steer));
-            this.shipX += this.steer * 7 * dt;
-            this.shipZ -= 16 * dt;
+            this.shipX += this.steer * DRIFT * dt;
+            this.shipZ -= SHIP_SPEED * dt;
             this.group.position.set(this.shipX, 0, this.shipZ);
 
             const rock = this.rock.position;

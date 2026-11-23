@@ -1,16 +1,37 @@
 /**
- * Trânsito e fitas VHS: pools reciclados à frente da moto.
- * Colisão é AABB no plano XZ — suficiente para um arcade.
+ * Trânsito e fitas VHS: pools reciclados à frente da moto, em metros e m/s.
+ *
+ * REGRAS DO TRÂNSITO
+ *   • Todos no mesmo sentido da moto, 40–80 km/h conforme a dificuldade (config.js#DIFFICULTY).
+ *     Faixa da esquerda +15 %, da direita −15 % (como numa avenida de verdade).
+ *   • Seguir o carro da frente (modelo de distância segura simplificado):
+ *       gap_desejado = 6 m + 1,4 s · v
+ *     Se o vão é menor, o carro freia até a velocidade do líder (≤ 4 m/s², 8 m/s² se o líder é a
+ *     moto muito perto); se maior, retoma a velocidade de cruzeiro (≤ 1,5 m/s²). A moto também conta como líder: carro nenhum
+ *     acerta a moto por trás — se você para, o trânsito para atrás de você.
+ *   • Troca de faixa: entre 50 e 160 m à frente da moto, com chance `shift`/s. A seta pisca 0,9 s
+ *     antes; a manobra leva 2,6 s em perfil cosseno (pico ~2,2 m/s de lateral). Nunca para uma
+ *     faixa com carro a menos de 14 m.
+ *   • Justiça: num trecho de 16 m cabem no máximo 2 carros (sempre há 2 faixas livres).
+ *   • Colisão AABB no plano XZ (caixa do carro × caixa da moto).
  */
 
-import { createCar, createCassette } from './models.js?v=14';
-import { hash, randRange } from './utils.js';
+import * as THREE from 'three';
+import { createCar, createCassette } from './models.js?v=17';
+import { hash, randRange } from './utils.js?v=17';
 
 const LANES = [-5.4, -1.8, 1.8, 5.4];
+const LANE_SPEED = [1.15, 1.05, 0.95, 0.85];
+const KMH = 3.6;
+/** Horizonte de spawn à frente da moto (m) e limite atrás (m). */
+const AHEAD = 260;
+const BEHIND = 30;
+const SHIFT_TIME = 2.6;
+const SIGNAL_TIME = 0.9;
 
-function aabbHit(a, b) {
-    return Math.abs(a.x - b.x) < (a.w + b.w) * 0.5
-        && Math.abs(a.z - b.z) < (a.l + b.l) * 0.5;
+function aabbHit(a, bx, bz, bw, bl) {
+    return Math.abs(a.x - bx) < (a.w + bw) * 0.5
+        && Math.abs(a.z - bz) < (a.l + bl) * 0.5;
 }
 
 export class Traffic {
@@ -18,22 +39,47 @@ export class Traffic {
         this.scene = scene;
         this.cars = [];
         this.tapes = [];
-        this.difficulty = { traffic: 1, trafficSpeed: 0.55, tapes: 1 };
+        this.difficulty = { density: 2, kmh: [45, 70], shift: 0.1, tapes: 1 };
+        this.active = 0;
+        this.activeTapes = 4;
 
-        const carCount = quality.chunkProps > 0.7 ? 18 : 12;
+        // seta: um material âmbar compartilhado, dois quadradinhos por carro
+        this.signalMat = new THREE.MeshBasicMaterial({ color: 0xffa31a, toneMapped: false });
+        const signalGeo = new THREE.BoxGeometry(0.2, 0.12, 0.06);
+
+        const carCount = quality.chunkProps > 0.7 ? 18 : 14;
         for (let i = 0; i < carCount; i++) {
             const car = createCar(mats, i);
             car.visible = false;
+            // carro gira π: o +x local vira −x do mundo e a traseira fica em −z local
+            const half = (car.userData.length || 4.2) / 2;
+            const sigL = new THREE.Mesh(signalGeo, this.signalMat);
+            sigL.position.set(0.78, 0.62, -half + 0.05);
+            const sigR = new THREE.Mesh(signalGeo, this.signalMat);
+            sigR.position.set(-0.78, 0.62, -half + 0.05);
+            sigL.visible = sigR.visible = false;
+            car.add(sigL, sigR);
             scene.add(car);
             this.cars.push({
                 mesh: car,
+                sigL,
+                sigR,
                 x: 0,
                 z: 0,
-                speed: 20,
+                prevX: 0,
+                prevZ: 0,
+                speed: 15,
+                cruise: 15,
                 lane: 0,
+                fromX: 0,
+                targetX: 0,
+                shiftT: -1,
+                signalT: 0,
+                dir: 0,
                 live: false,
+                passed: false,
                 w: 1.8,
-                l: 4.2
+                l: car.userData.length || 4.2
             });
         }
 
@@ -41,28 +87,28 @@ export class Traffic {
             const mesh = createCassette(mats);
             mesh.visible = false;
             scene.add(mesh);
-            this.tapes.push({
-                mesh,
-                x: 0,
-                z: 0,
-                live: false,
-                phase: Math.random() * Math.PI * 2
-            });
+            this.tapes.push({ mesh, x: 0, z: 0, live: false, phase: Math.random() * Math.PI * 2 });
         }
+        this.signalClock = 0;
     }
 
     setDifficulty(diff) {
         this.difficulty = diff;
+        // carros vivos = densidade · janela visível (m) / 100, limitado ao pool
+        this.active = Math.min(this.cars.length, Math.round(diff.density * (AHEAD + BEHIND) / 100));
+        // fitas vivas ao mesmo tempo: ~4 por janela, escalado pela dificuldade
+        this.activeTapes = Math.max(2, Math.min(this.tapes.length, Math.round(4 * diff.tapes)));
     }
 
     reset(playerZ) {
         for (const car of this.cars) this.despawnCar(car);
         for (const tape of this.tapes) this.despawnTape(tape);
-        for (let i = 0; i < this.cars.length; i++) {
-            this.placeCar(this.cars[i], playerZ - 40 - i * (18 / this.difficulty.traffic));
+        const spacing = 100 / this.difficulty.density;
+        for (let i = 0; i < this.active; i++) {
+            this.placeCar(this.cars[i], playerZ - 45 - i * spacing * randRange(0.8, 1.2));
         }
-        for (let i = 0; i < this.tapes.length; i++) {
-            this.placeTape(this.tapes[i], playerZ - 30 - i * 42);
+        for (let i = 0; i < this.activeTapes; i++) {
+            this.placeTape(this.tapes[i], playerZ - 70 - i * 70);
         }
     }
 
@@ -76,60 +122,52 @@ export class Traffic {
         return mask;
     }
 
-    /**
-     * Justiça: nunca fecha as quatro faixas. Num raio de 16 m (≈ 1,5 s de reação a 60 u/s)
-     * cabem no máximo 2 carros; se a faixa sorteada estiver ocupada, usa a livre mais próxima,
-     * e se o trecho já tem 2, empurra o carro 18 m para a frente.
-     */
     placeCar(car, z) {
         for (let tries = 0; tries < 6; tries++) {
             const mask = this.lanesNear(z, 16, car);
-            const busy = ((mask & 1) + ((mask >> 1) & 1) + ((mask >> 2) & 1) + ((mask >> 3) & 1));
+            const busy = (mask & 1) + ((mask >> 1) & 1) + ((mask >> 2) & 1) + ((mask >> 3) & 1);
             if (busy < 2) break;
             z -= 18;
         }
         let lane = Math.floor(hash(z * 13.1) * LANES.length);
-        const near = this.lanesNear(z, 10, car);
+        const near = this.lanesNear(z, 12, car);
         for (let k = 0; k < LANES.length && (near & (1 << lane)); k++) lane = (lane + 1) % LANES.length;
+        const [lo, hi] = this.difficulty.kmh;
         car.lane = lane;
-        car.x = LANES[lane] + (hash(z * 7.7) - 0.5) * 0.35;
-        car.z = z;
-        car.speed = 12 + hash(z * 3.1) * 22 * this.difficulty.trafficSpeed;
+        car.x = car.prevX = car.targetX = car.fromX = LANES[lane] + (hash(z * 7.7) - 0.5) * 0.3;
+        car.z = car.prevZ = z;
+        car.cruise = (lo + hash(z * 3.1) * (hi - lo)) / KMH * LANE_SPEED[lane];
+        car.speed = car.cruise;
+        car.shiftT = -1;
+        car.signalT = 0;
+        car.dir = 0;
+        car.passed = false;
         car.live = true;
-        car.l = car.mesh.userData.length || 4.2;
         car.mesh.visible = true;
+        car.sigL.visible = car.sigR.visible = false;
         car.mesh.position.set(car.x, 0, car.z);
         car.mesh.rotation.y = Math.PI;
-        car.targetX = car.x;
-        car.shift = false;
     }
 
-    /**
-     * Troca de faixa ("táxi surpresa"): entre 35 e 85 unidades à frente da moto, cada carro tem
-     * chance p = 0,12 · traffic por segundo de passar para uma faixa vizinha livre, a 2,6 u/s de
-     * lado (≈ 1,4 s, com o bico virado para o lado da troca como aviso). Carro a até uma faixa da
-     * moto troca na direção dela; os outros sorteiam o lado.
-     * Sem isso o vão entre as faixas do meio era um corredor 100 % seguro e a corrida terminava
-     * sem tocar no teclado.
-     */
-    maybeShift(car, player, dt) {
+    /** Sorteia a troca de faixa (ver REGRAS). Carro perto da linha da moto tende a ir na direção dela. */
+    maybeShift(car, player, h) {
         const ahead = player.z - car.z;
-        if (car.shift || ahead < 35 || ahead > 85) return;
-        if (Math.random() > 0.12 * this.difficulty.traffic * dt) return;
+        if (car.shiftT >= 0 || car.signalT > 0 || ahead < 50 || ahead > 160) return;
+        if (Math.random() > this.difficulty.shift * h) return;
         const aim = Math.abs(car.x - player.x) < 4;
         const toward = aim ? Math.sign(player.x - car.x) || 1 : (Math.random() < 0.5 ? -1 : 1);
         const dir = car.lane === 0 ? 1 : car.lane === LANES.length - 1 ? -1 : toward;
         const lane = car.lane + dir;
-        if (this.lanesNear(car.z, 12, car) & (1 << lane)) return;
-        car.lane = lane;
-        car.targetX = LANES[lane];
-        car.shift = true;
+        if (this.lanesNear(car.z, 14, car) & (1 << lane)) return;
+        car.dir = dir;
+        car.signalT = SIGNAL_TIME;
+        car.nextLane = lane;
     }
 
     placeTape(tape, z) {
         let lane = Math.floor(hash(z * 21.3) * LANES.length);
         // fita nunca nasce em cima de um carro (pegar a fita não pode exigir uma batida)
-        const near = this.lanesNear(z, 9);
+        const near = this.lanesNear(z, 10);
         for (let k = 0; k < LANES.length && (near & (1 << lane)); k++) lane = (lane + 1) % LANES.length;
         tape.x = LANES[lane];
         tape.z = z;
@@ -148,47 +186,116 @@ export class Traffic {
         tape.mesh.visible = false;
     }
 
-    update(dt, player) {
-        const ahead = player.z - 210;
-        const behind = player.z + 28;
+    /** Passo fixo: velocidades, distância segura, trocas de faixa e reciclagem. */
+    step(h, player) {
+        const ahead = player.z - AHEAD;
+        const behind = player.z + BEHIND;
+        this.signalClock += h;
 
-        for (const car of this.cars) {
+        for (let i = 0; i < this.cars.length; i++) {
+            const car = this.cars[i];
+            car.prevX = car.x;
+            car.prevZ = car.z;
             if (!car.live) {
-                this.placeCar(car, ahead - randRange(10, 80));
+                if (i < this.active) this.placeCar(car, ahead - randRange(0, 60));
                 continue;
             }
-            // Mesmo sentido da moto, mais lentos — o jogador os ultrapassa.
-            car.z -= car.speed * dt;
-            this.maybeShift(car, player, dt);
-            if (car.shift) {
-                const dx = car.targetX - car.x;
-                const stepX = Math.sign(dx) * Math.min(Math.abs(dx), 2.6 * dt);
-                car.x += stepX;
-                // o carro vira levemente o bico para o lado da troca
-                car.mesh.rotation.y = Math.PI - stepX / Math.max(dt, 1e-3) * 0.06;
-                if (Math.abs(dx) < 0.01) {
-                    car.shift = false;
-                    car.mesh.rotation.y = Math.PI;
+
+            // líder: carro mais próximo à frente na mesma faixa (ou a moto, se estiver na frente)
+            let leaderGap = Infinity;
+            let leaderSpeed = car.cruise;
+            let bikeLeads = false;
+            for (const other of this.cars) {
+                if (other === car || !other.live) continue;
+                if (Math.abs(other.x - car.x) > 2.2) continue;
+                const gap = car.z - other.z - (car.l + other.l) * 0.5;
+                if (gap > -0.5 && gap < leaderGap) {
+                    leaderGap = gap;
+                    leaderSpeed = other.speed;
                 }
             }
-            car.mesh.position.set(car.x, 0, car.z);
-            if (car.z > behind || car.z < ahead - 40) {
-                this.placeCar(car, ahead - randRange(8, 70));
+            const bikeGap = car.z - player.z - (car.l + 2.1) * 0.5;
+            if (Math.abs(player.x - car.x) < 1.9 && bikeGap > -0.5 && bikeGap < leaderGap) {
+                leaderGap = bikeGap;
+                leaderSpeed = player.speed;
+                bikeLeads = true;
+            }
+            const safe = 6 + 1.4 * car.speed;
+            let target = car.cruise;
+            if (leaderGap < safe) target = Math.min(car.cruise, leaderSpeed * Math.max(0, leaderGap / safe));
+            const dv = target - car.speed;
+            // freia até 4 m/s² por carro; pela moto, frenagem de emergência (8 m/s²)
+            const decel = bikeLeads && leaderGap < safe * 0.6 ? 8 : 4;
+            car.speed = Math.max(0, car.speed + Math.max(-decel * h, Math.min(1.5 * h, dv)));
+            car.z -= car.speed * h;
+
+            // seta → manobra
+            this.maybeShift(car, player, h);
+            if (car.signalT > 0) {
+                car.signalT -= h;
+                if (car.signalT <= 0) {
+                    if (this.lanesNear(car.z, 14, car) & (1 << car.nextLane)) {
+                        car.dir = 0;            // a faixa fechou: desiste e apaga a seta
+                    } else {
+                        car.lane = car.nextLane;
+                        car.fromX = car.x;
+                        car.targetX = LANES[car.lane];
+                        car.shiftT = 0;
+                    }
+                }
+            }
+            if (car.shiftT >= 0) {
+                car.shiftT += h;
+                const k = Math.min(1, car.shiftT / SHIFT_TIME);
+                // perfil cosseno: começa e termina sem tranco lateral
+                car.x = car.fromX + (car.targetX - car.fromX) * (0.5 - 0.5 * Math.cos(Math.PI * k));
+                if (k >= 1) {
+                    car.shiftT = -1;
+                    car.dir = 0;
+                }
+            }
+
+            if (car.z > behind || car.z < ahead - 60) {
+                if (i < this.active) this.placeCar(car, ahead - randRange(0, 60));
+                else this.despawnCar(car);
             }
         }
 
-        for (const tape of this.tapes) {
-            if (!tape.live) {
-                this.placeTape(tape, ahead - randRange(20, 90));
-                continue;
+        for (let i = 0; i < this.tapes.length; i++) {
+            const tape = this.tapes[i];
+            if (i >= this.activeTapes) continue;
+            if (!tape.live || tape.z > behind) this.placeTape(tape, ahead - randRange(10, 90));
+        }
+    }
+
+    /** Pose do quadro (interpolada) + animações visuais. */
+    render(alpha, dt) {
+        const blinkOn = Math.floor(this.signalClock * 3) % 2 === 0;
+        for (const car of this.cars) {
+            if (!car.live) continue;
+            const x = car.prevX + (car.x - car.prevX) * alpha;
+            const z = car.prevZ + (car.z - car.prevZ) * alpha;
+            car.mesh.position.set(x, 0, z);
+            // durante a troca o bico aponta para o lado (derivada do perfil cosseno)
+            let yaw = 0;
+            if (car.shiftT >= 0 && car.speed > 1) {
+                const k = Math.min(1, car.shiftT / SHIFT_TIME);
+                const vx = (car.targetX - car.fromX) * 0.5 * Math.PI * Math.sin(Math.PI * k) / SHIFT_TIME;
+                yaw = Math.atan2(vx, car.speed);
             }
+            car.mesh.rotation.y = Math.PI - yaw;
+            const signalling = car.dir !== 0 && blinkOn;
+            car.sigL.visible = signalling && car.dir < 0;
+            car.sigR.visible = signalling && car.dir > 0;
+        }
+        for (const tape of this.tapes) {
+            if (!tape.live) continue;
             tape.phase += dt * 2.4;
             tape.mesh.position.set(tape.x, 1.05 + Math.sin(tape.phase) * 0.18, tape.z);
             tape.mesh.rotation.y += dt * 1.6;
             if (tape.mesh.userData.reels) {
                 for (const reel of tape.mesh.userData.reels) reel.rotation.z += dt * 4;
             }
-            if (tape.z > behind) this.placeTape(tape, ahead - randRange(20, 90));
         }
     }
 
@@ -196,42 +303,63 @@ export class Traffic {
         const pb = player.bounds();
         for (const car of this.cars) {
             if (!car.live) continue;
-            if (aabbHit(pb, { x: car.x, z: car.z, w: car.w, l: car.l })) return car;
+            if (aabbHit(pb, car.x, car.z, car.w, car.l)) return car;
         }
         return null;
     }
 
-    collectTapes(player) {
-        const pb = { x: player.x, z: player.z, w: 1.6, l: 2.4 };
-        const got = [];
-        for (const tape of this.tapes) {
-            if (!tape.live) continue;
-            if (aabbHit(pb, { x: tape.x, z: tape.z, w: 1.1, l: 1.1 })) {
-                tape.live = false;
-                tape.mesh.visible = false;
-                got.push(tape);
+    /**
+     * Ultrapassagens raspando: carro que acabou de ficar para trás com vão lateral (borda a borda)
+     * < 0,9 m, a mais de 80 km/h. Devolve quantas aconteceram neste passo.
+     */
+    nearMisses(player) {
+        let count = 0;
+        for (const car of this.cars) {
+            if (!car.live || car.passed) continue;
+            if (car.z - car.l * 0.5 > player.z + 1.05) {
+                car.passed = true;
+                const edgeGap = Math.abs(car.x - player.x) - (car.w + 0.8) * 0.5;
+                if (edgeGap < 0.9 && edgeGap > 0 && player.speed > 80 / KMH && player.invuln <= 0) count++;
             }
         }
-        return got;
+        return count;
     }
 
-    /** Desvia a moto no modo atração: olha um pouco à frente e escolhe a faixa livre. */
-    autoSteer(player) {
-        let best = 0;
+    collectTapes(player, out) {
+        out.length = 0;
+        for (const tape of this.tapes) {
+            if (!tape.live) continue;
+            if (Math.abs(player.x - tape.x) < 1.35 && Math.abs(player.z - tape.z) < 1.8) {
+                tape.live = false;
+                tape.mesh.visible = false;
+                out.push(tape);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Piloto automático do modo atração: escolhe a faixa livre mais próxima olhando
+     * 1,6 s à frente e devolve { steer, brake }.
+     */
+    autoPilot(player, out) {
+        let best = player.x;
         let bestScore = -1e9;
+        const look = 12 + player.speed * 1.6;
         for (const laneX of LANES) {
             let score = -Math.abs(laneX - player.x) * 0.15;
             for (const car of this.cars) {
                 if (!car.live) continue;
-                const dz = car.z - player.z;
-                if (dz < 2 && dz > -20 && Math.abs(car.x - laneX) < 2.2) score -= 8;
+                const dz = player.z - car.z;
+                if (dz > -4 && dz < look && Math.abs(car.x - laneX) < 2.2) score -= 8 + (look - dz) * 0.2;
             }
             if (score > bestScore) {
                 bestScore = score;
                 best = laneX;
             }
         }
-        const delta = best - player.x;
-        return Math.max(-1, Math.min(1, delta * 0.35));
+        out.steer = Math.max(-1, Math.min(1, (best - player.x) * 0.45));
+        out.brake = bestScore < -12 ? 0.6 : 0;
+        return out;
     }
 }

@@ -10,6 +10,15 @@
  * caixa de 44×26×44 m que acompanha a câmera:
  *   p = câmera + mod(semente·caixa + (vento, −queda)·t − câmera, caixa) − caixa/2
  *
+ * ORÇAMENTO — `burst` partículas novas por quadro no máximo (o excedente é
+ * descartado em vez de reciclar vagas ainda visíveis) e, sem nenhuma viva, o
+ * quadro não reenvia os buffers à GPU.
+ *
+ * MARCADOR DO OBJETIVO — coluna de luz âmbar (cilindro aberto, aditivo, sem
+ * névoa) com anel pulsante no chão sobre o próximo animal do diário:
+ *   α(y) = (1 − y)^1,1 · 0,45 · opacidade (cor em HDR),   anel: escala 1 + 0,25·frac(t·0,6)
+ * Some perto do animal (já se vê o bicho) e reaparece de longe.
+ *
  * POÇAS — discos irregulares instanciados nos sulcos da trilha; a opacidade
  * acompanha a umidade acumulada (sobe em ~8 s de chuva, seca em ~25 s).
  */
@@ -17,7 +26,7 @@
 import * as THREE from 'three';
 import { seeded, fbm2 } from '../../shared/gfx/core.js';
 
-export function createParticles(count) {
+export function createParticles(count, burst = 40) {
     const pos = new Float32Array(count * 3);
     const col = new Float32Array(count * 4);
     const size = new Float32Array(count);
@@ -61,6 +70,9 @@ export function createParticles(count) {
     points.frustumCulled = false;
     points.renderOrder = 20;
     let cursor = 0;
+    let budget = burst;
+    let alive = 0;
+    let wasAlive = 0;
 
     return {
         object: points,
@@ -69,6 +81,8 @@ export function createParticles(count) {
          * Emite uma partícula. `additive` = faísca (soma luz, ignora a luz ambiente).
          */
         emit(x, y, z, vx, vy, vz, r, g, b, alpha, sz, grow, ttl, gravity = 0, drag = 1, additive = false) {
+            if (budget <= 0) return false;
+            budget--;
             const i = cursor;
             cursor = (cursor + 1) % count;
             pos[i * 3] = x;
@@ -88,9 +102,16 @@ export function createParticles(count) {
             phys[i * 3 + 2] = additive ? 1 : 0;
             life[i] = 0;
             span[i] = ttl;
+            alive++;
+            return true;
         },
         update(dt, viewportHeight, fov) {
             mat.uniforms.uScale.value = viewportHeight / (2 * Math.tan((fov * Math.PI) / 360));
+            budget = burst;
+            // nada vivo agora nem no quadro anterior: nem percorre nem reenvia os buffers
+            if (alive === 0 && wasAlive === 0) return;
+            wasAlive = alive;
+            alive = 0;
             for (let i = 0; i < count; i++) {
                 if (span[i] <= 0) continue;
                 life[i] += dt;
@@ -101,6 +122,7 @@ export function createParticles(count) {
                     size[i] = 0;
                     continue;
                 }
+                alive++;
                 const d = Math.exp(-phys[i * 3 + 1] * dt);
                 vel[i * 3] *= d;
                 vel[i * 3 + 1] = vel[i * 3 + 1] * d - phys[i * 3] * dt;
@@ -226,6 +248,63 @@ export function createPuddles(world, count) {
         update(wet) {
             mesh.visible = wet > 0.02;
             mat.opacity = Math.min(0.9, wet * 0.95);
+        }
+    };
+}
+
+/**
+ * Marcador do objetivo (ver cabeçalho). `update(t, x, y, z, opacity)`; opacity 0 esconde.
+ */
+export function createBeacon() {
+    const group = new THREE.Group();
+    group.name = 'objectiveBeacon';
+    const beamGeo = new THREE.CylinderGeometry(1.1, 2.2, 60, 16, 1, true);
+    beamGeo.translate(0, 30, 0);
+    const beamMat = new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
+        // cor em HDR (> 1): o pós do palco tem exposição e tone mapping, um âmbar 1.0 some na névoa
+        uniforms: { uOpacity: { value: 0 }, uColor: { value: new THREE.Color(8, 3.8, 0.7) } },
+        vertexShader: /* glsl */ `
+            varying float vY; varying vec3 vN; varying vec3 vV;
+            void main() {
+                vY = uv.y;
+                vec4 wp = modelMatrix * vec4(position, 1.0);
+                vN = normalize(mat3(modelMatrix) * normal);
+                vV = normalize(cameraPosition - wp.xyz);
+                gl_Position = projectionMatrix * viewMatrix * wp;
+            }`,
+        fragmentShader: /* glsl */ `
+            uniform float uOpacity; uniform vec3 uColor;
+            varying float vY; varying vec3 vN; varying vec3 vV;
+            void main() {
+                float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 0.6);
+                float a = pow(1.0 - vY, 1.1) * 0.45 * uOpacity * (0.35 + 0.65 * (1.0 - rim));
+                gl_FragColor = vec4(uColor * a, a);
+            }`
+    });
+    const beam = new THREE.Mesh(beamGeo, beamMat);
+    beam.frustumCulled = false;
+    beam.renderOrder = 22;
+    const ringGeo = new THREE.RingGeometry(2.6, 3.1, 48);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(3, 1.75, 0.45), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.renderOrder = 22;
+    ring.position.y = 0.25;
+    group.add(beam, ring);
+    group.visible = false;
+    return {
+        object: group,
+        update(t, x, y, z, opacity) {
+            group.visible = opacity > 0.01;
+            if (!group.visible) return;
+            group.position.set(x, y, z);
+            beamMat.uniforms.uOpacity.value = opacity;
+            const k = (t * 0.6) % 1;
+            ring.scale.setScalar(1 + k * 0.25);
+            ringMat.opacity = opacity * 0.8 * (1 - k);
         }
     };
 }

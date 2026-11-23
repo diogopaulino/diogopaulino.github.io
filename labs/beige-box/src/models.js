@@ -945,7 +945,9 @@ function buildPlant(root, mats, tex, refs) {
         for (let k = 0; k < pos.count; k++) {
             const lx = pos.getX(k);
             const ly = pos.getY(k);
-            const t = ly / h;
+            // Clamp: o translate deixa a base em −1e−17, e pow(negativo, 1.8) = NaN
+            // (eram 7 folhas com vértices NaN e erro de bounding sphere no console).
+            const t = Math.min(1, Math.max(0, ly / h));
             // Perfil lanceolado: estreito na base, largo no meio, ponta aguda no topo
             const widthFactor = t < 0.72
                 ? 0.55 + 0.55 * Math.sin((t / 0.72) * Math.PI * 0.65)
@@ -1035,7 +1037,7 @@ function buildGameBoy(root, mats, refs) {
     const g = new THREE.Group();
     g.position.set(-0.22, 0.768, 0.34);
     g.rotation.set(-0.9, 0.2, 0.1);
-    add(g, new RoundedBoxGeometry(0.07, 0.012, 0.12, 2, 0.006), std({ color: 0xd0d4c8, roughness: 0.45 }));
+    add(g, new RoundedBoxGeometry(0.07, 0.012, 0.12, 2, 0.005), std({ color: 0xd0d4c8, roughness: 0.45 }));
     const lcd = add(g, new THREE.PlaneGeometry(0.048, 0.044), std({
         color: 0x8aa878, emissive: 0x3a5a28, emissiveIntensity: 0.2
     }), { pos: [0, 0.007, -0.018], rot: [-Math.PI / 2, 0, 0], cast: false });

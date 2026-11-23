@@ -1808,3 +1808,96 @@ body {
     .question-text { padding-right: 0; padding-bottom: 3rem; }
     .btn-speak { top: auto; bottom: 0; }
 }
+
+/* —— Remaster: lição com revisão espaçada ——
+   Palavra nova, escuta com plano B, resumo da lição e aviso de revisões. */
+.app-logo { white-space: nowrap; }
+@media (max-width: 420px) { .app-logo .logo-text { display: none; } }
+.btn-speak[hidden] { display: none !important; }
+.new-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    letter-spacing: 0.08em;
+}
+.new-badge::before { content: '✦'; }
+.intro-word {
+    display: block;
+    font-size: clamp(1.8rem, 7vw, 2.6rem);
+    font-weight: 800;
+    line-height: 1.15;
+    color: var(--talk-primary);
+    overflow-wrap: anywhere;
+}
+.intro-meaning {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary, inherit);
+}
+.btn-cant-listen {
+    align-self: center;
+    min-height: 44px;
+    margin-top: 0.25rem;
+    padding: 0.5rem 1rem;
+    border: 0;
+    background: none;
+    color: var(--text-secondary, inherit);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    opacity: 0.8;
+}
+.btn-cant-listen:hover { opacity: 1; }
+.options-grid .btn-listen-large,
+.options-grid .btn-cant-listen { grid-column: 1 / -1; }
+.lang-due {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #d97706;
+}
+.lesson-summary {
+    margin: -0.5rem auto 1.25rem;
+    max-width: 30rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    opacity: 0.85;
+}
+.selected-words.nudge { animation: duo-nudge 0.4s ease; }
+@keyframes duo-nudge {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+}
+.match-card:disabled { cursor: default; }
+.word-chip:disabled { cursor: default; }
+@media (prefers-reduced-motion: reduce) {
+    .selected-words.nudge { animation: none; }
+}
+
+/* Paisagem baixa (celular deitado): pergunta e respostas cabem sem rolar. */
+@media (max-height: 520px) and (orientation: landscape) {
+    .game-screen { gap: 0.6rem; }
+    .game-header { gap: 0.5rem; }
+    .stats { gap: 0.35rem; }
+    .stat { flex-direction: row; gap: 0.3rem; padding: 0.3rem 0.55rem; min-width: 0; }
+    .stat-label { display: none; }
+    .question-avatar { display: none; }
+    .question-bubble { padding: 0.7rem 1rem; }
+    .question-text { font-size: 1.05rem; }
+    .intro-word { font-size: 1.55rem; }
+    .intro-meaning { font-size: 0.9rem; margin-top: 0.15rem; }
+    .options-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .option-card { min-height: 44px; padding: 0.5rem 0.9rem; font-size: 1rem; }
+    .btn-listen-large { padding-block: 0.6rem; }
+}

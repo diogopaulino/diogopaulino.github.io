@@ -4,7 +4,7 @@
  * Quadro: cena em RGBA16F + MSAA → AO → neblina/poeira atmosférica → bloom → raios de sol
  * → ACES + gradação (gfx/post). O céu físico alimenta o IBL e o sol; a sombra segue o cavalo.
  *
- * A simulação (simulation.js) não mudou: x/z em metros, norte em +z. O desenho usa
+ * A simulação (simulation.js) usa x/z em metros, norte em +z. O desenho usa
  * X₃ = x, Z₃ = −z e rotação.y = π − yaw (ver terrain.js). O terreno é ruído em camadas;
  * a mesma altura é lida pelo cavaleiro, pela malha e pelo cenário transmitido em blocos.
  *
@@ -19,15 +19,26 @@
  *     acima de 12 m/s ele erra. Fora de combate o vigor volta 3/s.
  *   • Vigor 0 = volta ao último destino concluído com tudo cheio. Mira assistida: cone de 0,3 rad
  *     (0,38 com foco; 0,65 no toque) até 65 m com linha de visada livre.
+ *
+ * COMBATE COM PESO (referência: Red Dead Redemption, Hunt: Showdown)
+ *   • Ficha de ataque: só UM bandido mira por vez; os outros esperam a vez (+0,25–0,75 s) e há
+ *     0,55 s de folga entre tiros. Mira acesa 0,85 s antes do disparo = janela de reação justa.
+ *   • Tiro inimigo erra se o cavaleiro estiver em disparada (> 13 m/s) ou cruzando a linha de tiro
+ *     a mais de 7 m/s; a galope (> 7 m/s) tira 5, mais lento tira 10. Depois de ferido, 0,9 s de
+ *     invulnerabilidade (i-frames) com véu vermelho, tremor curto de câmera e vibração no toque.
+ *   • Acerto no bandido: hitstop de 50 ms (90 ms no abate), recuo de 2,4 m/s amortecido (k = 10/s,
+ *     respeita colisores) e atordoamento de 0,45 s que cancela a mira dele.
+ *   • A física da montaria (andaduras, potência, curva por aderência, colisão com deslize) está
+ *     documentada em simulation.js › stepRiding.
  */
 import * as THREE from 'three';
 import { createPipeline } from '../../shared/gfx/post.js';
 import { configureTextures } from '../../shared/gfx/textures.js';
 import { detectSoftwareGL } from '../../shared/gfx/core.js';
-import { clamp, damp, lerp, angleDelta, terrainHeight, roadX, biomeAt, LANDMARKS, freshPlayer, stepRiding, worldClock, loadSettings, saveSettings, loadJourney, saveJourney } from './simulation.js';
-import { World, PROFILES } from './world.js?v=15';
+import { clamp, damp, lerp, angleDelta, terrainHeight, roadX, biomeAt, LANDMARKS, freshPlayer, stepRiding, worldClock, loadSettings, saveSettings, loadJourney, saveJourney } from './simulation.js?v=16';
+import { World, PROFILES } from './world.js?v=16';
 import { loadKits } from './assets.js?v=14';
-import { createMount, createOutlaw } from './actors.js?v=14';
+import { createMount, createOutlaw } from './actors.js?v=15';
 import { Effects } from './effects.js?v=14';
 import { Soundscape } from './audio.js';
 const $ = s => document.querySelector(s), canvas = $('#scene');
@@ -47,6 +58,7 @@ class RastroVermelho {
         this.player = freshPlayer(); this.keys = {}; this.touch = { x: 0, z: 0, sprint: false }; this.pad = { steer: 0, throttle: 0, sprint: false, previous: [] };
         this.look = { yaw: 0, pitch: .2, distance: 6.5 }; this.enemies = []; this.encounterStage = -1;
         this.lastHud = 0; this.lastSave = 0; this.timeScale = 1; this.focusActive = false; this.aimTimer = 0; this.audio = new Soundscape();
+        this.hitstop = 0; this.invuln = 0; this.shake = 0; this.shooter = null; this.enemyGap = 0; this._shake = null;
         this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.coarse = matchMedia('(pointer: coarse)').matches;
         this.ui = Object.fromEntries([...document.querySelectorAll('[id]')].map(el => [el.id, el]));
@@ -63,6 +75,13 @@ class RastroVermelho {
         this.cameraPosition = new THREE.Vector3(); this.cameraTarget = new THREE.Vector3(); this.lookAt = new THREE.Vector3();
         this._v = new THREE.Vector3(); this._w = new THREE.Vector3(); this._d = new THREE.Vector3();
         this.init().catch(error => { this.state = 'error'; this.audio.pause(); this.loop?.stop(); showError(error); });
+        // Carregamento nunca infinito: após 45 s mostra a tela de erro com "Tentar novamente".
+        // Se a cena terminar de carregar depois disso, init() fecha o aviso e segue para o menu.
+        this.loadTimer = setTimeout(() => {
+            if (this.state !== 'loading') return;
+            this.ui.errorText.textContent = 'A fronteira está demorando demais para carregar (rede lenta ou GPU ocupada). Tente novamente — se ela terminar de carregar, o menu abre sozinho.';
+            window.rastroLoadError();
+        }, 45000);
     }
     /** GPU por software → sempre desempenho; automático: toque/poucos núcleos → desempenho, desktop comum → equilibrada, 10+ núcleos → cinemática. */
     pickQuality() {
@@ -91,6 +110,7 @@ class RastroVermelho {
         this.bindInput(); this.bindUi(); this.resize(); this.updateHorse(0, 0); this.placeCamera(true); this.updateAtmosphere(0);
         try { await this.renderer.compileAsync(scene, this.camera); } catch { /* compila sob demanda */ }
         this.render(.016);
+        clearTimeout(this.loadTimer); this.ui.errorOverlay.hidden = true;
         this.setLoading(1, 'A fronteira está pronta.'); this.ui.loadingOverlay.hidden = true; this.setState('menu');
         this.ui.startButton.focus({ preventScroll: true });
         this._last = performance.now();
@@ -184,6 +204,8 @@ class RastroVermelho {
         ui.startButton.addEventListener('click', () => this.start()); ui.newButton.addEventListener('click', () => { this.resetToCheckpoint(true); this.start(); });
         ui.pauseButton.addEventListener('click', () => this.togglePause()); ui.resumeButton.addEventListener('click', () => this.togglePause());
         ui.pauseMenuButton.addEventListener('click', () => this.menu()); ui.endMenuButton.addEventListener('click', () => this.menu());
+        // saída garantida: preso numa encosta ou perdido, volta ao último destino concluído
+        ui.pauseCheckpointButton.addEventListener('click', () => { this.persist(); this.resetToCheckpoint(false); this.start(); this.say('De volta ao último destino. A trilha continua daqui.', 3.5); });
         ui.retryButton.addEventListener('click', () => { if (this.player.health <= 0) this.resetToCheckpoint(false); this.start(); });
         ui.endNewButton.addEventListener('click', () => { this.resetToCheckpoint(true); this.start(); });
         ui.soundButton.addEventListener('click', () => this.toggleSound());
@@ -231,7 +253,7 @@ class RastroVermelho {
         if (this.pickQuality() !== this.profile) { this.persist(); location.reload(); return; }
         this.ui.saveNote.textContent = 'Qualidade aplicada.';
     }
-    clearEnemies() { for (const e of this.enemies) this.scene.remove(e.root); this.enemies = []; }
+    clearEnemies() { for (const e of this.enemies) this.scene.remove(e.root); this.enemies = []; this.shooter = null; this.enemyGap = 0; }
     resetToCheckpoint(fresh) {
         if (fresh) { this.checkpoint = null; this.elapsed = 0; }
         const saved = fresh ? null : this.checkpoint;
@@ -261,6 +283,10 @@ class RastroVermelho {
     }
     frame() {
         if (document.hidden) return;
+        // um erro num quadro não pode derrubar o laço: registra uma vez e segue desenhando
+        try { this.step(); } catch (error) { if (!this.frameError) console.error(error); this.frameError = true; }
+    }
+    step() {
         const now = performance.now(), raw = Math.max(0, (now - this._last) / 1000), dt = Math.min(raw, .05); this._last = now;
         this.time += dt;
         this.readGamepad(dt);
@@ -291,9 +317,14 @@ class RastroVermelho {
         this.timeScale = damp(this.timeScale, this.focusActive ? .32 : 1, 8, dt);
         p.focus = clamp(p.focus + (this.focusActive ? -22 : 7) * dt, 0, 100);
         if (p.focus === 0) this.focusActive = false;
-        const simDt = dt * this.timeScale;
+        // hitstop: congela a simulação por alguns centésimos no acerto; câmera e HUD seguem vivos
+        const frozen = this.hitstop > 0; if (frozen) this.hitstop = Math.max(0, this.hitstop - dt);
+        const simDt = frozen ? 0 : dt * this.timeScale;
+        this.invuln = Math.max(0, this.invuln - dt); this.enemyGap = Math.max(0, this.enemyGap - simDt);
+        this.shake = Math.max(0, this.shake - dt * 3.2);
         const riding = stepRiding(p, { throttle, steer, sprint: this.keys.ShiftLeft || this.keys.ShiftRight || this.keys.Space || this.touch.sprint || this.pad.sprint }, simDt, this.world.colliders);
-        if (riding.obstacle && !this.obstacleCooldown) { this.say('Obstáculo à frente. Reduza e contorne.'); this.obstacleCooldown = 3; }
+        if (riding.impact > .25) { this.shake = Math.max(this.shake, riding.impact * .6); this.audio.burst(.08, .05 + riding.impact * .08, 420); }
+        if (riding.obstacle && !this.obstacleCooldown) { this.say('Obstáculo à frente. O cavalo desvia — reduza e contorne.'); this.obstacleCooldown = 3; }
         this.obstacleCooldown = Math.max(0, (this.obstacleCooldown || 0) - dt);
         this.aimTimer = Math.max(0, this.aimTimer - dt);
         this.updateHorse(simDt, steer); this.placeCamera(false, dt); this.world.update(p.x, p.z); this.updateAtmosphere(dt);
@@ -302,7 +333,7 @@ class RastroVermelho {
             this.hitRemaining = Math.max(0, this.hitRemaining - simDt);
             if (!this.hitRemaining) this.ui.hitMarker.dataset.show = 'false';
         }
-        this.audio.update(dt, p.speed, worldClock(this.elapsed).hour);
+        this.audio.update(dt, Math.abs(p.speed), worldClock(this.elapsed).hour);
         if (this.messageRemaining > 0) {
             this.messageRemaining = Math.max(0, this.messageRemaining - dt);
             if (!this.messageRemaining) this.ui.message.dataset.show = 'false';
@@ -317,16 +348,17 @@ class RastroVermelho {
         if (this.lastHud > .1) { this.updateHud(); this.lastHud = 0; }
         if (this.lastSave > 15) { this.persist(); this.lastSave = 0; }
         // fora de combate o cavaleiro se recupera aos poucos (3/s)
-        if (p.health > 0 && p.health < 100 && !this.liveEnemies().length) p.health = Math.min(100, p.health + 3 * dt);
+        if (p.health > 0 && p.health < 100 && !this.aliveCount()) p.health = Math.min(100, p.health + 3 * dt);
     }
     updateHorse(dt, steer) {
         const p = this.player, root = this.horse.root, y = terrainHeight(p.x, p.z), ahead = terrainHeight(p.x + Math.sin(p.yaw) * 1.2, p.z + Math.cos(p.yaw) * 1.2);
         root.position.set(p.x, y, -p.z); root.rotation.order = 'YXZ'; root.rotation.y = Math.PI - p.yaw;
         // frente do modelo = +Z: subir a ladeira é girar −X; a inclinação nas curvas acompanha a rédea
         root.rotation.x = damp(root.rotation.x, clamp(-(ahead - y) / 1.2, -.32, .32), 5, dt || 1);
-        root.rotation.z = damp(root.rotation.z, steer * .06 * clamp(p.speed / 10, 0, 1), 4, dt || 1);
-        const aiming = this.aimTimer > 0 || (this.focusActive && this.liveEnemies().length > 0);
-        this.horse.update(dt, p.speed, steer, aiming, clamp(angleDelta(0, this.look.yaw), -1.5, 1.5), clamp((this.aimPitch || 0), -.5, .5));
+        // inclinação real da curva: tan φ = a_lat / g, com a_lat = ω·v (limitada a ~12°)
+        root.rotation.z = damp(root.rotation.z, clamp((p.yawRate || 0) * p.speed / 9.81, -.21, .21) * .6, 4, dt || 1);
+        const aiming = this.aimTimer > 0 || (this.focusActive && this.aliveCount() > 0);
+        this.horse.update(dt, Math.abs(p.speed), steer, aiming, clamp(angleDelta(0, this.look.yaw), -1.5, 1.5), clamp((this.aimPitch || 0), -.5, .5));
     }
     /** Poeira a cada batida de casco: o osso da canela passa pelo ponto mais baixo (dy troca de sinal). */
     updateHooves() {
@@ -360,8 +392,11 @@ class RastroVermelho {
         // retrato e paisagem curta: mira mais baixo para o cavalo ficar no meio da tela, entre a missão e os controles
         V3(p.x + Math.sin(heading) * 4, y + (this.camera.aspect < .8 ? .3 : canvas.clientHeight < 520 ? 1.1 : 2) + this.look.pitch * .8, p.z + Math.cos(heading) * 4, this.cameraTarget);
         if (snap) this.lookAt.copy(this.cameraTarget); else this.lookAt.lerp(this.cameraTarget, 1 - Math.exp(-dt * 12));
-        this.camera.lookAt(this.lookAt);
-        const fov = this.focusActive ? this.baseFov * .84 : this.baseFov + (this.settings.reducedMotion ? 0 : p.speed * .3);
+        // tremor curto (dano, choque, tiro) aplicado só ao alvo do olhar: não acumula na posição
+        const quake = this.settings.reducedMotion || this.reducedMotion ? 0 : this.shake * this.shake * .35, t = this.time * 31;
+        this._w.set(this.lookAt.x + Math.sin(t) * quake, this.lookAt.y + Math.sin(t * 1.37 + 1) * quake * .8, this.lookAt.z + Math.cos(t * .83) * quake);
+        this.camera.lookAt(this._w);
+        const fov = this.focusActive ? this.baseFov * .84 : this.baseFov + (this.settings.reducedMotion ? 0 : Math.max(0, p.speed) * .3);
         this.camera.fov = damp(this.camera.fov, fov, 3, dt); this.camera.updateProjectionMatrix();
     }
     menuCamera(dt) {
@@ -383,20 +418,23 @@ class RastroVermelho {
     }
     target() { return LANDMARKS[Math.min(this.stage, 5)]; }
     liveEnemies() { return this.enemies.filter(e => e.health > 0); }
+    /** Contagem sem alocar (laços quentes); liveEnemies() fica para testes e ações pontuais. */
+    aliveCount() { let n = 0; for (const e of this.enemies) if (e.health > 0) n++; return n; }
+    threatNear(x, z, radius) { for (const e of this.enemies) if (e.health > 0 && Math.hypot(e.x - x, e.z - z) < radius) return true; return false; }
     interaction() {
         const p = this.player, target = this.target(), distance = Math.hypot(target.x - p.x, target.z - p.z);
         if (distance < 13 && this.stage < 6) {
-            if (this.liveEnemies().length) return { label: 'Neutralize os bandidos da passagem', blocked: true };
-            if (p.speed > 7) return { label: 'Freie para entregar (S)', blocked: true };
+            if (this.aliveCount()) return { label: 'Neutralize os bandidos da passagem', blocked: true };
+            if (Math.abs(p.speed) > 7) return { label: 'Freie para entregar (S)', blocked: true };
             return { label: target.action, mission: true };
         }
         const camp = LANDMARKS.find(l => l.id < this.stage && Math.hypot(l.x - p.x, l.z - p.z) < 12);
-        if (camp && p.speed < 4 && !this.liveEnemies().some(e => Math.hypot(e.x - p.x, e.z - p.z) < 50)) return { label: 'Descansar e reabastecer', rest: true };
+        if (camp && Math.abs(p.speed) < 4 && !this.threatNear(p.x, p.z, 50)) return { label: 'Descansar e reabastecer', rest: true };
         return null;
     }
     interact() {
         if (this.state !== 'play') return; const action = this.interaction(); if (!action || action.blocked) return;
-        this.player.speed = 0; this.player.cruise = false; this.player.stamina = this.player.health = this.player.focus = 100; this.player.ammo = 6; this.player.reload = 0; this.player.tired = false;
+        this.player.speed = 0; this.player.yawRate = 0; this.player.cruise = false; this.player.stamina = this.player.health = this.player.focus = 100; this.player.ammo = 6; this.player.reload = 0; this.player.tired = false;
         if (action.rest) { this.say('Cavalo descansado. Vigor, foco e munição recuperados.'); this.audio.reward(); return; }
         const target = this.target(); this.player.money += target.reward; this.stage++; this.audio.reward(); this.saveCheckpoint();
         this.say(`${target.story}${target.reward ? ` +$ ${target.reward}` : ''}`, 5);
@@ -411,33 +449,53 @@ class RastroVermelho {
                 const actor = createOutlaw(i + this.stage);
                 const x = roadX(t.z) + (i % 2 ? 8 : -8), z = t.z - 22 + i * 7;
                 actor.root.position.set(x, terrainHeight(x, z), -z); this.scene.add(actor.root);
-                this.enemies.push({ ...actor, x, z, homeX: x, homeZ: z, health: 2, timer: 2.2 + i * .7, phase: i * 2, warning: false });
+                this.enemies.push({ ...actor, x, z, homeX: x, homeZ: z, health: 2, timer: 2.2 + i * .7, phase: i * 2, warning: false, stagger: 0, flinch: 0, kvx: 0, kvz: 0 });
             }
             this.say('Emboscada. Mire nos bandidos e atire. Q / Foco desacelera o tempo.', 6);
         }
         for (const e of this.enemies) {
-            if (e.health <= 0) { e.update(dt, false, true); continue; }
+            e.flinch = Math.max(0, e.flinch - dt * 4);
+            if (e.health <= 0) { e.update(dt, false, true, 0); continue; }
             const distance = Math.hypot(e.x - p.x, e.z - p.z); e.root.rotation.y = Math.PI - Math.atan2(p.x - e.x, p.z - e.z);
-            if (distance > 65) { e.warning = false; e.update(dt, false, false); continue; }
+            if (distance > 65) { e.warning = false; if (this.shooter === e) this.shooter = null; e.update(dt, false, false, 0); continue; }
             e.phase += dt; e.timer -= dt;
-            // Small lateral movement, bound to the encounter. No pursuit across the entire world.
+            // recuo do impacto: velocidade amortecida (k = 10/s) que move o posto do bandido, sem atravessar colisores
+            if (e.kvx || e.kvz) {
+                const hx = e.homeX + e.kvx * dt, hz = e.homeZ + e.kvz * dt;
+                if (!this.blocked(hx, hz)) { e.homeX = hx; e.homeZ = hz; }
+                const k = Math.exp(-10 * dt); e.kvx *= k; e.kvz *= k; if (Math.hypot(e.kvx, e.kvz) < .05) e.kvx = e.kvz = 0;
+            }
+            // passo lateral curto preso ao posto: nada de perseguição pelo mapa nem de entrar em pedra
             const nx = e.homeX + Math.sin(e.phase * .65) * 2.5;
-            if (!(this.world.colliders || []).some(o => Math.hypot(nx - o.x, e.z - o.z) < o.radius + .4)) e.x = nx;
+            if (!this.blocked(nx, e.homeZ)) e.x = nx;
+            if (!this.blocked(e.x, e.homeZ)) e.z = e.homeZ;
             e.root.position.set(e.x, terrainHeight(e.x, e.z), -e.z);
-            e.warning = e.timer < .85 && distance < 48 && this.hasLineOfSight(e.x, e.z, p.x, p.z);
-            e.update(dt, e.warning, false);
-            if (e.timer <= 0) {
-                e.timer = 2.5 + (e.phase % 1);
-                if (e.warning) {
-                    e.root.updateMatrixWorld(true); e.muzzleWorld(this._v); V3(p.x, terrainHeight(p.x, p.z) + 1.7, p.z, this._w);
-                    this._d.subVectors(this._w, this._v).normalize(); this.effects.muzzle(this._v, this._d); this.effects.tracer(this._v, this._w, 1, .72, .42);
-                    // Riding evasively mitigates damage; warnings give a deterministic reaction window.
-                    if (p.speed < 12) { p.health = Math.max(0, p.health - (p.speed > 7 ? 5 : 10)); this.damage = .6; this.audio.burst(.12, .1, 1600); }
-                    if (!p.health) { this.finish(false); return; }
-                }
+            // atordoado: abaixa a arma e perde a vez
+            if (e.stagger > 0) { e.stagger = Math.max(0, e.stagger - dt); e.timer = Math.max(e.timer, 1.1); if (this.shooter === e) this.shooter = null; }
+            // ficha de ataque: só quem a segura acende a mira; os outros esperam a vez
+            if (e.timer < .85 && this.shooter !== e) {
+                if (!this.shooter && !this.enemyGap && distance < 48 && this.hasLineOfSight(e.x, e.z, p.x, p.z)) this.shooter = e;
+                else e.timer = 1.1 + (e.phase % .5);
+            }
+            if (this.shooter === e && (distance >= 48 || !this.hasLineOfSight(e.x, e.z, p.x, p.z))) { this.shooter = null; e.timer = 1.2; }
+            e.warning = this.shooter === e;
+            e.update(dt, e.warning, false, e.flinch);
+            if (e.timer <= 0 && this.shooter === e) {
+                this.shooter = null; this.enemyGap = .55; e.timer = 2.5 + (e.phase % 1); e.warning = false;
+                e.root.updateMatrixWorld(true); e.muzzleWorld(this._v); V3(p.x, terrainHeight(p.x, p.z) + 1.7, p.z, this._w);
+                this._d.subVectors(this._w, this._v).normalize(); this.effects.muzzle(this._v, this._d); this.effects.tracer(this._v, this._w, 1, .72, .42);
+                // Velocidade transversal à linha de tiro: cruzar rápido faz o bandido errar (zigue-zague funciona).
+                const lx = (p.x - e.x) / (distance || 1), lz = (p.z - e.z) / (distance || 1);
+                const vx = Math.sin(p.yaw) * p.speed, vz = Math.cos(p.yaw) * p.speed, cross = Math.abs(vx * lz - vz * lx);
+                if (this.invuln > 0 || p.speed > 13 || cross > 7) { this.audio.burst(.06, .05, 2600); continue; }
+                p.health = Math.max(0, p.health - (p.speed > 7 ? 5 : 10)); this.invuln = .9;
+                this.damage = .6; this.shake = Math.max(this.shake, .55); this.audio.burst(.12, .1, 1600);
+                if (this.coarse && !this.reducedMotion) try { navigator.vibrate?.(40); } catch { /* opcional */ }
+                if (!p.health) { this.finish(false); return; }
             }
         }
     }
+    blocked(x, z) { for (const o of this.world.colliders || []) if (Math.hypot(x - o.x, z - o.z) < o.radius + .4) return true; return false; }
     hasLineOfSight(ax, az, bx, bz) {
         const dx = bx - ax, dz = bz - az, length2 = dx * dx + dz * dz;
         if (!length2) return true;
@@ -452,7 +510,8 @@ class RastroVermelho {
     aimTarget() {
         const p = this.player, heading = p.yaw + this.look.yaw, cone = this.coarse ? .65 : this.focusActive ? .38 : .3;
         let result = null, score = Infinity;
-        for (const e of this.liveEnemies()) {
+        for (const e of this.enemies) {
+            if (e.health <= 0) continue;
             const distance = Math.hypot(e.x - p.x, e.z - p.z), angle = Math.abs(angleDelta(heading, Math.atan2(e.x - p.x, e.z - p.z)));
             if (distance > 65 || angle > cone || !this.hasLineOfSight(p.x, p.z, e.x, e.z)) continue;
             const next = angle * 80 + distance * .12;
@@ -463,7 +522,7 @@ class RastroVermelho {
     shoot() {
         const p = this.player; if (this.state !== 'play' || p.cooldown > 0 || p.reload > 0) return;
         if (p.ammo === 0) { this.reload(); return; }
-        p.ammo--; p.cooldown = .3; this.audio.shot();
+        p.ammo--; p.cooldown = .3; this.audio.shot(); this.shake = Math.max(this.shake, .22);
         const enemy = this.aimTarget(), heading = p.yaw + this.look.yaw, y = terrainHeight(p.x, p.z);
         const end = enemy ? V3(enemy.x, terrainHeight(enemy.x, enemy.z) + 1.25, enemy.z, this._w) : V3(p.x + Math.sin(heading) * 55, y + 1.6 - this.look.pitch * 6, p.z + Math.cos(heading) * 55, this._w);
         // ergue o braço antes de ler a boca do cano: o clarão sai do revólver, não do ombro
@@ -474,7 +533,12 @@ class RastroVermelho {
         this.effects.muzzle(start, this._d); this.effects.tracer(start, end, 1, .85, .55);
         if (enemy) {
             enemy.health -= this.focusActive ? 2 : 1; this.ui.hitMarker.dataset.show = 'true'; this.hitRemaining = .18; this.effects.impact(end, true);
-            if (enemy.health <= 0) { p.kills++; p.focus = clamp(p.focus + 12, 0, 100); enemy.warning = false; this.say(this.liveEnemies().length ? 'Acertou. Mantenha a atenção.' : 'Passagem livre. Aproxime-se do destino.', 2.5); }
+            // peso do acerto: hitstop curto, recuo para longe do cavaleiro e atordoamento que cancela a mira
+            const away = Math.hypot(enemy.x - p.x, enemy.z - p.z) || 1;
+            enemy.kvx = (enemy.x - p.x) / away * 2.4; enemy.kvz = (enemy.z - p.z) / away * 2.4;
+            enemy.flinch = 1; enemy.stagger = .45; enemy.warning = false; if (this.shooter === enemy) this.shooter = null;
+            this.hitstop = enemy.health <= 0 ? .09 : .05;
+            if (enemy.health <= 0) { p.kills++; p.focus = clamp(p.focus + 12, 0, 100); this.say(this.aliveCount() ? 'Acertou. Mantenha a atenção.' : 'Passagem livre. Aproxime-se do destino.', 2.5); }
         } else {
             end.y = terrainHeight(end.x, -end.z) + .1; this.effects.impact(end);
         }
@@ -491,18 +555,19 @@ class RastroVermelho {
         this.ui.retryButton.focus({ preventScroll: true });
     }
     updateHud() {
-        const p = this.player, ui = this.ui, t = this.target(), live = this.liveEnemies();
+        const p = this.player, ui = this.ui, t = this.target(), live = this.aliveCount(), speed = Math.abs(p.speed);
         ui.regionName.textContent = biomeAt(p.x, p.z); ui.clockValue.textContent = worldClock(this.elapsed).label;
-        ui.speedValue.textContent = Math.round(p.speed * 3.6); ui.gaitValue.textContent = p.tired ? 'recuperando' : p.speed < .15 ? 'parado' : p.speed < 5 ? 'passo' : p.speed < 10 ? 'trote' : p.speed < 14 ? 'galope' : 'disparada';
+        // andaduras reais: passo < 2,5 m/s · trote < 5,5 · galope curto < 9 · galope < 12,5 · disparada
+        ui.speedValue.textContent = Math.round(speed * 3.6); ui.gaitValue.textContent = p.tired ? 'recuperando' : p.speed < -.1 ? 'recuando' : speed < .15 ? 'parado' : speed < 2.5 ? 'passo' : speed < 5.5 ? 'trote' : speed < 9 ? 'galope curto' : speed < 12.5 ? 'galope' : 'disparada';
         ui.healthMeter.value = p.health; ui.staminaMeter.value = p.stamina; ui.focusMeter.value = p.focus;
         ui.ammoValue.textContent = p.reload > 0 ? '↻' : p.ammo; ui.moneyValue.textContent = `$ ${p.money}`;
-        ui.weaponHint.textContent = p.reload > 0 ? `Recarregando ${p.reload.toFixed(1)} s` : this.focusActive ? 'Concentração ativa' : live.length ? `${live.length} bandido${live.length === 1 ? '' : 's'} · mire e atire` : 'R · recarregar';
+        ui.weaponHint.textContent = p.reload > 0 ? `Recarregando ${p.reload.toFixed(1)} s` : this.focusActive ? 'Concentração ativa' : live ? `${live} bandido${live === 1 ? '' : 's'} · mire e atire` : 'R · recarregar';
         ui.chapterLabel.textContent = this.stage < 6 ? `CAPÍTULO ${CHAPTERS[this.stage].toUpperCase()}` : 'JORNADA CONCLUÍDA';
         ui.objectiveTitle.textContent = this.stage < 6 ? t.name : 'O oeste é seu';
-        ui.objectiveText.textContent = this.stage >= 6 ? 'Explore a fronteira. Descanse nos acampamentos.' : live.length ? 'Libere a passagem. Use o foco para ganhar tempo.' : this.stage === 0 ? 'Aceite a carta na fogueira para iniciar a jornada.' : `${Math.round(Math.hypot(t.x - p.x, t.z - p.z))} m · siga o losango dourado`;
+        ui.objectiveText.textContent = this.stage >= 6 ? 'Explore a fronteira. Descanse nos acampamentos.' : live ? 'Libere a passagem. Use o foco para ganhar tempo.' : this.stage === 0 ? 'Aceite a carta na fogueira para iniciar a jornada.' : `${Math.round(Math.hypot(t.x - p.x, t.z - p.z))} m · siga o losango dourado`;
         if (this.hudStage !== this.stage) { ui.markPips.innerHTML = LANDMARKS.map((_, i) => `<i data-on="${i < this.stage}"></i>`).join(''); ui.markPips.setAttribute('aria-label', `${this.stage} de 6 destinos concluídos`); this.hudStage = this.stage; }
         const action = this.interaction(); ui.interactButton.hidden = !action; ui.interactButton.disabled = !!action?.blocked; ui.interactionText.textContent = action?.label || '';
-        const aim = this.aimTarget(); ui.reticle.dataset.target = !!aim; ui.reticle.classList.toggle('threat', live.some(e => e.warning));
+        const aim = this.aimTarget(); ui.reticle.dataset.target = !!aim; ui.reticle.classList.toggle('threat', !!this.shooter);
         this.drawMap(); this.updateWaypoint();
     }
     updateWaypoint() {
@@ -526,7 +591,7 @@ class RastroVermelho {
         ctx.strokeStyle = '#8c7858'; ctx.lineWidth = 5; ctx.beginPath();
         for (let z = p.z - 95; z <= p.z + 95; z += 3) { const [x, y] = map(roadX(z), z); z === p.z - 95 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke();
         for (const l of LANDMARKS) { const [x, y] = map(l.x, l.z); ctx.fillStyle = l.id < this.stage ? '#62583b' : '#752b21'; ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-4, -4, 8, 8); ctx.restore(); }
-        for (const e of this.liveEnemies()) { const [x, y] = map(e.x, e.z); ctx.fillStyle = e.warning ? '#ffebbe' : '#a02c22'; ctx.beginPath(); ctx.arc(x, y, e.warning ? 6 : 4, 0, Math.PI * 2); ctx.fill(); }
+        for (const e of this.enemies) { if (e.health <= 0) continue; const [x, y] = map(e.x, e.z); ctx.fillStyle = e.warning ? '#ffebbe' : '#a02c22'; ctx.beginPath(); ctx.arc(x, y, e.warning ? 6 : 4, 0, Math.PI * 2); ctx.fill(); }
         ctx.translate(120, 120); ctx.rotate(p.yaw); ctx.fillStyle = '#262c28'; ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(6, 7); ctx.lineTo(0, 4); ctx.lineTo(-6, 7); ctx.closePath(); ctx.fill(); ctx.restore();
         ctx.strokeStyle = '#e8d6ac'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(120, 120, 115, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = '#f5e9cb'; ctx.font = 'bold 17px Georgia'; ctx.textAlign = 'center'; ctx.fillText('N', 120, 17);

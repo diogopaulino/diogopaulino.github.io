@@ -1,4 +1,5 @@
 import { detectSoftwareGL } from '../../shared/gfx/capabilities.js';
+import { initGamepad } from './gamepad.js?v=1';
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __esm = (fn, res, err) => function __init() {
@@ -1977,7 +1978,7 @@ var Loader = class {
       <div class="loader__glow" aria-hidden="true"></div>
       <div class="loader__mark">${psLogo}</div>
       <div class="loader__meta" role="status" aria-live="polite">
-        <p class="loader__label"><span class="bracket">(</span>Preparing the showcase<span class="bracket">)</span></p>
+        <p class="loader__label"><span class="bracket">(</span>Preparando a vitrine<span class="bracket">)</span></p>
         <div class="loader__bar"><i></i></div>
         <p class="loader__percent">0%</p>
       </div>
@@ -2607,6 +2608,12 @@ var App = class {
   /* -------------------------------------------------------------- intro -- */
   playIntro() {
     const timeline = gsap7.timeline({ onComplete: () => setState({ phase: "idle" }) });
+    // Rede de segurança: em GPU muito lenta o lagSmoothing do GSAP estica a
+    // abertura indefinidamente. Depois de 8 s ela é concluída de uma vez, para a
+    // interface nunca ficar presa a meio caminho.
+    window.setTimeout(() => {
+      if (timeline.progress() < 1) timeline.progress(1);
+    }, 8e3);
     timeline.add(this.loader.dismiss(), 0);
     this.scene.reveal(timeline);
     timeline.fromTo(
@@ -2848,3 +2855,10 @@ var root = document.getElementById("app");
 if (!root) throw new Error("#app root not found");
 var app = new App();
 void app.mount(root);
+// Teste de controle + navegação pelo gamepad. Independe do 3D: funciona mesmo
+// se o WebGL falhar (o painel de teste continua útil).
+try {
+  initGamepad(app);
+} catch (error) {
+  console.warn("[gamepad] indisponível", error);
+}

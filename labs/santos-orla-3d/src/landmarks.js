@@ -249,7 +249,7 @@ export function createLandmarks(quality) {
         fm.frustumCulled = false;
         root.add(fm);
         fountains.push({ x: cx, y: Y + 1.4, z: cz, r: 3.4, h: 5.2, jets: 90 });
-        blockers.push({ x: cx, z: cz, r: 4.2 });
+        blockers.push({ x: cx, z: cz, r: 4.2, h: 1.2 }); // h: a câmera passa por cima da borda
     }
 
     // =========================================================
@@ -286,7 +286,7 @@ export function createLandmarks(quality) {
         root.add(water);
         fountains.push({ x: cx, y: Y + 2.2, z: cz + 0.9, r: 0.1, h: 3.4, jets: 60, forward: 2.4 });
         fountains.push({ x: cx, y: Y + 0.55, z: cz, r: 4.6, h: 2.6, jets: 120 });
-        blockers.push({ x: cx, z: cz, r: 6.9 });
+        blockers.push({ x: cx, z: cz, r: 6.9, h: 1.4 });
     }
 
     // =========================================================

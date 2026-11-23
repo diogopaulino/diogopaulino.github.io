@@ -155,6 +155,23 @@
                 <i id="throwFill"></i>
             </div>
 
+            <!-- Telégrafo de remo + instrumentos (desktop) -->
+            <div id="navPanel" class="panel nav-panel" aria-label="Navegação">
+                <ol class="telegraph" aria-label="Ritmo dos remos (W/S)">
+                    <li data-gear="3">Ataque</li>
+                    <li data-gear="2">Cruzeiro</li>
+                    <li data-gear="1">Lento</li>
+                    <li data-gear="0">Parar</li>
+                </ol>
+                <div class="nav-read">
+                    <div class="nav-speed"><strong id="speedValue" class="mono">0,0</strong><span>nós</span></div>
+                    <span class="hud-label">Fôlego</span>
+                    <div class="meter stamina-meter"><i id="staminaFill"></i></div>
+                    <span class="hud-label">Leme</span>
+                    <div class="rudder-gauge" aria-hidden="true"><i id="rudderNeedle"></i></div>
+                </div>
+            </div>
+
             <div class="hud-actions">
                 <button id="soundButton" class="icon-button" type="button" aria-pressed="true"
                     title="Som (M)" aria-label="Alternar som">♪</button>
@@ -169,7 +186,15 @@
                     <span class="steer-hint">◀ arraste para virar ▶</span>
                 </div>
                 <div class="touch-buttons">
-                    <button type="button" class="pad pad-boost" data-control="boost" aria-label="Acelerar">REMAR</button>
+                    <div class="gear-stack">
+                        <button type="button" class="pad pad-gear" data-control="gearUp" aria-label="Remar mais forte">▲</button>
+                        <div class="gear-read" aria-live="off">
+                            <b id="gearTouchLabel">Cruzeiro</b>
+                            <span id="speedTouch" class="mono">0,0 nós</span>
+                            <i class="gear-stamina"><i id="staminaTouch"></i></i>
+                        </div>
+                        <button type="button" class="pad pad-gear" data-control="gearDown" aria-label="Remar mais devagar">▼</button>
+                    </div>
                     <button type="button" class="pad pad-throw" data-control="throw" aria-label="Disparar canhão">🔥</button>
                 </div>
             </div>
@@ -195,7 +220,8 @@
                     <p class="lede">A princesa está presa no castelo de Morvain. Leve o barco rio abaixo,
                         derrube a Barcaça Negra e abra o portão.</p>
                     <ul class="howto" aria-label="Como jogar">
-                        <li><b>Virar</b> <span class="k-desk"><kbd>←</kbd><kbd>→</kbd> ou <kbd>A</kbd><kbd>D</kbd></span><span class="k-touch">arraste o dedo no lado esquerdo</span></li>
+                        <li><b>Leme</b> <span class="k-desk"><kbd>←</kbd><kbd>→</kbd> ou <kbd>A</kbd><kbd>D</kbd></span><span class="k-touch">arraste o dedo no lado esquerdo</span> · o barco vira a proa com calma, como um navio de verdade</li>
+                        <li><b>Remos</b> <span class="k-desk"><kbd>W</kbd><kbd>S</kbd> ou <kbd>↑</kbd><kbd>↓</kbd></span><span class="k-touch">botões ▲ ▼</span> · Parar, Lento, Cruzeiro e Ataque (cansa os remadores)</li>
                         <li><b>Atirar</b> <span class="k-desk"><kbd>Espaço</kbd> ou clique</span><span class="k-touch">botão 🔥</span> · a mira trava sozinha</li>
                         <li><b>Pegue</b> ❤ para consertar o barco · fuja das pedras</li>
                     </ul>
@@ -219,13 +245,13 @@
                         <summary>Todos os comandos</summary>
                         <div class="keys keys--board">
                             <span><kbd>A</kbd><kbd>D</kbd> ou <kbd>←</kbd><kbd>→</kbd> governar o navio</span>
-                            <span><kbd>W</kbd> remar forte · <kbd>S</kbd> segurar</span>
+                            <span><kbd>W</kbd>/<kbd>↑</kbd> sobe o ritmo · <kbd>S</kbd>/<kbd>↓</kbd> reduz (Parar · Lento · Cruzeiro · Ataque)</span>
                             <span><kbd>Espaço</kbd> / <kbd>clique</kbd> canhão (mira automática)</span>
                             <span><kbd>C</kbd> câmera · <kbd>P</kbd> pausa · <kbd>M</kbd> som</span>
                         </div>
                         <div class="keys keys--touch">
                             <span>Arraste na área Navegar para virar o navio.</span>
-                            <span>Segure Remar para ganhar velocidade. Toque no canhão para disparar.</span>
+                            <span>▲ ▼ mudam o ritmo dos remos. Toque no canhão para disparar.</span>
                         </div>
                     </details>
 
@@ -306,7 +332,7 @@
     </main>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="src/main.js?v=52"></script>
+    <script type="module" src="src/main.js?v=60"></script>
 </body>
 
 </html>

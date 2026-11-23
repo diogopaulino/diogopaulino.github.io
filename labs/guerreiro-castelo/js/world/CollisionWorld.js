@@ -9,11 +9,13 @@
  * Tudo vive no referencial LOCAL do nível (o navio balança, a colisão não).
  */
 
-import { clamp } from '../utils/math.js';
+import { clamp } from '../utils/math.js?v=50';
 
 /** Subida máxima por metro andado sobre o chão por função: tan(52°) ≈ 1,28. */
 const MAX_RISE = 1.28;
 const _p = { x: 0, z: 0 };
+/* Resultado reaproveitado (sem alocação por quadro): quem chama copia os campos na hora. */
+const _res = { x: 0, y: 0, z: 0, grounded: false, hit: false };
 
 export class CollisionWorld {
     constructor() {
@@ -108,6 +110,7 @@ export class CollisionWorld {
      * Com chão por função (setGround): o passo é recusado quando a subida passa de
      * MAX_RISE·(distância andada) — encosta íngreme vira parede e o jogador desliza
      * pelo eixo que ainda é válido.
+     * Devolve um objeto reaproveitado — leia/copie os campos antes da próxima chamada.
      * @returns {{x:number,y:number,z:number,grounded:boolean,hit:boolean}}
      */
     resolveCapsule(px, py, pz, radius, height, vx, vz, dt, step = 0.42) {
@@ -130,8 +133,11 @@ export class CollisionWorld {
                 if (d2 >= radius * radius) continue;
 
                 const stepH = top - y;
-                if (stepH > 0 && stepH <= step && y + 0.05 >= bottom) {
-                    y = top;
+                /* degrau (ou piso vizinho na mesma altura, com 2 cm de folga): sobe/passa.
+                   Antes um piso adjacente exatamente na altura dos pés empurrava quem
+                   andava sem gravidade (os guardas) — eles empacavam nas portas. */
+                if (stepH > -0.021 && stepH <= step && y + 0.05 >= bottom) {
+                    if (stepH > 0) y = top;
                     continue;
                 }
 
@@ -153,16 +159,10 @@ export class CollisionWorld {
 
         let fnGround = null;
         if (this.ground) {
-            const ok = (gx, gz) => {
-                const g = this.ground(gx, gz);
-                if (g === null) return null;
-                const run = Math.hypot(gx - px, gz - pz);
-                return g - py > 0.06 + run * MAX_RISE ? null : g;
-            };
-            fnGround = ok(x, z);
+            fnGround = this._groundOk(x, z, px, py, pz);
             if (fnGround === null) {
-                const gx = ok(x, pz);
-                const gz = gx === null ? ok(px, z) : null;
+                const gx = this._groundOk(x, pz, px, py, pz);
+                const gz = gx === null ? this._groundOk(px, z, px, py, pz) : null;
                 if (gx !== null) {
                     z = pz;
                     fnGround = gx;
@@ -189,7 +189,20 @@ export class CollisionWorld {
             }
         }
 
-        return { x, y, z, grounded, hit };
+        _res.x = x;
+        _res.y = y;
+        _res.z = z;
+        _res.grounded = grounded;
+        _res.hit = hit;
+        return _res;
+    }
+
+    /** Altura do chão por função em (gx, gz), ou null se a subida desde (px, pz) for íngreme demais. */
+    _groundOk(gx, gz, px, py, pz) {
+        const g = this.ground(gx, gz);
+        if (g === null) return null;
+        const run = Math.hypot(gx - px, gz - pz);
+        return g - py > 0.06 + run * MAX_RISE ? null : g;
     }
 
     /**

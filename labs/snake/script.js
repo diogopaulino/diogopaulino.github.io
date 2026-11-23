@@ -16,12 +16,23 @@ const powerLed = document.querySelector('.power-led');
 const GRID_SIZE = 20;
 // O tabuleiro é retangular (20x17) porque a tela do aparelho é retangular:
 // um grid quadrado esticado para caber no LCD deixaria as células ovais.
-const TILE_COUNT_X = canvas.width / GRID_SIZE;
-const TILE_COUNT_Y = canvas.height / GRID_SIZE;
+// Tamanho lógico do tabuleiro em px. O buffer real do canvas é redimensionado
+// para o tamanho exibido × devicePixelRatio (nítido no Retina) e o desenho usa
+// estas unidades via setTransform.
+const BOARD_W = canvas.width;
+const BOARD_H = canvas.height;
+const TILE_COUNT_X = BOARD_W / GRID_SIZE;
+const TILE_COUNT_Y = BOARD_H / GRID_SIZE;
 /* Regras ---------------------------------------------------------------------
    · A cobra anda uma casa a cada `stepInterval` ms. Cada maçã vale 10 pontos,
      faz a cobra crescer 1 casa e encurta o passo em `SPEED_STEP` ms, até o
      teto de velocidade do modo: stepInterval = max(min, base − (pontos/10)·step).
+   · A lógica anda em passos inteiros (timestep fixo = stepInterval); o desenho
+     interpola a cabeça e a cauda entre os passos (fração = acumulador/passo),
+     então a cobra desliza em vez de pular de casa em casa.
+   · Buffer de direções: até 3 curvas antecipadas, uma por passo. Cada curva é
+     validada contra a ÚLTIMA da fila (não contra a direção atual), então dois
+     toques rápidos (↑ e ←) viram uma curva em U sem a cobra se morder.
    · Normal: bater na parede ou no próprio corpo encerra a partida.
    · Fácil (padrão, pensado para crianças): a cobra atravessa as paredes e
      reaparece do outro lado, anda mais devagar e acelera mais suave. Só bater
@@ -42,7 +53,8 @@ let snake = [];
 let food = null; // nasce em initGame: antes disso não há maçã no LCD
 let dx = 0;
 let dy = 0;
-const turns = []; // Até duas curvas antecipadas, aplicadas em passos consecutivos.
+const turns = []; // Até três curvas antecipadas, aplicadas em passos consecutivos.
+const MAX_TURNS = 3;
 let score = 0;
 let highScore = readHighScore();
 let stepInterval = BASE_SPEED;
@@ -98,6 +110,15 @@ function sfxDeath() {
         type: 'sawtooth',
         gain: 0.045
     });
+}
+
+/* Vibração curta no celular (comer, morrer). Silenciosa onde não existe. */
+function buzz(pattern) {
+    try {
+        navigator.vibrate?.(pattern);
+    } catch (err) {
+        /* alguns navegadores expõem vibrate mas recusam a chamada */
+    }
 }
 
 function syncMuteButton() {
@@ -306,6 +327,7 @@ function update() {
         eatPulse = 1;
         digestPulses.push(0);
         sfxEat();
+        buzz(12);
         updateHud();
         if (!food) gameOver(true);
     } else {
@@ -321,119 +343,190 @@ let deathFlash = 0;  // 1 → 0 na morte: inverte a tela por alguns frames
 let foodPhase = 0;   // fase da respiração da fruta
 let digestPulses = []; // índices dos segmentos onde passa o pulso de digestão
 
-// Um retângulo com cantos arredondados só onde a cobra NÃO continua. É isso que
-// transforma quadradinhos soltos em um corpo contínuo — sem sair do look 8-bit,
-// porque o raio é 1/4 da célula.
-function bodyCell(x, y, prev, next, index = 0, shadowPass = false) {
-    const isDigesting = digestPulses.includes(index);
-    const px = x * GRID_SIZE + (shadowPass ? 2 : 0);
-    const py = y * GRID_SIZE + (shadowPass ? 2 : 0);
-    const inset = isDigesting ? 0 : 1;
-    const r = GRID_SIZE / 4;
-    const size = GRID_SIZE - inset * 2;
+/* Desenho contínuo da cobra -------------------------------------------------
+   O corpo é uma linha grossa com juntas redondas passando pelo centro das
+   casas. A cabeça avança `alpha` casa na direção do próximo passo e a cauda
+   recolhe `alpha` casa em direção ao penúltimo segmento (a não ser que a
+   cobra vá crescer). Atravessar a borda (modo Fácil) quebra a linha em dois
+   trechos: um some numa borda e o outro entra pela borda oposta. */
+const BODY_WIDTH = GRID_SIZE * 0.76;
 
-    // Cantos: arredonda o canto quando nenhum vizinho ocupa os dois lados dele.
-    const up = (prev && prev.y === y - 1) || (next && next.y === y - 1);
-    const down = (prev && prev.y === y + 1) || (next && next.y === y + 1);
-    const left = (prev && prev.x === x - 1) || (next && next.x === x - 1);
-    const right = (prev && prev.x === x + 1) || (next && next.x === x + 1);
+function cx(cell) { return cell.x * GRID_SIZE + GRID_SIZE / 2; }
+function cy(cell) { return cell.y * GRID_SIZE + GRID_SIZE / 2; }
 
-    const tl = up || left ? 0 : r;
-    const tr = up || right ? 0 : r;
-    const br = down || right ? 0 : r;
-    const bl = down || left ? 0 : r;
-
-    ctx.beginPath();
-    ctx.moveTo(px + inset + tl, py + inset);
-    ctx.lineTo(px + inset + size - tr, py + inset);
-    ctx.quadraticCurveTo(px + inset + size, py + inset, px + inset + size, py + inset + tr);
-    ctx.lineTo(px + inset + size, py + inset + size - br);
-    ctx.quadraticCurveTo(px + inset + size, py + inset + size, px + inset + size - br, py + inset + size);
-    ctx.lineTo(px + inset + bl, py + inset + size);
-    ctx.quadraticCurveTo(px + inset, py + inset + size, px + inset, py + inset + size - bl);
-    ctx.lineTo(px + inset, py + inset + tl);
-    ctx.quadraticCurveTo(px + inset, py + inset, px + inset + tl, py + inset);
-    ctx.closePath();
-    ctx.fill();
-
-    // Preenche a junta com o vizinho: sem isso os cantos arredondados abrem
-    // fendas de 2px entre segmentos em linha reta.
-    if (right) ctx.fillRect(px + GRID_SIZE - inset - 1, py + inset, inset * 2 + 1, size);
-    if (down) ctx.fillRect(px + inset, py + GRID_SIZE - inset - 1, size, inset * 2 + 1);
-
-    // Textura de escamas / chanfro nos segmentos do corpo (exceto cabeça e sombra)
-    if (!shadowPass && index > 0) {
-        ctx.save();
-        ctx.fillStyle = COLORS.bg;
-        const cx = px + GRID_SIZE / 2;
-        const cy = py + GRID_SIZE / 2;
-        if (isDigesting) {
-            // Destaque de pulso de digestão percorrendo o segmento
-            ctx.globalAlpha = 0.55;
-            ctx.fillRect(cx - 3, cy - 3, 6, 6);
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = COLORS.snake;
-            ctx.fillRect(cx - 1, cy - 1, 2, 2);
-        } else {
-            // Chanfro superior-esquerdo e escama central alternada estilo Nokia LCD
-            ctx.globalAlpha = 0.24;
-            ctx.fillRect(px + 3, py + 3, size - 6, 1.5);
-            ctx.globalAlpha = 0.36;
-            const offset = (index % 2 === 0) ? -1 : 1;
-            ctx.fillRect(cx - 2, cy - 2 + offset, 4, 2);
-            ctx.fillRect(cx - 1, cy + offset, 2, 2);
-        }
-        ctx.restore();
-    }
+// Passo de a para b em casas (−1, 0, 1), considerando a volta pela borda.
+function stepBetween(a, b) {
+    let sx = b.x - a.x;
+    let sy = b.y - a.y;
+    if (sx > 1) sx = -1; else if (sx < -1) sx = 1;
+    if (sy > 1) sy = -1; else if (sy < -1) sy = 1;
+    return { sx, sy, wrap: Math.abs(b.x - a.x) > 1 || Math.abs(b.y - a.y) > 1 };
 }
 
-function drawHeadEyes(segment) {
-    ctx.fillStyle = COLORS.bg;
-    const eye = 4;
-    const bx = segment.x * GRID_SIZE;
-    const by = segment.y * GRID_SIZE;
-    let e1, e2;
+function nextDirection() {
+    return turns.length ? turns[0] : { dx, dy };
+}
 
-    if (dx === 1) {
-        e1 = [bx + GRID_SIZE - 6, by + 4];
-        e2 = [bx + GRID_SIZE - 6, by + GRID_SIZE - 8];
-    } else if (dx === -1) {
-        e1 = [bx + 2, by + 4];
-        e2 = [bx + 2, by + GRID_SIZE - 8];
-    } else if (dy === -1) {
-        e1 = [bx + 4, by + 2];
-        e2 = [bx + GRID_SIZE - 8, by + 2];
-    } else {
-        e1 = [bx + 4, by + GRID_SIZE - 6];
-        e2 = [bx + GRID_SIZE - 8, by + GRID_SIZE - 6];
+function willGrowNext(dir) {
+    if (!food || !snake.length) return false;
+    let nx = snake[0].x + dir.dx;
+    let ny = snake[0].y + dir.dy;
+    if (MODES[mode].wrap) {
+        nx = (nx + TILE_COUNT_X) % TILE_COUNT_X;
+        ny = (ny + TILE_COUNT_Y) % TILE_COUNT_Y;
+    }
+    return nx === food.x && ny === food.y;
+}
+
+// Traça o corpo inteiro como caminho; `ox/oy` desloca (passe de sombra).
+function traceSnake(alpha, dir, growing, ox = 0, oy = 0) {
+    const n = snake.length;
+    const head = snake[0];
+    const hx = cx(head) + dir.dx * alpha * GRID_SIZE;
+    const hy = cy(head) + dir.dy * alpha * GRID_SIZE;
+
+    ctx.beginPath();
+    ctx.moveTo(hx + ox, hy + oy);
+    ctx.lineTo(cx(head) + ox, cy(head) + oy);
+
+    for (let i = 1; i < n; i++) {
+        const a = snake[i - 1];
+        const b = snake[i];
+        const isTail = i === n - 1 && !growing;
+        const step = stepBetween(a, b);
+        // Cauda recolhendo: fica `alpha` casa mais perto do segmento anterior.
+        const tx = cx(b) - (isTail ? step.sx * alpha * GRID_SIZE : 0);
+        const ty = cy(b) - (isTail ? step.sy * alpha * GRID_SIZE : 0);
+        if (step.wrap) {
+            const reach = isTail ? Math.max(0, 1 - alpha) : 1;
+            ctx.lineTo(cx(a) + step.sx * reach * GRID_SIZE + ox, cy(a) + step.sy * reach * GRID_SIZE + oy);
+            if (!isTail || alpha < 1) {
+                ctx.moveTo(cx(b) - step.sx * GRID_SIZE + ox, cy(b) - step.sy * GRID_SIZE + oy);
+                ctx.lineTo(tx + ox, ty + oy);
+            }
+        } else {
+            ctx.lineTo(tx + ox, ty + oy);
+        }
     }
 
-    ctx.fillRect(e1[0], e1[1], eye, eye);
-    ctx.fillRect(e2[0], e2[1], eye, eye);
+    // A cabeça cruzando a borda reaparece do outro lado ao mesmo tempo.
+    const nextX = head.x + dir.dx;
+    const nextY = head.y + dir.dy;
+    if (alpha > 0 && (nextX < 0 || nextX >= TILE_COUNT_X || nextY < 0 || nextY >= TILE_COUNT_Y)) {
+        const offX = dir.dx * BOARD_W;
+        const offY = dir.dy * BOARD_H;
+        ctx.moveTo(cx(head) - offX + ox, cy(head) - offY + oy);
+        ctx.lineTo(hx - offX + ox, hy - offY + oy);
+    }
+    return { hx, hy };
+}
+
+function drawSnake(alpha) {
+    if (!snake.length) return;
+    const dir = alpha > 0 ? nextDirection() : { dx, dy };
+    const growing = alpha > 0 && willGrowNext(dir);
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = BODY_WIDTH;
+
+    // Sombra projetada no cristal líquido.
+    ctx.globalAlpha = 0.16;
+    ctx.strokeStyle = COLORS.snake;
+    traceSnake(alpha, dir, growing, 2, 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    const { hx, hy } = traceSnake(alpha, dir, growing);
+    ctx.stroke();
+
+    // Escamas: tracejado claro fixo no corpo (o deslocamento acompanha o
+    // avanço da cabeça, então o desenho não "escorre" pela cobra).
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = COLORS.bg;
+    ctx.lineWidth = BODY_WIDTH * 0.26;
+    ctx.lineCap = 'butt';
+    ctx.setLineDash([GRID_SIZE * 0.32, GRID_SIZE * 0.68]);
+    ctx.lineDashOffset = -alpha * GRID_SIZE - GRID_SIZE * 0.9;
+    traceSnake(alpha, dir, growing);
+    ctx.stroke();
+    ctx.restore();
+
+    // Pulsos de digestão: um caroço que percorre o corpo depois de comer.
+    for (const index of digestPulses) {
+        const seg = snake[index];
+        const nextSeg = snake[index + 1];
+        if (!seg) continue;
+        let px = cx(seg);
+        let py = cy(seg);
+        if (nextSeg && !stepBetween(seg, nextSeg).wrap) {
+            px += (cx(nextSeg) - px) * alpha;
+            py += (cy(nextSeg) - py) * alpha;
+        }
+        ctx.fillStyle = COLORS.snake;
+        ctx.beginPath();
+        ctx.arc(px, py, GRID_SIZE * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = COLORS.bg;
+        ctx.globalAlpha = 0.5;
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.globalAlpha = 1;
+    }
+
+    // Cabeça um pouco mais larga que o corpo.
+    ctx.fillStyle = COLORS.snake;
+    ctx.beginPath();
+    ctx.arc(hx, hy, GRID_SIZE * 0.47, 0, Math.PI * 2);
+    ctx.fill();
+    drawTongue(hx, hy, dir);
+    drawHeadEyes(hx, hy, dir);
+}
+
+function drawHeadEyes(hx, hy, dir) {
+    // Olhos perpendiculares ao avanço, um pouco à frente do centro.
+    const fx = dir.dx;
+    const fy = dir.dy;
+    const side = GRID_SIZE * 0.22;
+    const ahead = GRID_SIZE * 0.12;
+    const eye = 4;
+    ctx.fillStyle = COLORS.bg;
+    for (const s of [-1, 1]) {
+        const ex = hx + fx * ahead - fy * side * s;
+        const ey = hy + fy * ahead + fx * side * s;
+        ctx.fillRect(Math.round(ex - eye / 2), Math.round(ey - eye / 2), eye, eye);
+    }
+    ctx.fillStyle = COLORS.snake;
+    for (const s of [-1, 1]) {
+        const ex = hx + fx * (ahead + 1) - fy * side * s;
+        const ey = hy + fy * (ahead + 1) + fx * side * s;
+        ctx.fillRect(Math.round(ex - 1), Math.round(ey - 1), 2, 2);
+    }
 }
 
 // Língua bifurcada saindo da cabeça — só quando a cobra está de fato andando.
-function drawTongue(head) {
-    if (!isGameRunning || isPaused) return;
+function drawTongue(hx, hy, dir) {
+    if (!isGameRunning || isPaused || awaitingFirstMove) return;
     const flick = Math.sin(foodPhase * 2.2) > 0.4;
     if (!flick) return;
 
-    const cx = head.x * GRID_SIZE + GRID_SIZE / 2;
-    const cy = head.y * GRID_SIZE + GRID_SIZE / 2;
-    const reach = GRID_SIZE * 0.55;
-    const tipX = cx + dx * reach;
-    const tipY = cy + dy * reach;
+    const reach = GRID_SIZE * 0.85;
+    const baseX = hx + dir.dx * (GRID_SIZE * 0.4);
+    const baseY = hy + dir.dy * (GRID_SIZE * 0.4);
+    const tipX = hx + dir.dx * reach;
+    const tipY = hy + dir.dy * reach;
 
     ctx.strokeStyle = COLORS.snake;
     ctx.lineWidth = 2;
+    ctx.lineCap = 'butt';
     ctx.beginPath();
-    ctx.moveTo(cx + dx * (GRID_SIZE / 2 - 1), cy + dy * (GRID_SIZE / 2 - 1));
+    ctx.moveTo(baseX, baseY);
     ctx.lineTo(tipX, tipY);
     // A forquilha abre perpendicular ao avanço.
     ctx.moveTo(tipX, tipY);
-    ctx.lineTo(tipX + dy * 3 - dx * 0, tipY + dx * 3 - dy * 0);
+    ctx.lineTo(tipX + dir.dx * 3 + dir.dy * 3, tipY + dir.dy * 3 + dir.dx * 3);
     ctx.moveTo(tipX, tipY);
-    ctx.lineTo(tipX - dy * 3, tipY - dx * 3);
+    ctx.lineTo(tipX + dir.dx * 3 - dir.dy * 3, tipY + dir.dy * 3 - dir.dx * 3);
     ctx.stroke();
 }
 
@@ -478,6 +571,7 @@ function drawFood() {
     // Talo e folha.
     ctx.strokeStyle = COLORS.food;
     ctx.lineWidth = 2.5;
+    ctx.lineCap = 'butt';
     ctx.beginPath();
     ctx.moveTo(cx, cy - r * 0.85);
     ctx.lineTo(cx, cy - r - 3);
@@ -492,45 +586,28 @@ function drawFood() {
     ctx.fillRect(cx - r * 0.58, cy - r * 0.45 + 2, 1.8, 2);
 }
 
-function drawSnakePass(shadowPass) {
-    // for clássico: roda duas vezes por frame, sem criar closure a cada quadro.
-    for (let index = 0; index < snake.length; index++) {
-        const segment = snake[index];
-        const prev = snake[index - 1];
-        const next = snake[index + 1];
-        const fromTail = snake.length - 1 - index;
-        if (fromTail < 3 && snake.length > 4) {
-            const shrink = (3 - fromTail) * 1.6;
-            const ox = shadowPass ? 2 : 0;
-            const oy = shadowPass ? 2 : 0;
-            ctx.fillRect(
-                segment.x * GRID_SIZE + 1 + shrink / 2 + ox,
-                segment.y * GRID_SIZE + 1 + shrink / 2 + oy,
-                GRID_SIZE - 2 - shrink,
-                GRID_SIZE - 2 - shrink
-            );
-        } else {
-            bodyCell(segment.x, segment.y, prev, next, index, shadowPass);
-        }
-    }
-}
-
 const gridPath = (() => {
     const grid = new Path2D();
-    for (let x = GRID_SIZE; x < canvas.width; x += GRID_SIZE) {
+    for (let x = GRID_SIZE; x < BOARD_W; x += GRID_SIZE) {
         grid.moveTo(x + 0.5, 0);
-        grid.lineTo(x + 0.5, canvas.height);
+        grid.lineTo(x + 0.5, BOARD_H);
     }
-    for (let y = GRID_SIZE; y < canvas.height; y += GRID_SIZE) {
+    for (let y = GRID_SIZE; y < BOARD_H; y += GRID_SIZE) {
         grid.moveTo(0, y + 0.5);
-        grid.lineTo(canvas.width, y + 0.5);
+        grid.lineTo(BOARD_W, y + 0.5);
     }
     return grid;
 })();
 
+/* Fração do passo atual já percorrida (0..1) — só para o desenho. */
+function stepAlpha() {
+    if (!isGameRunning || isPaused || awaitingFirstMove) return 0;
+    return Math.min(1, accumulator / stepInterval);
+}
+
 function draw() {
     ctx.fillStyle = COLORS.bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, BOARD_W, BOARD_H);
 
     // Grade fantasma: dá escala ao tabuleiro sem competir com a cobra.
     ctx.globalAlpha = 0.07;
@@ -540,38 +617,41 @@ function draw() {
     ctx.globalAlpha = 1;
 
     if (food) drawFood();
-
-    // Sombra projetada da cobra no cristal líquido Nokia
-    ctx.save();
-    ctx.globalAlpha = 0.16;
-    ctx.fillStyle = COLORS.snake;
-    drawSnakePass(true);
-    ctx.restore();
-
-    ctx.fillStyle = COLORS.snake;
-    drawSnakePass(false);
-
-    if (snake.length) {
-        drawTongue(snake[0]);
-        ctx.fillStyle = COLORS.snake;
-        drawHeadEyes(snake[0]);
-        ctx.fillStyle = COLORS.snake;
-    }
+    drawSnake(stepAlpha());
 
     // Flash de morte: inverte o LCD por instantes, como um console de verdade.
     if (deathFlash > 0) {
         ctx.globalAlpha = deathFlash * 0.65;
         ctx.fillStyle = COLORS.snake;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, BOARD_W, BOARD_H);
         ctx.globalAlpha = 1;
     }
+}
+
+/* Buffer do canvas no tamanho real exibido (object-fit: contain) × DPR. */
+function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const fitW = Math.min(rect.width, rect.height * BOARD_W / BOARD_H);
+    const w = Math.max(BOARD_W / 2, Math.round(fitW * dpr));
+    const h = Math.round(w * BOARD_H / BOARD_W);
+    if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+    }
+    ctx.setTransform(w / BOARD_W, 0, 0, h / BOARD_H, 0, 0);
+    draw();
 }
 
 function gameOver(won = false) {
     isGameRunning = false;
     isPaused = false;
     deathFlash = won ? 0 : 1;
-    if (!won) sfxDeath();
+    if (!won) {
+        sfxDeath();
+        buzz([40, 50, 90]);
+    }
     const result = won ? 'Tabuleiro completo' : 'Fim de jogo';
     const finalNote = document.getElementById('finalNote');
     gameOverScreen.querySelector('h2').textContent = won ? 'VITÓRIA' : 'FIM DE JOGO';
@@ -628,7 +708,7 @@ function queueDirection(nextDx, nextDy) {
     }
     if (nextDx === -currentDx && nextDy === -currentDy) return;
     if (!awaitingFirstMove && nextDx === currentDx && nextDy === currentDy) return;
-    if (turns.length === 2) return;
+    if (turns.length >= MAX_TURNS) return;
     turns.push({ dx: nextDx, dy: nextDy });
     if (awaitingFirstMove) {
         awaitingFirstMove = false;
@@ -696,6 +776,12 @@ document.addEventListener('keydown', (e) => {
     if ((e.key === 'Enter' || e.key === ' ' || e.code === 'Space') && !e.target.closest('a, button')) {
         e.preventDefault();
         if (!e.repeat) handleInput(e.key === 'Enter' ? 'Enter' : 'Space');
+        return;
+    }
+    // P e Esc só pausam/retomam (não começam partida nova por engano).
+    if ((e.code === 'KeyP' || e.key === 'Escape') && isGameRunning && !e.repeat) {
+        e.preventDefault();
+        setPaused(!isPaused);
     }
 });
 
@@ -714,8 +800,11 @@ document.querySelectorAll('.d-pad [data-key]').forEach(btn => {
 
 /* Deslizar na tela: no celular o d-pad desenhado tem 30px e o polegar cobre a
    LCD inteira. O swipe é o controle primário no toque; o d-pad continua ali
-   para quem prefere (e para o mouse). Um toque simples inicia/pausa. */
-const SWIPE_MIN = 24; // px — abaixo disso é toque, não gesto
+   para quem prefere (e para o mouse). Um toque simples inicia/pausa.
+   Vários deslizes no mesmo arrasto: depois de cada curva reconhecida o ponto
+   de partida é reancorado, então "↑ e ←" sem tirar o dedo vira duas curvas
+   (vão para o buffer de direções, uma por passo). */
+const SWIPE_MIN = 22; // px — abaixo disso é toque, não gesto
 let touchStart = null;
 
 if (screenPlay) {
@@ -723,33 +812,36 @@ if (screenPlay) {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         // Botões dos overlays (modo, jogar, continuar) têm o próprio clique.
         if (e.target.closest('button')) return;
-        touchStart = { x: e.clientX, y: e.clientY, moved: false };
+        try { screenPlay.setPointerCapture(e.pointerId); } catch (err) { /* segue sem captura */ }
+        touchStart = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false, lastKey: '' };
     });
 
     screenPlay.addEventListener('pointermove', (e) => {
-        if (!touchStart || touchStart.moved) return;
+        if (!touchStart || touchStart.id !== e.pointerId) return;
         const deltaX = e.clientX - touchStart.x;
         const deltaY = e.clientY - touchStart.y;
         if (Math.hypot(deltaX, deltaY) < SWIPE_MIN) return;
 
-        touchStart.moved = true;
         // O eixo dominante decide: diagonais viram a direção mais forte em vez
         // de serem descartadas.
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            handleInput(deltaX > 0 ? 'ArrowRight' : 'ArrowLeft');
-        } else {
-            handleInput(deltaY > 0 ? 'ArrowDown' : 'ArrowUp');
-        }
+        const key = Math.abs(deltaX) > Math.abs(deltaY)
+            ? (deltaX > 0 ? 'ArrowRight' : 'ArrowLeft')
+            : (deltaY > 0 ? 'ArrowDown' : 'ArrowUp');
+        touchStart.moved = true;
+        touchStart.x = e.clientX;
+        touchStart.y = e.clientY;
+        if (key === touchStart.lastKey) return;
+        touchStart.lastKey = key;
+        if (isGameRunning && !isPaused) handleInput(key);
     });
 
-    screenPlay.addEventListener('pointerup', () => {
-        if (touchStart && !touchStart.moved) handleInput('Start');
+    const endTouch = (e) => {
+        if (!touchStart || touchStart.id !== e.pointerId) return;
+        if (!touchStart.moved && e.type === 'pointerup') handleInput('Start');
         touchStart = null;
-    });
-
-    screenPlay.addEventListener('pointercancel', () => {
-        touchStart = null;
-    });
+    };
+    screenPlay.addEventListener('pointerup', endTouch);
+    screenPlay.addEventListener('pointercancel', endTouch);
 }
 
 if (audio) {
@@ -781,6 +873,10 @@ document.addEventListener('visibilitychange', () => {
         if (isGameRunning && !isPaused) setPaused(true);
         stopLoop();
     }
+});
+// Trocar de janela (alt-tab) também pausa: a cobra não segue sozinha.
+window.addEventListener('blur', () => {
+    if (isGameRunning && !isPaused && !awaitingFirstMove) setPaused(true);
 });
 
 /* Botões dentro do LCD: escolher modo, jogar, continuar, voltar ao menu. */
@@ -844,6 +940,7 @@ function fitDevice() {
 
     device.style.setProperty('--device-scale', Math.max(scale, 0.55).toFixed(3));
     device.style.setProperty('--device-base-height', `${baseHeight}px`);
+    requestAnimationFrame(resizeCanvas);
 }
 
 window.addEventListener('resize', fitDevice);
@@ -857,3 +954,5 @@ syncMuteButton();
 updateHud();
 fitDevice();
 draw();
+// A fonte em pixel muda a altura do header ao carregar: refaz a escala.
+document.fonts?.ready.then(fitDevice).catch(() => {});

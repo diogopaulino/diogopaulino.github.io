@@ -3,15 +3,15 @@
  */
 
 import * as THREE from 'three';
-import { buildLongship } from './ships.js?v=50';
-import { Crew } from './ships.js?v=50';
-import { bronze, darkWood, glow } from './materials.js?v=50';
-import { bannerGeometry, bannerMaterial } from './structure-models.js?v=51';
-import { fireLights } from './lights.js?v=50';
-import { centerX, halfWidth } from './river.js?v=51';
-import { waterHeight, waterSlope } from './water.js?v=51';
-import { SCORE } from './config.js?v=51';
-import { clamp, damp, randRange } from './utils.js?v=50';
+import { buildLongship } from './ships.js?v=60';
+import { Crew } from './ships.js?v=60';
+import { bronze, darkWood, glow } from './materials.js?v=60';
+import { bannerGeometry, bannerMaterial } from './structure-models.js?v=60';
+import { fireLights } from './lights.js?v=60';
+import { centerX, halfWidth } from './river.js?v=60';
+import { waterHeight, waterSlope } from './water.js?v=60';
+import { SCORE } from './config.js?v=60';
+import { clamp, damp, randRange } from './utils.js?v=60';
 
 const tmpSlope = { dx: 0, dz: 0 };
 const BOSS_ROW = { rowRate: 2.1, speedRatio: 0.4 };

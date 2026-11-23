@@ -1,9 +1,16 @@
 /**
  * Selva procedural: insetos, vento, motor do jipe e rugidos.
  * Osciladores nativos — nenhuma amostra externa.
+ *
+ * MOTOR — diesel de 4 cilindros: frequência de explosão f = rpm/60 · 2 (dois
+ * tempos de potência por volta); a serra toca f, a quadrada f/2 (ronco).
+ * Volume e brilho (passa-baixa) sobem com a carga do acelerador e a rotação;
+ * a troca de marcha aparece sozinha na queda de rpm que vem de jeep.js.
+ * CASCALHO — ruído em passa-banda (~900 Hz) com ganho ∝ deslizamento lateral.
+ * Tudo só liga após um gesto (resume) e nunca lança erro se o áudio faltar.
  */
 
-import { clamp } from './utils.js';
+import { clamp } from './utils.js?v=23';
 
 export class ParkAudio {
     constructor() {
@@ -22,9 +29,15 @@ export class ParkAudio {
 
     async resume() {
         if (!this.enabled) return;
-        if (!this.ctx) this.boot();
-        if (this.ctx.state === 'suspended') await this.ctx.resume();
-        this.started = true;
+        try {
+            if (!this.ctx) this.boot();
+            if (this.ctx.state === 'suspended') await this.ctx.resume();
+            this.started = true;
+        } catch {
+            // sem Web Audio (ou bloqueado): o jogo segue mudo
+            this.ctx = null;
+            this.started = false;
+        }
     }
 
     boot() {
@@ -70,6 +83,36 @@ export class ParkAudio {
         this.engine.start();
         engine2.start();
         this.engine2 = engine2;
+
+        // cascalho/derrapagem
+        const grit = this._noise(1);
+        const bp = this.ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 900;
+        bp.Q.value = 0.8;
+        this.skidGain = this.ctx.createGain();
+        this.skidGain.gain.value = 0;
+        grit.connect(bp);
+        bp.connect(this.skidGain);
+        this.skidGain.connect(this.master);
+    }
+
+    /** Batida seca (colisão); `k` 0..1. */
+    bump(k = 1) {
+        if (!this.ctx || !this.enabled || k < 0.05) return;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        const now = this.ctx.currentTime;
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(140, now);
+        o.frequency.exponentialRampToValueAtTime(45, now + 0.18);
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(Math.min(0.5, 0.35 * k), now + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+        o.connect(g);
+        g.connect(this.master);
+        o.start(now);
+        o.stop(now + 0.32);
     }
 
     _noise(seconds) {
@@ -187,14 +230,22 @@ export class ParkAudio {
         o.stop(this.ctx.currentTime + 0.06);
     }
 
-    update(dt, speed, raining, nearRex) {
+    /**
+     * @param {number} rpm   rotação do motor (jeep.rpm)
+     * @param {number} load  0..1 acelerador
+     * @param {number} skid  m/s de deslizamento lateral
+     */
+    update(dt, speed, raining, nearRex, rpm = 850 + Math.abs(speed) * 180, load = 0, skid = 0) {
         if (!this.ctx || !this.enabled || !this.started) return;
         this.roarCool = Math.max(0, this.roarCool - dt);
-        const sp = Math.abs(speed);
-        this.engine.frequency.value = 38 + sp * 6.5;
-        this.engine2.frequency.value = 19 + sp * 3.2;
-        this.engineFilter.frequency.value = 380 + sp * 40;
-        this.engineGain.gain.value = clamp(0.02 + sp * 0.018, 0, 0.22);
+        const f = (rpm / 60) * 2;
+        const now = this.ctx.currentTime;
+        // rampas curtas: sem degraus audíveis entre quadros
+        this.engine.frequency.setTargetAtTime(f, now, 0.04);
+        this.engine2.frequency.setTargetAtTime(f * 0.5, now, 0.04);
+        this.engineFilter.frequency.setTargetAtTime(260 + rpm * 0.11 + load * 380, now, 0.05);
+        this.engineGain.gain.setTargetAtTime(clamp(0.035 + (rpm - 850) / 3150 * 0.07 + load * 0.08, 0, 0.22), now, 0.06);
+        if (this.skidGain) this.skidGain.gain.setTargetAtTime(clamp((Math.abs(skid) - 1.2) * 0.05, 0, 0.16), now, 0.05);
         if (this.windGain) this.windGain.gain.value = raining ? 0.32 : 0.16;
 
         this.bugAcc += dt;

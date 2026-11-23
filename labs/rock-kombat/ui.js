@@ -1,5 +1,5 @@
 import { $, $$ } from './utils.js';
-import { EX_COST, HYPER_COST, MAX_METER } from './constants.js';
+import { EX_COST, HYPER_COST, MAX_METER } from './constants.js?v=23';
 
 const hud = ['p1', 'p2'].map(side => {
   const life = $(`#${side}-life`);

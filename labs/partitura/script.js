@@ -2,221 +2,506 @@
  * ============================================================================
  * PARTITURA: MAESTRO QUEST - PRO CORE ENGINE & GAMIFICATION
  * ============================================================================
+ *
+ * Remaster — regras de notação implementadas (conferidas com Gardner Read,
+ * "Music Notation", e Elaine Gould, "Behind Bars"):
+ *
+ *  • Posição vertical vem do índice diatônico, nunca de tabela à mão:
+ *        d = oitava·7 + grau (C=0 … B=6)
+ *        Clave de Sol: E4 (d=30) na 1ª linha  → y = 150 − (d − 30)·10
+ *        Clave de Fá:  G2 (d=18) na 1ª linha  → y = 150 − (d − 18)·10
+ *    (linhas em y = 70, 90, 110, 130, 150; meio espaço = 10 unidades)
+ *  • Linhas suplementares: todas as linhas entre a pauta e a nota, inclusive
+ *    a da própria nota quando ela está numa linha.
+ *  • Haste: nota abaixo da 3ª linha → haste para cima, à direita da cabeça;
+ *    na 3ª linha ou acima → para baixo, à esquerda. Comprimento 3,5 espaços,
+ *    esticada até a linha do meio quando a nota está muito longe dela.
+ *  • Acidentes à esquerda da cabeça; armadura de clave (Sol maior: F♯ na 5ª
+ *    linha; Fá maior: B♭ na 2ª linha da clave de Fá) dispensa o acidente.
+ *  • Clave de Sol enrola na 2ª linha (G4); clave de Fá começa na 4ª linha (F3)
+ *    com os dois pontos nos espaços acima e abaixo dela.
+ *
+ * Áudio: AudioContext único criado no primeiro gesto (latencyHint
+ * 'interactive'), master → compressor/limiter, envio de reverb por
+ * convolução, envelopes sem clique (ataque em rampa, release por
+ * setTargetAtTime), polifonia limitada com roubo da voz mais antiga,
+ * violão por Karplus–Strong. Eventos sonoros agendados no relógio do áudio.
+ *
+ * Progressão (inspirada nos melhores apps de leitura): o repertório de notas
+ * cresce com o nível — primeiro só notas dentro da pauta, depois linhas
+ * suplementares.
  */
 
-// --- 1. TEORIA MUSICAL DETALHADA E GEOMETRIA DA PAUTA ---
-const MUSICAL_DATA = {
-  notes: ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
-  latinNames: { C: 'Dó', D: 'Ré', E: 'Mi', F: 'Fá', G: 'Sol', A: 'Lá', B: 'Si' },
-  frequencies: {
-    // 3 oitavas completas abarcando os graves da Clave de Fá até os agudos da Clave de Sol
-    'E2': 82.41,  'F2': 87.31,  'F#2': 92.50,  'G2': 98.00,  'G#2': 103.83, 'A2': 110.00, 'A#2': 116.54, 'Bb2': 116.54, 'B2': 123.47,
-    'C3': 130.81, 'C#3': 138.59, 'D3': 146.83, 'D#3': 155.56, 'E3': 164.81, 'F3': 174.61, 'F#3': 185.00, 'G3': 196.00, 'G#3': 207.65, 'A3': 220.00, 'A#3': 233.08, 'B3': 246.94,
-    'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88,
-    'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99, 'A5': 880.00
+// --- 1. TEORIA MUSICAL ---------------------------------------------------
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const LETTER_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const LATIN = { C: 'Dó', D: 'Ré', E: 'Mi', F: 'Fá', G: 'Sol', A: 'Lá', B: 'Si' };
+
+function parsePitch(pitch) {
+  const m = /^([A-G])(#|b)?(-?\d)$/.exec(pitch);
+  if (!m) return null;
+  const letter = m[1];
+  const acc = m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0;
+  const octave = Number(m[3]);
+  return {
+    letter,
+    acc,
+    octave,
+    diatonic: octave * 7 + LETTERS.indexOf(letter),
+    midi: (octave + 1) * 12 + LETTER_PC[letter] + acc
+  };
+}
+
+const midiToFreq = (m) => 440 * Math.pow(2, (m - 69) / 12);
+const pitchFreq = (p) => { const x = parsePitch(p); return x ? midiToFreq(x.midi) : 440; };
+
+const STAFF = { top: 70, bottom: 150, middle: 110, half: 10 };
+const CLEF_REF = { treble: 30, bass: 18 }; // d da 1ª linha (E4 / G2)
+
+function staffY(pitch, clef) {
+  const p = parsePitch(pitch);
+  if (!p) return STAFF.middle;
+  return STAFF.bottom - (p.diatonic - CLEF_REF[clef]) * STAFF.half;
+}
+
+function ledgerLines(y) {
+  const lines = [];
+  for (let ly = STAFF.top - 20; ly >= y; ly -= 20) lines.push(ly);
+  for (let ly = STAFF.bottom + 20; ly <= y; ly += 20) lines.push(ly);
+  return lines;
+}
+
+function positionName(pitch, clef) {
+  const y = staffY(pitch, clef);
+  const step = (STAFF.bottom - y) / STAFF.half; // 0 = 1ª linha
+  if (step >= 0 && step <= 8) {
+    return step % 2 === 0 ? `${step / 2 + 1}ª linha` : `${(step + 1) / 2}º espaço`;
+  }
+  const n = ledgerLines(y).length;
+  const where = y < STAFF.top ? 'acima' : 'abaixo';
+  if (n === 0) return `logo ${where} da pauta`;
+  const onLine = (y - STAFF.top) % 20 === 0;
+  return onLine ? `${n}ª linha suplementar ${where}` : `${where} da ${n}ª linha suplementar`;
+}
+
+// Repertório da leitura por nível: dentro da pauta → linhas suplementares.
+const READING_POOL = {
+  treble: [
+    ['E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5'],
+    ['D4', 'G5', 'C4', 'A5'],
+    ['B3', 'B5', 'A3', 'C6']
+  ],
+  bass: [
+    ['G2', 'A2', 'B2', 'C3', 'D3', 'E3', 'F3', 'G3', 'A3'],
+    ['F2', 'B3', 'E2', 'C4'],
+    ['D2', 'D4', 'C2', 'E4']
+  ]
+};
+
+function poolFor(clef, level) {
+  const tiers = READING_POOL[clef];
+  const unlocked = level >= 5 ? 3 : level >= 3 ? 2 : 1;
+  return tiers.slice(0, unlocked).flat();
+}
+
+const SCALES = {
+  'C-major': {
+    name: 'Dó maior',
+    notes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
+    clef: 'treble',
+    keySig: [],
+    theory: '<strong>Dó maior:</strong> Tom–Tom–Semitom–Tom–Tom–Tom–Semitom. Só teclas brancas: a porta de entrada da leitura.'
   },
-  // Posições verticais (Y) na pauta SVG (Linhas do pentagrama de Y=70 a Y=150, espaçamento 20px)
-  // Em SVG, Y=70 é a 5ª Linha (alto) e Y=150 é a 1ª Linha (baixo).
-  staffPositions: {
-    treble: {
-      'C4': { y: 190, ledger: [190], name: 'Dó Central (C4)' },
-      'D4': { y: 170, ledger: [], name: 'Ré (D4)' },
-      'E4': { y: 150, ledger: [], name: 'Mi (1ª Linha)' },
-      'F4': { y: 140, ledger: [], name: 'Fá (1º Espaço)' },
-      'G4': { y: 130, ledger: [], name: 'Sol (2ª Linha - da Clave)' },
-      'A4': { y: 120, ledger: [], name: 'Lá (2º Espaço)' },
-      'B4': { y: 110, ledger: [], name: 'Si (3ª Linha Central)' },
-      'C5': { y: 100, ledger: [], name: 'Dó Agudo (3º Espaço)' },
-      'D5': { y: 90,  ledger: [], name: 'Ré Agudo (4ª Linha)' },
-      'E5': { y: 80,  ledger: [], name: 'Mi Agudo (4º Espaço)' },
-      'F5': { y: 70,  ledger: [], name: 'Fá Agudo (5ª Linha)' },
-      'G5': { y: 50,  ledger: [50], name: 'Sol Super Agudo' }
-    },
-    bass: {
-      'F2': { y: 170, ledger: [], name: 'Fá Grave (F2)' },
-      'G2': { y: 150, ledger: [], name: 'Sol Grave (1ª Linha)' },
-      'A2': { y: 140, ledger: [], name: 'Lá Grave (1º Espaço)' },
-      'B2': { y: 130, ledger: [], name: 'Si Grave (2ª Linha)' },
-      'Bb2': { y: 130, ledger: [], name: 'Si Bemol (2ª Linha)' },
-      'C3': { y: 120, ledger: [], name: 'Dó Grave (2º Espaço)' },
-      'D3': { y: 110, ledger: [], name: 'Ré Grave (3ª Linha)' },
-      'E3': { y: 100, ledger: [], name: 'Mi Grave (3º Espaço)' },
-      'F3': { y: 90,  ledger: [], name: 'Fá do Baixo (4ª Linha - da Clave)' },
-      'G3': { y: 80,  ledger: [], name: 'Sol (4º Espaço)' },
-      'A3': { y: 70,  ledger: [], name: 'Lá (5ª Linha)' },
-      'B3': { y: 55,  ledger: [], name: 'Si (Acima da Pauta)' },
-      'C4': { y: 35,  ledger: [35], name: 'Dó Central (C4 - Linha Sup. em Fá)' }
-    }
+  'G-major': {
+    name: 'Sol maior',
+    notes: ['G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F#5', 'G5'],
+    clef: 'treble',
+    keySig: ['F#5'],
+    theory: '<strong>Sol maior:</strong> mesma fórmula de Dó maior a partir de Sol — por isso o Fá vira Fá♯. Ele já aparece na armadura, logo após a clave.'
   },
-  scales: {
-    'C-major': { 
-      name: 'Dó Maior (Tom - Tom - Semitom - Tom - Tom - Tom - Semitom)', 
-      notes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'], 
-      clef: 'treble',
-      theory: '💡 <strong>Dó Maior (C Major):</strong> A rainha das escalas! É composta inteiramente pelas teclas brancas do piano, sem acidentes. É a porta de entrada para toda a leitura musical.'
-    },
-    'G-major': { 
-      name: 'Sol Maior (Apresenta o Fá Sustenido ♯)', 
-      notes: ['G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F#4', 'G4'], 
-      clef: 'treble',
-      theory: '💡 <strong>Sol Maior (G Major):</strong> Para manter a sonoridade alegre do modo maior, esta escala eleva a 7ª nota (Fá para Fá♯). É super comum no Rock e Pop!'
-    },
-    'F-major': { 
-      name: 'Fá Maior (Apresenta o Si Bemol ♭ na Clave de Fá!)', 
-      notes: ['F2', 'G2', 'A2', 'Bb2', 'C3', 'D3', 'E3', 'F3'], 
-      clef: 'bass',
-      theory: '💡 <strong>Fá Maior (F Major):</strong> Aqui exploramos a profunda <strong>Clave de Fá (Baixo)</strong>! Ela apresenta um Si Bemol (B♭) para preservar a perfeita simetria dos intervalos de oitava.'
-    },
-    'A-minor': { 
-      name: 'Lá Menor Natural (A escala relativa de Dó Maior)', 
-      notes: ['A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4'], 
-      clef: 'treble',
-      theory: '💡 <strong>Lá Menor (A Minor):</strong> Traz uma emoção mais pensativa e melancólica. Possui as mesmíssimas notas da escala de Dó Maior, só que partindo de Lá!'
-    },
-    'C-penta': { 
-      name: 'Dó Pentatônica (As 5 notas de ouro dos solos de guitarra e synth)', 
-      notes: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'], 
-      clef: 'treble',
-      theory: '💡 <strong>Pentatônica:</strong> Elimina os semitons que causam tensão (4ª e 7ª notas), deixando apenas 5 notas que combinam magistralmente em qualquer improviso!'
-    },
-    'C-blues': { 
-      name: 'Dó Blues (A lendária Blue Note!)', 
-      notes: ['C4', 'D4', 'F4', 'F#4', 'G4', 'B4', 'C5'], 
-      clef: 'treble',
-      theory: '💡 <strong>Escala Blues:</strong> Adiciona uma nota especial no meio do caminho — a famosa <strong>Blue Note (Fá♯/Sol♭)</strong>! Dá aquele tom expressivo e arrojado do Jazz e do Rock & Roll!'
-    }
+  'F-major': {
+    name: 'Fá maior',
+    notes: ['F2', 'G2', 'A2', 'Bb2', 'C3', 'D3', 'E3', 'F3'],
+    clef: 'bass',
+    keySig: ['Bb2'],
+    theory: '<strong>Fá maior (clave de Fá):</strong> o Si precisa baixar meio tom (Si♭) para manter Tom–Tom–Semitom. O ♭ da armadura fica na 2ª linha.'
+  },
+  'A-minor': {
+    name: 'Lá menor natural',
+    notes: ['A4', 'B4', 'C5', 'D5', 'E5', 'F5', 'G5', 'A5'],
+    clef: 'treble',
+    keySig: [],
+    theory: '<strong>Lá menor natural:</strong> relativa de Dó maior — as mesmas notas, começando em Lá: Tom–Semitom–Tom–Tom–Semitom–Tom–Tom.'
+  },
+  'C-penta': {
+    name: 'Dó pentatônica maior',
+    notes: ['C4', 'D4', 'E4', 'G4', 'A4', 'C5'],
+    clef: 'treble',
+    keySig: [],
+    theory: '<strong>Pentatônica:</strong> tira a 4ª e a 7ª da escala maior (os semitons). Sobram 5 notas que combinam em qualquer improviso.'
+  },
+  'C-blues': {
+    name: 'Dó blues',
+    notes: ['C4', 'Eb4', 'F4', 'Gb4', 'G4', 'Bb4', 'C5'],
+    clef: 'treble',
+    keySig: [],
+    theory: '<strong>Blues:</strong> pentatônica menor (Dó, Mi♭, Fá, Sol, Si♭) + a <em>blue note</em> Sol♭ entre Fá e Sol.'
   }
 };
 
 const BADGES_DEFINITIONS = {
-  first_step: { id: 'first_step', icon: '🎵', title: 'Primeira Nota', desc: 'Acertou sua primeira nota musical no app!' },
-  combo_master: { id: 'combo_master', icon: '🔥', title: 'Mestre do Combo', desc: 'Conseguiu uma sequência incrível de 10 acertos seguidos!' },
-  scale_explorer: { id: 'scale_explorer', icon: '🎹', title: 'Explorador das Escalas', desc: 'Tocou e estudou todas as 6 escalas do Laboratório!' },
-  ear_golden: { id: 'ear_golden', icon: '👂✨', title: 'Ouvido de Ouro', desc: 'Acertou 5 notas seguidas exclusivamente no Treino Auditivo!' },
-  speed_demon: { id: 'speed_demon', icon: '⚡', title: 'Virtuoso dos 60s', desc: 'Ultrapassou 150 pontos na Corrida de 60 Segundos!' },
-  maestro_supremo: { id: 'maestro_supremo', icon: '👑', title: 'Maestro Supremo', desc: 'Alcançou o prestigiado Nível 5 no sistema de Maestro!' }
+  first_step: { id: 'first_step', icon: '🎵', title: 'Primeira nota', desc: 'Acertou sua primeira nota.' },
+  combo_master: { id: 'combo_master', icon: '🔥', title: 'Mestre do combo', desc: '10 acertos seguidos.' },
+  scale_explorer: { id: 'scale_explorer', icon: '🎹', title: 'Explorador de escalas', desc: 'Ouviu as 6 escalas.' },
+  ear_golden: { id: 'ear_golden', icon: '👂', title: 'Ouvido de ouro', desc: '5 acertos seguidos no treino de ouvido.' },
+  speed_demon: { id: 'speed_demon', icon: '⚡', title: 'Virtuoso dos 60s', desc: 'Mais de 150 pontos no desafio de 60 segundos.' },
+  maestro_supremo: { id: 'maestro_supremo', icon: '👑', title: 'Maestro supremo', desc: 'Chegou ao nível 5.' }
 };
 
-// --- 2. MOTOR SONORO PRO (WEB AUDIO API + SIMULAÇÃO DE REVERB) ---
+// --- 2. MOTOR SONORO ------------------------------------------------------
 class WebAudioSynth {
   constructor() {
     this.ctx = null;
     this.instrument = 'piano';
+    this.voices = [];
+    this.maxVoices = window.matchMedia('(pointer: coarse)').matches ? 16 : 28;
+    this.waves = new Map();
+    this.ksCache = new Map();
+    this.unsupported = false;
+    this.everRan = false;
+    this.onState = () => {};
   }
 
-  init() {
-    if (!this.ctx) {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new AudioCtx();
+  ensure() {
+    if (this.ctx || this.unsupported) return this.ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { this.unsupported = true; this.onState(); return null; }
+    try { this.ctx = new AC({ latencyHint: 'interactive' }); } catch (e) {
+      try { this.ctx = new AC(); } catch (e2) { this.unsupported = true; this.onState(); return null; }
     }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* opcional */ }
+    const ctx = this.ctx;
+
+    this.bus = ctx.createGain();
+    this.master = ctx.createGain();
+    this.master.gain.value = 0.9;
+    const dry = ctx.createGain();
+    dry.gain.value = 0.9;
+    const send = ctx.createGain();
+    send.gain.value = 0.22;
+    const conv = ctx.createConvolver();
+    try { conv.buffer = this.impulse(1.8); } catch (e) { /* sem reverb */ }
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -12;
+    comp.knee.value = 8;
+    comp.ratio.value = 6;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.2;
+
+    this.bus.connect(dry);
+    dry.connect(this.master);
+    this.bus.connect(send);
+    send.connect(conv);
+    conv.connect(this.master);
+    this.master.connect(comp);
+    comp.connect(ctx.destination);
+
+    ctx.onstatechange = () => {
+      if (ctx.state === 'running') this.everRan = true;
+      this.onState();
+    };
+    return ctx;
+  }
+
+  impulse(seconds) {
+    const ctx = this.ctx;
+    const len = Math.floor(ctx.sampleRate * seconds);
+    const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let lp = 0;
+      for (let i = 0; i < len; i++) {
+        const t = i / len;
+        lp += ((Math.random() * 2 - 1) - lp) * (0.85 - t * 0.6);
+        d[i] = lp * Math.pow(1 - t, 2.6);
+      }
+    }
+    return buf;
+  }
+
+  unlock() {
+    const ctx = this.ensure();
+    if (!ctx) return;
+    if (ctx.state !== 'running') {
+      try {
+        const s = ctx.createBufferSource();
+        s.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+        s.connect(ctx.destination);
+        s.start(0);
+      } catch (e) { /* noop */ }
+      const p = ctx.resume();
+      if (p && p.then) p.then(() => this.onState(), () => this.onState());
     }
   }
 
-  setInstrument(type) {
-    this.instrument = type;
+  state() {
+    if (this.unsupported) return 'unsupported';
+    if (!this.ctx) return 'idle';
+    if (this.ctx.state === 'running') return 'running';
+    return this.everRan ? 'paused' : 'idle';
   }
 
-  playNote(pitch, duration = 1.1) {
-    this.init();
-    const freq = MUSICAL_DATA.frequencies[pitch] || 440;
-    const now = this.ctx.currentTime;
+  now() { return this.ctx ? this.ctx.currentTime : 0; }
 
-    const osc1 = this.ctx.createOscillator();
-    const osc2 = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
+  setInstrument(type) { this.instrument = type; }
 
-    // Efeito de Reverb Simulado com Delay Suave
-    const delay = this.ctx.createDelay();
-    const delayGain = this.ctx.createGain();
-    delay.delayTime.setValueAtTime(0.08, now);
-    delayGain.gain.setValueAtTime(0.2, now);
+  pianoWave(midi) {
+    const bucket = Math.floor(midi / 6);
+    let w = this.waves.get(bucket);
+    if (w) return w;
+    const fTop = midiToFreq(bucket * 6 + 5);
+    const count = Math.max(2, Math.min(28, Math.floor(Math.min(this.ctx.sampleRate * 0.45, 13000) / fTop)));
+    const real = new Float32Array(count + 1);
+    const imag = new Float32Array(count + 1);
+    const p = Math.min(1.6, Math.max(1.05, 1.05 + Math.log2(fTop / 65.4) * 0.14));
+    for (let n = 1; n <= count; n++) imag[n] = Math.abs(Math.sin(n * Math.PI / 8.3)) / Math.pow(n, p);
+    w = this.ctx.createPeriodicWave(real, imag);
+    this.waves.set(bucket, w);
+    return w;
+  }
 
-    if (this.instrument === 'piano') {
-      osc1.type = 'triangle';
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(freq * 2, now); // Harmônica do timbre do piano
-      gain.gain.setValueAtTime(0.45, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+  // Karplus–Strong: ruído num delay de N = fs/f amostras, realimentado pela
+  // média de duas amostras (passa-baixas) × fator de perda ρ. Gera a corda
+  // dedilhada com brilho que morre naturalmente.
+  pluckBuffer(midi) {
+    const cached = this.ksCache.get(midi);
+    if (cached) return cached;
+    const sr = this.ctx.sampleRate;
+    const f = midiToFreq(midi);
+    const len = Math.floor(sr * 1.8);
+    const buf = this.ctx.createBuffer(1, len, sr);
+    const out = buf.getChannelData(0);
+    const N = Math.max(2, Math.round(sr / f));
+    const line = new Float32Array(N);
+    let prev = 0;
+    for (let i = 0; i < N; i++) {
+      // Ruído levemente filtrado = palheta mais macia
+      prev = prev * 0.5 + (Math.random() * 2 - 1) * 0.5;
+      line[i] = prev;
+    }
+    const rho = 0.996 - Math.min(0.01, f / 120000);
+    let idx = 0;
+    for (let i = 0; i < len; i++) {
+      const a = line[idx];
+      const b = line[(idx + 1) % N];
+      const v = rho * 0.5 * (a + b);
+      line[idx] = v;
+      out[i] = a;
+      idx = (idx + 1) % N;
+    }
+    this.ksCache.set(midi, buf);
+    if (this.ksCache.size > 40) this.ksCache.delete(this.ksCache.keys().next().value);
+    return buf;
+  }
+
+  trackVoice(v) {
+    this.voices.push(v);
+    while (this.voices.length > this.maxVoices) {
+      const old = this.voices.shift();
+      this.fadeOut(old, 0.01);
+    }
+  }
+
+  fadeOut(v, tau) {
+    if (!v || v.done) return;
+    v.done = true;
+    const t = this.ctx.currentTime;
+    try {
+      v.gain.gain.cancelScheduledValues(t);
+      v.gain.gain.setValueAtTime(Math.max(0, v.gain.gain.value), t);
+      v.gain.gain.setTargetAtTime(0, t, tau);
+      v.sources.forEach((s) => s.stop(t + tau * 8));
+    } catch (e) { /* já terminou */ }
+  }
+
+  /**
+   * Toca uma altura. opts: { dur (s), when (s, relógio do áudio), vel (0–1),
+   * instrument }. Nunca lança: se o áudio não estiver pronto, só não soa.
+   */
+  playNote(pitch, opts = {}) {
+    const ctx = this.ensure();
+    if (!ctx) return;
+    if (ctx.state !== 'running') {
+      // Primeiro toque no iOS: o contexto ainda está acordando. Reagenda a
+      // nota (mantendo o deslocamento relativo) assim que ele rodar.
+      if (opts._retry) return;
+      const rel = Math.max(0, (opts.when || ctx.currentTime) - ctx.currentTime);
+      const p0 = ctx.resume();
+      if (p0 && p0.then) {
+        p0.then(() => {
+          if (ctx.state === 'running') this.playNote(pitch, { ...opts, when: ctx.currentTime + rel, _retry: true });
+        }, () => {});
+      }
+      return;
+    }
+    const p = parsePitch(pitch);
+    if (!p) return;
+    const inst = opts.instrument || this.instrument;
+    const dur = opts.dur || 0.9;
+    const vel = Math.max(0.05, Math.min(1, opts.vel == null ? 0.75 : opts.vel));
+    const t = Math.max(ctx.currentTime, opts.when || ctx.currentTime);
+    const f = midiToFreq(p.midi);
+    const gain = ctx.createGain();
+    const sources = [];
+    const v = { gain, sources, done: false };
+    let tail = 0.6;
+
+    gain.gain.setValueAtTime(0, t);
+
+    if (inst === 'guitar') {
+      const src = ctx.createBufferSource();
+      src.buffer = this.pluckBuffer(p.midi);
+      const body = ctx.createBiquadFilter();
+      body.type = 'peaking';
+      body.frequency.value = 220;
+      body.Q.value = 1.2;
+      body.gain.value = 4;
+      src.connect(body);
+      body.connect(gain);
+      const peak = 0.55 * vel;
+      gain.gain.linearRampToValueAtTime(peak, t + 0.002);
+      gain.gain.setTargetAtTime(0, t + dur, 0.12);
+      src.start(t);
+      src.stop(t + Math.min(1.8, dur + 1));
+      sources.push(src);
+      tail = 1;
+    } else if (inst === 'celesta') {
+      // Barra metálica: parciais inarmônicos 1 / 2,76 / 5,4 decaindo rápido.
+      [[1, 1, 0.9], [2.76, 0.35, 0.35], [5.4, 0.12, 0.18]].forEach(([mult, amp, tau]) => {
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = f * mult;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(amp, t + 0.002);
+        g.gain.setTargetAtTime(0, t + 0.002, tau);
+        o.connect(g);
+        g.connect(gain);
+        o.start(t);
+        o.stop(t + dur + 1.4);
+        sources.push(o);
+      });
+      gain.gain.linearRampToValueAtTime(0.28 * vel, t + 0.002);
+      gain.gain.setTargetAtTime(0, t + dur + 0.4, 0.25);
+      tail = 1.4;
+    } else if (inst === 'synth') {
+      const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(2600, now);
-      filter.frequency.exponentialRampToValueAtTime(350, now + duration);
-    } else if (this.instrument === 'synth') {
-      osc1.type = 'sawtooth';
-      osc2.type = 'square';
-      osc2.frequency.setValueAtTime(freq * 1.005, now); // Detune de Chorus 80s
-      gain.gain.setValueAtTime(0.28, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + duration * 1.2);
+      filter.Q.value = 2;
+      filter.frequency.setValueAtTime(f * 2, t);
+      filter.frequency.linearRampToValueAtTime(Math.min(9000, f * 10), t + 0.03);
+      filter.frequency.setTargetAtTime(f * 3, t + 0.03, 0.25);
+      ['sawtooth', 'square'].forEach((type, i) => {
+        const o = ctx.createOscillator();
+        o.type = type;
+        o.frequency.value = f;
+        o.detune.value = i ? 7 : -7;
+        const g = ctx.createGain();
+        g.gain.value = i ? 0.35 : 0.6;
+        o.connect(g);
+        g.connect(filter);
+        o.start(t);
+        o.stop(t + dur + 0.6);
+        sources.push(o);
+      });
+      filter.connect(gain);
+      const peak = 0.16 * vel;
+      gain.gain.linearRampToValueAtTime(peak, t + 0.012);
+      gain.gain.setTargetAtTime(peak * 0.65, t + 0.012, 0.15);
+      gain.gain.setTargetAtTime(0, t + dur, 0.09);
+    } else {
+      // Piano: corpo harmônico do martelo + coro de 2 cordas + brilho que fecha.
+      const wave = this.pianoWave(p.midi);
+      const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(4200, now);
-    } else if (this.instrument === 'guitar') {
-      // Guitarra / Pluck (ataque super curto e ressonância de corda)
-      osc1.type = 'sawtooth';
-      osc2.type = 'triangle';
-      osc2.frequency.setValueAtTime(freq * 0.5, now); // Sub-harmônica de corpo da guitarra
-      gain.gain.setValueAtTime(0.4, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration * 0.9);
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(1500, now);
-      filter.Q.setValueAtTime(2.5, now);
-      filter.frequency.exponentialRampToValueAtTime(400, now + 0.3);
-    } else if (this.instrument === 'celesta') {
-      osc1.type = 'sine';
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(freq * 3, now); // Harmônico de sino
-      gain.gain.setValueAtTime(0.38, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration * 1.6);
-      filter.type = 'highpass';
-      filter.frequency.setValueAtTime(250, now);
+      filter.Q.value = 0.6;
+      filter.frequency.setValueAtTime(Math.min(15000, f * (4 + 18 * vel)), t);
+      filter.frequency.setTargetAtTime(Math.min(9000, f * (2.5 + 3 * vel)), t + 0.01, 0.35);
+      [-0.7, 0.7].forEach((det) => {
+        const o = ctx.createOscillator();
+        o.setPeriodicWave(wave);
+        o.frequency.value = f;
+        o.detune.value = det;
+        o.connect(filter);
+        o.start(t);
+        o.stop(t + dur + 1.2);
+        sources.push(o);
+      });
+      filter.connect(gain);
+      const peak = 0.36 * (0.15 + 0.85 * vel * vel);
+      const tau1 = Math.min(0.6, Math.max(0.08, 0.3 * Math.sqrt(261.6 / f)));
+      gain.gain.linearRampToValueAtTime(peak, t + 0.003);
+      gain.gain.setTargetAtTime(peak * 0.3, t + 0.003, tau1);
+      gain.gain.setTargetAtTime(0, t + dur, 0.12);
+      tail = 1.2;
     }
 
-    osc1.frequency.setValueAtTime(freq, now);
-    
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(gain);
-    
-    // Conecta áudio puro e loop de reverb
-    gain.connect(this.ctx.destination);
-    gain.connect(delay);
-    delay.connect(delayGain);
-    delayGain.connect(this.ctx.destination);
-
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + duration + 0.25);
-    osc2.stop(now + duration + 0.25);
+    let out = gain;
+    if (ctx.createStereoPanner) {
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = Math.max(-0.5, Math.min(0.5, (p.midi - 60) / 40));
+      gain.connect(pan);
+      out = pan;
+    }
+    out.connect(this.bus);
+    sources[0].onended = () => {
+      v.done = true;
+      const i = this.voices.indexOf(v);
+      if (i !== -1) this.voices.splice(i, 1);
+      try { out.disconnect(); } catch (e) { /* noop */ }
+    };
+    this.trackVoice(v);
+    return t + dur + tail;
   }
 
+  // Efeitos curtos e musicais (nada de serra estridente no erro).
   playSFX(type) {
-    this.init();
-    const now = this.ctx.currentTime;
+    const ctx = this.ensure();
+    if (!ctx || ctx.state !== 'running') return;
+    const t = ctx.currentTime + 0.02;
     if (type === 'correct' || type === 'coin') {
-      this.playNote('G4', 0.16);
-      setTimeout(() => this.playNote('C5', 0.28), 110);
+      this.playNote('E6', { when: t + 0.05, dur: 0.15, vel: 0.3, instrument: 'celesta' });
+      this.playNote('B6', { when: t + 0.13, dur: 0.25, vel: 0.25, instrument: 'celesta' });
     } else if (type === 'error') {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(160, now);
-      osc.frequency.linearRampToValueAtTime(105, now + 0.25);
-      gain.gain.setValueAtTime(0.22, now);
-      gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.26);
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      const lp = ctx.createBiquadFilter();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(180, t);
+      o.frequency.exponentialRampToValueAtTime(110, t + 0.22);
+      lp.type = 'lowpass';
+      lp.frequency.value = 900;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.18, t + 0.01);
+      g.gain.setTargetAtTime(0, t + 0.04, 0.07);
+      o.connect(lp);
+      lp.connect(g);
+      g.connect(this.bus);
+      o.start(t);
+      o.stop(t + 0.5);
     } else if (type === 'levelup' || type === 'badge') {
-      ['C4', 'E4', 'G4', 'C5', 'E5', 'G5'].forEach((n, i) => {
-        setTimeout(() => this.playNote(n, 0.45), i * 90);
+      ['C5', 'E5', 'G5', 'C6', 'E6', 'G6'].forEach((n, i) => {
+        this.playNote(n, { when: t + i * 0.075, dur: 0.4, vel: 0.45, instrument: 'celesta' });
       });
     }
   }
+
+  suspend() {
+    if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().then(() => this.onState(), () => {});
+  }
 }
 
-// --- 3. GESTÃO DE ESTADO E GAMIFICAÇÃO (LOCALSTORAGE) ---
+// --- 3. ESTADO E GAMIFICAÇÃO (LOCALSTORAGE) -------------------------------
 class MaestroGameManager {
   constructor() {
     this.storageKey = 'maestro_quest_data';
@@ -233,7 +518,8 @@ class MaestroGameManager {
       scalesExplored: [],
       earCorrectStreak: 0,
       unlockedBadges: [],
-      lastLoginDate: new Date().toDateString()
+      lastLoginDate: new Date().toDateString(),
+      prefs: {}
     };
     this.state = this.loadState();
     this.checkStreak();
@@ -242,65 +528,70 @@ class MaestroGameManager {
   loadState() {
     try {
       const saved = localStorage.getItem(this.storageKey);
-      if (saved) return { ...this.defaultState, ...JSON.parse(saved) };
-    } catch(e) { console.error('Error loading localStorage', e); }
-    return { ...this.defaultState };
+      if (saved) {
+        const data = JSON.parse(saved);
+        const merged = { ...this.defaultState, ...data };
+        if (!Array.isArray(merged.scalesExplored)) merged.scalesExplored = [];
+        if (!Array.isArray(merged.unlockedBadges)) merged.unlockedBadges = [];
+        if (!merged.prefs || typeof merged.prefs !== 'object') merged.prefs = {};
+        return merged;
+      }
+    } catch (e) { /* armazenamento indisponível ou corrompido */ }
+    return { ...this.defaultState, scalesExplored: [], unlockedBadges: [], prefs: {} };
   }
 
   saveState() {
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(this.state));
-      this.updateDashboardUI();
-    } catch(e) { console.error('Error saving localStorage', e); }
+    try { localStorage.setItem(this.storageKey, JSON.stringify(this.state)); } catch (e) { /* modo privado */ }
+    this.updateDashboardUI();
   }
 
   checkStreak() {
     const today = new Date().toDateString();
-    if (this.state.lastLoginDate !== today) {
-      const last = new Date(this.state.lastLoginDate);
-      const now = new Date();
-      const diffDays = Math.round((now - last) / (1000 * 60 * 60 * 24));
-      if (diffDays === 1) {
-        this.state.streakDays += 1;
-        this.showToast('🔥 Streak Incrível!', `Você está há ${this.state.streakDays} dias seguidos aprendendo partitura!`);
-      } else if (diffDays > 1) {
-        this.state.streakDays = 1;
-      }
-      this.state.lastLoginDate = today;
-      this.saveState();
+    if (this.state.lastLoginDate === today) return;
+    const last = new Date(this.state.lastLoginDate);
+    const diffDays = Math.round((new Date(today) - new Date(last.toDateString())) / 86400000);
+    if (diffDays === 1) {
+      this.state.streakDays += 1;
+      setTimeout(() => this.showToast('🔥 Sequência!', `${this.state.streakDays} dias seguidos lendo partitura.`), 600);
+    } else if (diffDays > 1) {
+      this.state.streakDays = 1;
     }
+    this.state.lastLoginDate = today;
+    this.saveState();
+  }
+
+  multiplier() {
+    const c = this.state.combo;
+    return c >= 10 ? 3 : c >= 5 ? 2 : c >= 3 ? 1.5 : 1;
   }
 
   addXP(amount, x, y) {
-    let multiplier = 1;
-    if (this.state.combo >= 10) multiplier = 3;
-    else if (this.state.combo >= 5) multiplier = 2;
-    else if (this.state.combo >= 3) multiplier = 1.5;
-
-    const gained = Math.round(amount * multiplier);
+    const mult = this.multiplier();
+    const gained = Math.round(amount * mult);
     this.state.xp += gained;
-    this.state.coins += Math.round(5 * multiplier);
+    this.state.coins += Math.round(5 * mult);
 
-    if (x !== undefined && y !== undefined) {
+    if (x !== undefined && y !== undefined && !reduceMotion.matches) {
       const floatEl = document.createElement('div');
       floatEl.className = 'floating-xp';
-      floatEl.textContent = `+${gained} XP${multiplier > 1 ? ` (x${multiplier}!)` : ''}`;
-      floatEl.style.left = `${Math.min(window.innerWidth - 120, Math.max(20, x))}px`;
-      floatEl.style.top = `${Math.max(20, y - 30)}px`;
+      floatEl.textContent = `+${gained} XP${mult > 1 ? ` ×${mult}` : ''}`;
+      floatEl.style.left = `${Math.min(window.innerWidth - 110, Math.max(12, x - 40))}px`;
+      floatEl.style.top = `${Math.max(12, y - 30)}px`;
       document.body.appendChild(floatEl);
       setTimeout(() => floatEl.remove(), 1100);
     }
 
-    const requiredXP = this.state.level * 100;
-    if (this.state.xp >= requiredXP) {
+    // XP acumulado; cada nível pede 100·n XP a partir do anterior.
+    while (this.state.xp >= this.levelTarget(this.state.level)) {
       this.state.level += 1;
       synth.playSFX('levelup');
-      this.showToast('🎉 SUBIU DE NÍVEL!', `Incrível! Você se tornou Maestro Nível ${this.state.level}!`);
+      this.showToast('🎉 Subiu de nível!', `Maestro nível ${this.state.level}${this.state.level === 3 || this.state.level === 5 ? ' — novas notas com linhas suplementares liberadas!' : ''}`);
       if (this.state.level >= 5) this.unlockBadge('maestro_supremo');
     }
-
     this.saveState();
   }
+
+  levelTarget(level) { return 50 * level * (level + 1); } // 100, 300, 600, 1000…
 
   registerHit(isCorrect, isEarMode = false) {
     this.state.totalAttempts += 1;
@@ -312,7 +603,7 @@ class MaestroGameManager {
         this.state.earCorrectStreak += 1;
         if (this.state.earCorrectStreak >= 5) this.unlockBadge('ear_golden');
       }
-      if (this.state.totalCorrect >= 1) this.unlockBadge('first_step');
+      this.unlockBadge('first_step');
       if (this.state.combo >= 10) this.unlockBadge('combo_master');
     } else {
       this.state.combo = 0;
@@ -322,23 +613,19 @@ class MaestroGameManager {
   }
 
   registerScaleExplored(scaleId) {
-    if (!this.state.scalesExplored.includes(scaleId)) {
-      this.state.scalesExplored.push(scaleId);
-      this.saveState();
-      if (this.state.scalesExplored.length >= 6) {
-        this.unlockBadge('scale_explorer');
-      }
-    }
+    if (this.state.scalesExplored.includes(scaleId)) return;
+    this.state.scalesExplored.push(scaleId);
+    this.saveState();
+    if (this.state.scalesExplored.length >= Object.keys(SCALES).length) this.unlockBadge('scale_explorer');
   }
 
   unlockBadge(badgeId) {
-    if (!this.state.unlockedBadges.includes(badgeId)) {
-      this.state.unlockedBadges.push(badgeId);
-      const b = BADGES_DEFINITIONS[badgeId];
-      synth.playSFX('badge');
-      this.showToast(`🏆 Conquista Desbloqueada: ${b.title}!`, b.desc);
-      this.saveState();
-    }
+    if (this.state.unlockedBadges.includes(badgeId)) return;
+    this.state.unlockedBadges.push(badgeId);
+    const b = BADGES_DEFINITIONS[badgeId];
+    synth.playSFX('badge');
+    this.showToast(`🏆 ${b.title}`, b.desc);
+    this.saveState();
   }
 
   showToast(title, desc) {
@@ -346,971 +633,1036 @@ class MaestroGameManager {
     if (!container) return;
     const toast = document.createElement('div');
     toast.className = 'toast-msg';
-    toast.innerHTML = `<div><strong>${title}</strong><div style="font-size: 0.88rem; font-weight: 500; color: #cbd5e1; margin-top: 2px;">${desc}</div></div>`;
+    const strong = document.createElement('strong');
+    strong.textContent = title;
+    const small = document.createElement('span');
+    small.textContent = desc;
+    toast.append(strong, small);
     container.appendChild(toast);
+    while (container.children.length > 3) container.firstElementChild.remove();
     setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateX(120%)';
+      toast.classList.add('leaving');
       setTimeout(() => toast.remove(), 400);
-    }, 4500);
+    }, 4000);
   }
 
   updateDashboardUI() {
-    const titleEl = document.getElementById('maestro-level-title');
-    const xpBar = document.getElementById('xp-bar');
-    const xpText = document.getElementById('xp-text');
-    const comboCount = document.getElementById('combo-count');
-    const streakDays = document.getElementById('streak-days');
-    const coinCount = document.getElementById('coin-count');
-    const comboBox = document.getElementById('combo-box');
+    const s = this.state;
+    const titles = ['Aprendiz da Clave', 'Leitor de Linhas', 'Mestre das Oitavas', 'Virtuoso das Escalas', 'Maestro Supremo', 'Lenda da Partitura'];
+    const rankName = titles[Math.min(s.level - 1, titles.length - 1)];
+    const base = this.levelTarget(s.level - 1);
+    const target = this.levelTarget(s.level);
+    const pct = Math.max(0, Math.min(100, ((s.xp - base) / (target - base)) * 100));
+    setText('maestro-level-title', `Nível ${s.level}: ${rankName}`);
+    setText('maestro-level-badge', String(s.level));
+    setText('xp-text', `${s.xp} / ${target} XP`);
+    setText('combo-count', `x${s.combo}`);
+    setText('streak-days', String(s.streakDays));
+    setText('coin-count', String(s.coins));
+    const bar = document.getElementById('xp-bar');
+    if (bar) bar.style.width = `${pct}%`;
+    const prog = document.getElementById('xp-progress');
+    if (prog) prog.setAttribute('aria-valuenow', String(Math.round(pct)));
+    document.getElementById('combo-box')?.classList.toggle('active', s.combo >= 3);
 
-    const titles = [
-      'Aprendiz da Clave', 'Explorador do Baixo e Agudo', 'Mestre das Oitavas',
-      'Virtuoso das Escalas', 'Maestro Supremo', 'Lenda da Partitura'
-    ];
-    const rankName = titles[Math.min(this.state.level - 1, titles.length - 1)];
-
-    if (titleEl) titleEl.textContent = `Nível ${this.state.level}: ${rankName}`;
-    
-    const targetXP = this.state.level * 100;
-    const currentLevelBase = (this.state.level - 1) * 100;
-    const progressPct = Math.min(100, Math.max(0, ((this.state.xp - currentLevelBase) / (targetXP - currentLevelBase)) * 100));
-
-    if (xpBar) xpBar.style.width = `${progressPct}%`;
-    if (xpText) xpText.textContent = `${this.state.xp} / ${targetXP} XP`;
-    if (comboCount) comboCount.textContent = `x${this.state.combo}`;
-    if (streakDays) streakDays.textContent = `${this.state.streakDays}`;
-    if (coinCount) coinCount.textContent = `${this.state.coins}`;
-
-    if (comboBox) {
-      if (this.state.combo >= 3) comboBox.classList.add('active');
-      else comboBox.classList.remove('active');
-    }
-
-    const totalCorrectEl = document.getElementById('stat-total-correct');
-    const accuracyEl = document.getElementById('stat-accuracy');
-    const maxComboEl = document.getElementById('stat-max-combo');
-    const maxArcadeEl = document.getElementById('stat-max-arcade');
-
-    if (totalCorrectEl) totalCorrectEl.textContent = this.state.totalCorrect;
-    if (maxComboEl) maxComboEl.textContent = `x${this.state.maxCombo}`;
-    if (maxArcadeEl) maxArcadeEl.textContent = this.state.maxArcadeScore;
-    if (accuracyEl) {
-      const acc = this.state.totalAttempts === 0 ? 100 : Math.round((this.state.totalCorrect / this.state.totalAttempts) * 100);
-      accuracyEl.textContent = `${acc}%`;
-    }
+    setText('stat-total-correct', String(s.totalCorrect));
+    setText('stat-max-combo', `x${s.maxCombo}`);
+    setText('stat-max-arcade', String(s.maxArcadeScore));
+    setText('arcade-highscore', String(s.maxArcadeScore));
+    const acc = s.totalAttempts === 0 ? 100 : Math.round((s.totalCorrect / s.totalAttempts) * 100);
+    setText('stat-accuracy', `${acc}%`);
   }
 
   resetProgress() {
     const btn = document.getElementById('btn-reset-data');
     if (btn && !btn.dataset.confirming) {
       btn.dataset.confirming = 'true';
-      const origText = btn.textContent;
-      btn.textContent = '⚠️ Confirmar?';
+      btn.textContent = 'Toque de novo para confirmar';
       this._resetConfirmTimer = setTimeout(() => {
         delete btn.dataset.confirming;
-        btn.textContent = origText;
+        btn.textContent = 'Zerar progresso';
       }, 3000);
       return;
     }
     if (btn) {
       clearTimeout(this._resetConfirmTimer);
       delete btn.dataset.confirming;
-      btn.textContent = '🔄 Zerar Progresso';
+      btn.textContent = 'Zerar progresso';
     }
-    localStorage.removeItem(this.storageKey);
+    const prefs = this.state.prefs;
+    try { localStorage.removeItem(this.storageKey); } catch (e) { /* noop */ }
     this.state = this.loadState();
+    this.state.prefs = prefs;
     this.saveState();
     renderBadgesModal();
-    this.showToast('🔄 Progresso Zerado', 'Um novo recomeço musical aguarda por você!');
+    this.showToast('Progresso zerado', 'Um novo começo musical.');
   }
 }
 
-// --- 4. MOTOR DE RENDERIZAÇÃO SVG PRO COM VETORES E COMPARADOR ---
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+// --- 4. RENDERIZAÇÃO DA PAUTA (SVG) ---------------------------------------
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const INK = '#1c1b22';
+const PAPER_LINE = '#2a2833';
+
+function svgEl(tag, attrs, parent) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) el.setAttribute(k, String(attrs[k]));
+  if (parent) parent.appendChild(el);
+  return el;
+}
+
 class StaffSVGRenderer {
   constructor(svgId) {
     this.svg = document.getElementById(svgId);
     this.clef = 'treble';
     this.guideMode = false;
+    this.width = 700;
+    this.keySig = [];
+  }
+
+  // A pauta usa um viewBox mais estreito no celular: notas ficam maiores.
+  fitWidth() {
+    const w = this.svg ? this.svg.clientWidth : 700;
+    this.width = w && w < 560 ? 460 : 700;
+    this.svg.setAttribute('viewBox', `0 0 ${this.width} 240`);
   }
 
   clear() {
-    if (!this.svg) return;
-    this.svg.innerHTML = '';
+    if (this.svg) this.svg.textContent = '';
   }
 
-  renderStaff(clefType = 'treble') {
+  get accent() { return this.clef === 'bass' ? '#7c3aed' : '#0e7490'; }
+
+  renderStaff(clefType = 'treble', keySig = []) {
     this.clear();
     this.clef = clefType;
-    const ns = 'http://www.w3.org/2000/svg';
+    this.keySig = keySig;
+    const W = this.width;
 
-    // Atualiza tema visual da pauta (Azul Ciano p/ Sol, Roxo Amethyst p/ Fá)
-    const cardWrapper = document.getElementById('staff-card-wrapper');
+    const card = document.getElementById('staff-card-wrapper');
+    if (card) {
+      card.classList.toggle('mode-bass-clef', clefType === 'bass');
+      card.classList.toggle('mode-treble-clef', clefType !== 'bass');
+    }
     const indicator = document.getElementById('clef-active-indicator');
-    if (cardWrapper) {
-      cardWrapper.className = `staff-display-card ${this.clef === 'bass' ? 'mode-bass-clef' : 'mode-treble-clef'}`;
-    }
-    if (indicator) {
-      if (this.clef === 'bass') {
-        indicator.textContent = '𝄢 Oitava Grave (Clave de Fá / Mão Esq.)';
-        indicator.className = 'clef-badge bass-badge';
-      } else {
-        indicator.textContent = '𝄞 Oitava Aguda (Clave de Sol / Mão Dir.)';
-        indicator.className = 'clef-badge treble-badge';
-      }
-    }
+    if (indicator) indicator.textContent = clefType === 'bass' ? 'Clave de Fá · graves' : 'Clave de Sol · agudos';
 
-    // 1. As 5 linhas do pentagrama (Y de 70 a 150)
+    const g = svgEl('g', { class: 'staff-lines' }, this.svg);
     for (let i = 0; i < 5; i++) {
-      const y = 70 + (i * 20);
-      const line = document.createElementNS(ns, 'line');
-      line.setAttribute('x1', '40');
-      line.setAttribute('y1', y.toString());
-      line.setAttribute('x2', '660');
-      line.setAttribute('y2', y.toString());
-      line.setAttribute('stroke', '#cbd5e1');
-      line.setAttribute('stroke-width', '2');
-      line.setAttribute('opacity', '0.88');
-      this.svg.appendChild(line);
+      const y = STAFF.top + i * 20;
+      svgEl('line', { x1: 16, y1: y, x2: W - 16, y2: y, stroke: PAPER_LINE, 'stroke-width': 1.6 }, g);
     }
+    svgEl('line', { x1: 16, y1: STAFF.top, x2: 16, y2: STAFF.bottom, stroke: PAPER_LINE, 'stroke-width': 2 }, g);
+    // Barra final dupla (fina + grossa)
+    svgEl('line', { x1: W - 24, y1: STAFF.top, x2: W - 24, y2: STAFF.bottom, stroke: PAPER_LINE, 'stroke-width': 1.6 }, g);
+    svgEl('line', { x1: W - 18, y1: STAFF.top, x2: W - 18, y2: STAFF.bottom, stroke: PAPER_LINE, 'stroke-width': 5 }, g);
 
-    const startBar = document.createElementNS(ns, 'line');
-    startBar.setAttribute('x1', '40'); startBar.setAttribute('y1', '70');
-    startBar.setAttribute('x2', '40'); startBar.setAttribute('y2', '150');
-    startBar.setAttribute('stroke', '#cbd5e1'); startBar.setAttribute('stroke-width', '4');
-    this.svg.appendChild(startBar);
+    if (clefType === 'bass') this.drawBassClef(52, 90);
+    else this.drawTrebleClef(50, 130);
 
-    const endBar = document.createElementNS(ns, 'line');
-    endBar.setAttribute('x1', '660'); endBar.setAttribute('y1', '70');
-    endBar.setAttribute('x2', '660'); endBar.setAttribute('y2', '150');
-    endBar.setAttribute('stroke', '#cbd5e1'); endBar.setAttribute('stroke-width', '4');
-    this.svg.appendChild(endBar);
-
-    // 2. Desenho Vetorial Perfeito das Claves
-    if (this.clef === 'treble') {
-      // Clave de Sol (Espiral em torno da 2ª linha, Y=130) — sem animação de posição
-      const group = document.createElementNS(ns, 'g');
-      group.setAttribute('class', 'clef-mark');
-      
-      const clefText = document.createElementNS(ns, 'text');
-      clefText.setAttribute('x', '55');
-      clefText.setAttribute('y', '136');
-      clefText.setAttribute('font-size', '80');
-      clefText.setAttribute('fill', '#22d3ee');
-      clefText.setAttribute('font-family', 'sans-serif');
-      clefText.textContent = '𝄞';
-      group.appendChild(clefText);
-
-      // Etiqueta permanente explicativa da Clave no SVG
-      const label = document.createElementNS(ns, 'text');
-      label.setAttribute('x', '50'); label.setAttribute('y', '35');
-      label.setAttribute('font-size', '13'); label.setAttribute('fill', '#22d3ee');
-      label.setAttribute('font-weight', 'bold'); label.textContent = 'SOL (Agudo)';
-      group.appendChild(label);
-
-      this.svg.appendChild(group);
-
-    } else {
-      // Clave de Fá: Símbolo de Fá na 4ª Linha (Y=90) com os DOIS PONTOS clássicos em Y=80 e Y=100!
-      const group = document.createElementNS(ns, 'g');
-      group.setAttribute('class', 'clef-mark');
-      
-      const clefText = document.createElementNS(ns, 'text');
-      clefText.setAttribute('x', '50');
-      clefText.setAttribute('y', '128');
-      clefText.setAttribute('font-size', '75');
-      clefText.setAttribute('fill', '#a855f7');
-      clefText.setAttribute('font-family', 'sans-serif');
-      clefText.textContent = '𝄢';
-      group.appendChild(clefText);
-
-      // Desenhar explicitamente os 2 pontos da Clave de Fá abraçando a linha do Fá (Y=90) se a fonte falhar
-      const dot1 = document.createElementNS(ns, 'circle');
-      dot1.setAttribute('cx', '105'); dot1.setAttribute('cy', '81'); dot1.setAttribute('r', '5.5');
-      dot1.setAttribute('fill', '#ec4899');
-      group.appendChild(dot1);
-
-      const dot2 = document.createElementNS(ns, 'circle');
-      dot2.setAttribute('cx', '105'); dot2.setAttribute('cy', '99'); dot2.setAttribute('r', '5.5');
-      dot2.setAttribute('fill', '#ec4899');
-      group.appendChild(dot2);
-
-      const label = document.createElementNS(ns, 'text');
-      label.setAttribute('x', '45'); label.setAttribute('y', '35');
-      label.setAttribute('font-size', '13'); label.setAttribute('fill', '#a855f7');
-      label.setAttribute('font-weight', 'bold'); label.textContent = 'FÁ (Grave / Baixo)';
-      group.appendChild(label);
-
-      this.svg.appendChild(group);
-    }
-  }
-
-  // Desenha notas musicais (e modo guia de texto se ativado!)
-  drawNotes(notePitches, highlightIndex = 0) {
-    if (!Array.isArray(notePitches)) notePitches = [notePitches];
-
-    const ns = 'http://www.w3.org/2000/svg';
-    const numNotes = notePitches.length;
-    const startX = 200;
-    const stepX = Math.min(75, 420 / Math.max(1, numNotes - 1));
-
-    notePitches.forEach((pitch, idx) => {
-      const x = startX + (idx * stepX);
-      const posData = (MUSICAL_DATA.staffPositions[this.clef] || {})[pitch] || { y: 110, ledger: [], name: pitch };
-      const y = posData.y;
-      const isTarget = (idx === highlightIndex);
-      const baseColor = this.clef === 'bass' ? '#ec4899' : '#22d3ee';
-
-      const group = document.createElementNS(ns, 'g');
-      group.setAttribute('class', `staff-note ${isTarget ? 'note-glow' : ''}`);
-      group.setAttribute('id', `svg-note-${idx}`);
-
-      // 1. Linhas Suplementares (Ledgers)
-      if (posData.ledger && posData.ledger.length > 0) {
-        posData.ledger.forEach(lY => {
-          const lLine = document.createElementNS(ns, 'line');
-          lLine.setAttribute('x1', (x - 24).toString());
-          lLine.setAttribute('y1', lY.toString());
-          lLine.setAttribute('x2', (x + 24).toString());
-          lLine.setAttribute('y2', lY.toString());
-          lLine.setAttribute('stroke', '#cbd5e1');
-          lLine.setAttribute('stroke-width', '2.5');
-          group.appendChild(lLine);
-        });
-      }
-
-      // 2. Cabeça da nota
-      const ellipse = document.createElementNS(ns, 'ellipse');
-      ellipse.setAttribute('cx', x.toString());
-      ellipse.setAttribute('cy', y.toString());
-      ellipse.setAttribute('rx', '14');
-      ellipse.setAttribute('ry', '10');
-      ellipse.setAttribute('transform', `rotate(-15, ${x}, ${y})`);
-      ellipse.setAttribute('fill', isTarget ? baseColor : '#f8fafc');
-      group.appendChild(ellipse);
-
-      // 3. Haste da nota
-      const stem = document.createElementNS(ns, 'line');
-      if (y >= 110) { 
-        stem.setAttribute('x1', (x + 12).toString()); stem.setAttribute('y1', y.toString());
-        stem.setAttribute('x2', (x + 12).toString()); stem.setAttribute('y2', (y - 38).toString());
-      } else { 
-        stem.setAttribute('x1', (x - 12).toString()); stem.setAttribute('y1', y.toString());
-        stem.setAttribute('x2', (x - 12).toString()); stem.setAttribute('y2', (y + 38).toString());
-      }
-      stem.setAttribute('stroke', isTarget ? baseColor : '#f8fafc');
-      stem.setAttribute('stroke-width', '3.5');
-      group.appendChild(stem);
-
-      // 4. Símbolos de Acidente (♯ ou ♭)
-      if (pitch.includes('#') || pitch.includes('b')) {
-        const acc = document.createElementNS(ns, 'text');
-        acc.setAttribute('x', (x - 32).toString());
-        acc.setAttribute('y', (y + 7).toString());
-        acc.setAttribute('font-size', '24');
-        acc.setAttribute('fill', '#fbbf24');
-        acc.setAttribute('font-weight', 'bold');
-        acc.textContent = pitch.includes('#') ? '♯' : '♭';
-        group.appendChild(acc);
-      }
-
-      // 5. MODO GUIA: Mostra o nome da nota sob a pauta se o botão estiver ON!
-      if (this.guideMode || numNotes > 1) {
-        const guideText = document.createElementNS(ns, 'text');
-        guideText.setAttribute('x', x.toString());
-        guideText.setAttribute('y', '225');
-        guideText.setAttribute('text-anchor', 'middle');
-        guideText.setAttribute('font-size', '14');
-        guideText.setAttribute('font-weight', 'bold');
-        guideText.setAttribute('fill', isTarget ? '#fbbf24' : '#94a3b8');
-        const noteNameOnly = pitch.replace(/[0-9]/g, '');
-        const pretty = noteNameOnly.replace('#', '♯').replace('b', '♭');
-        const latinBase = MUSICAL_DATA.latinNames[noteNameOnly.charAt(0)] || noteNameOnly.charAt(0);
-        guideText.textContent = useLatinNotation ? latinBase + pretty.slice(1) : pretty;
-        group.appendChild(guideText);
-      }
-
-      this.svg.appendChild(group);
+    // Armadura de clave
+    keySig.forEach((pitch, i) => {
+      const y = staffY(pitch, clefType);
+      const x = 102 + i * 16;
+      if (pitch.includes('#')) this.drawSharp(x, y, INK);
+      else this.drawFlat(x, y, INK);
     });
   }
 
-  // COMPARADOR EDUCATIVO DE ERRO: Exibe a nota certa em verde vs a errada tocada em vermelho!
+  // Clave de Sol desenhada em curvas (independe de fonte): o caracol fecha
+  // em volta da 2ª linha (y=130), a haste sobe 1,5 espaço acima da pauta e
+  // termina num gancho com bolinha abaixo da 1ª linha.
+  drawTrebleClef(x, gy) {
+    const g = svgEl('g', { class: 'clef-mark', transform: `translate(${x} ${gy})` }, this.svg);
+    const d = [
+      'M 3 -1',
+      'C -9 -4, -12 10, -1 12',     // laço interno em volta da linha de Sol
+      'C 12 14, 22 3, 19 -10',      // sobe pela direita
+      'C 16 -24, -4 -26, -15 -14',  // topo do bojo
+      'C -26 -2, -22 20, -4 25',    // desce pela esquerda
+      'C 14 30, 30 16, 22 -8',      // fecha o bojo grande
+      'C 14 -30, 6 -52, 9 -74',     // haste subindo
+      'C 11 -90, 0 -96, -5 -84',    // volta do topo
+      'C -10 -70, 0 -40, 4 -12',    // desce cruzando a haste
+      'L 10 44',                    // haste até abaixo da pauta
+      'C 12 56, -6 60, -10 50'      // gancho final
+    ].join(' ');
+    svgEl('path', { d, fill: 'none', stroke: INK, 'stroke-width': 4.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, g);
+    svgEl('circle', { cx: -7, cy: 47, r: 5.5, fill: INK }, g);
+  }
+
+  // Clave de Fá: bolinha na 4ª linha (y=90), curva para a direita e para
+  // baixo, e os dois pontos nos espaços acima/abaixo da linha de Fá.
+  drawBassClef(x, fy) {
+    const g = svgEl('g', { class: 'clef-mark', transform: `translate(${x} ${fy})` }, this.svg);
+    svgEl('circle', { cx: 0, cy: 0, r: 7, fill: INK }, g);
+    svgEl('path', {
+      d: 'M -6 -2 C -6 -22, 30 -26, 32 0 C 34 24, 12 42, -12 54',
+      fill: 'none', stroke: INK, 'stroke-width': 4.6, 'stroke-linecap': 'round'
+    }, g);
+    svgEl('circle', { cx: 44, cy: -10, r: 3.6, fill: INK }, g);
+    svgEl('circle', { cx: 44, cy: 10, r: 3.6, fill: INK }, g);
+  }
+
+  drawSharp(x, y, color, parent) {
+    const g = svgEl('g', { class: 'accidental' }, parent || this.svg);
+    svgEl('line', { x1: x - 3, y1: y - 15, x2: x - 3, y2: y + 15, stroke: color, 'stroke-width': 1.8 }, g);
+    svgEl('line', { x1: x + 3, y1: y - 17, x2: x + 3, y2: y + 13, stroke: color, 'stroke-width': 1.8 }, g);
+    svgEl('line', { x1: x - 7, y1: y - 3, x2: x + 7, y2: y - 7, stroke: color, 'stroke-width': 4 }, g);
+    svgEl('line', { x1: x - 7, y1: y + 7, x2: x + 7, y2: y + 3, stroke: color, 'stroke-width': 4 }, g);
+  }
+
+  drawFlat(x, y, color, parent) {
+    const g = svgEl('g', { class: 'accidental' }, parent || this.svg);
+    svgEl('line', { x1: x - 4, y1: y - 26, x2: x - 4, y2: y + 7, stroke: color, 'stroke-width': 2 }, g);
+    svgEl('path', {
+      d: `M ${x - 4} ${y + 7} C ${x + 9} ${y}, ${x + 8} ${y - 10}, ${x - 4} ${y - 3}`,
+      fill: 'none', stroke: color, 'stroke-width': 3, 'stroke-linecap': 'round'
+    }, g);
+  }
+
+  /** Desenha uma nota completa (linhas suplementares, acidente, cabeça, haste). */
+  drawNote(pitch, x, opts = {}) {
+    const p = parsePitch(pitch);
+    if (!p) return null;
+    const color = opts.color || INK;
+    const y = staffY(pitch, this.clef);
+    const g = svgEl('g', { class: `staff-note ${opts.className || ''}`.trim() }, this.svg);
+    if (opts.id) g.setAttribute('id', opts.id);
+
+    ledgerLines(y).forEach((ly) => {
+      svgEl('line', { x1: x - 19, y1: ly, x2: x + 19, y2: ly, stroke: PAPER_LINE, 'stroke-width': 1.8 }, g);
+    });
+
+    const inKey = this.keySig.some((k) => k[0] === p.letter && parsePitch(k).acc === p.acc);
+    if (p.acc && !inKey) {
+      if (p.acc > 0) this.drawSharp(x - 24, y, color, g);
+      else this.drawFlat(x - 24, y, color, g);
+    }
+
+    // Cabeça: elipse inclinada ~20°, altura de um espaço (sem cruzar linhas).
+    svgEl('ellipse', { cx: x, cy: y, rx: 11.5, ry: 8.2, transform: `rotate(-20 ${x} ${y})`, fill: color }, g);
+
+    // Haste: 3,5 espaços (70u), alongada até a linha do meio se preciso.
+    const up = y > STAFF.middle;
+    const len = Math.max(70, Math.abs(y - STAFF.middle));
+    const sx = up ? x + 10.4 : x - 10.4;
+    svgEl('line', { x1: sx, y1: up ? y - 2 : y + 2, x2: sx, y2: up ? y - len : y + len, stroke: color, 'stroke-width': 2.4, 'stroke-linecap': 'round' }, g);
+
+    if (opts.label) {
+      svgEl('text', { x, y: 230, 'text-anchor': 'middle', class: 'note-guide', fill: opts.labelColor || '#4b4a57' }, g).textContent = opts.label;
+    }
+    return g;
+  }
+
+  noteLabel(pitch) {
+    const p = parsePitch(pitch);
+    if (!p) return pitch;
+    const accTxt = p.acc > 0 ? '♯' : p.acc < 0 ? '♭' : '';
+    return useLatinNotation ? `${LATIN[p.letter]}${accTxt}` : `${p.letter}${accTxt}`;
+  }
+
+  drawNotes(pitches, highlightIndex = 0) {
+    if (!Array.isArray(pitches)) pitches = [pitches];
+    const n = pitches.length;
+    const startX = this.keySig.length ? 150 : 140;
+    const endX = this.width - 50;
+    const span = endX - startX;
+    const step = n > 1 ? Math.min(78, span / (n - 1)) : 0;
+    const offset = n === 1 ? (startX + endX) / 2 - startX : (span - step * (n - 1)) / 2;
+    pitches.forEach((pitch, idx) => {
+      const isTarget = idx === highlightIndex;
+      const showLabel = this.guideMode || n > 1;
+      this.drawNote(pitch, startX + offset + idx * step, {
+        id: `svg-note-${idx}`,
+        color: isTarget ? this.accent : INK,
+        className: isTarget ? 'note-glow' : '',
+        label: showLabel ? this.noteLabel(pitch) : '',
+        labelColor: isTarget ? this.accent : '#5b5a66'
+      });
+    });
+  }
+
+  drawMystery() {
+    const x = this.width / 2;
+    const t = svgEl('text', { x, y: 128, 'text-anchor': 'middle', class: 'mystery-mark', fill: this.accent }, this.svg);
+    t.textContent = '?';
+  }
+
+  // Comparador educativo: a nota certa (verde) ao lado da tocada (vermelho).
   drawErrorComparison(targetPitch, playedPitch) {
-    this.renderStaff(this.clef);
-    const ns = 'http://www.w3.org/2000/svg';
-    
-    // 1. Desenha nota correta (Verde)
-    const targetPos = (MUSICAL_DATA.staffPositions[this.clef] || {})[targetPitch] || { y: 110, ledger: [] };
-    const x1 = 230;
-    
-    if (targetPos.ledger) {
-      targetPos.ledger.forEach(lY => {
-        const lLine = document.createElementNS(ns, 'line');
-        lLine.setAttribute('x1', (x1 - 25).toString()); lLine.setAttribute('y1', lY.toString());
-        lLine.setAttribute('x2', (x1 + 25).toString()); lLine.setAttribute('y2', lY.toString());
-        lLine.setAttribute('stroke', '#cbd5e1'); lLine.setAttribute('stroke-width', '2');
-        this.svg.appendChild(lLine);
-      });
+    this.renderStaff(this.clef, this.keySig);
+    // Tecla tocada muito longe (ex.: C2 na clave de Sol): mostra na oitava
+    // mais próxima do alvo para caber na pauta.
+    if (playedPitch) {
+      const pp = parsePitch(playedPitch);
+      const tp = parsePitch(targetPitch);
+      let oct = pp.octave;
+      while (Math.abs((oct * 7 + LETTERS.indexOf(pp.letter)) - tp.diatonic) > 4 && oct !== tp.octave) oct += oct < tp.octave ? 1 : -1;
+      playedPitch = `${pp.letter}${pp.acc > 0 ? '#' : pp.acc < 0 ? 'b' : ''}${oct}`;
     }
-
-    const ell1 = document.createElementNS(ns, 'ellipse');
-    ell1.setAttribute('cx', x1.toString()); ell1.setAttribute('cy', targetPos.y.toString());
-    ell1.setAttribute('rx', '14'); ell1.setAttribute('ry', '10');
-    ell1.setAttribute('fill', '#10b981'); ell1.setAttribute('transform', `rotate(-15, ${x1}, ${targetPos.y})`);
-    this.svg.appendChild(ell1);
-
-    const txt1 = document.createElementNS(ns, 'text');
-    txt1.setAttribute('x', x1.toString()); txt1.setAttribute('y', '230');
-    txt1.setAttribute('text-anchor', 'middle'); txt1.setAttribute('fill', '#10b981');
-    txt1.setAttribute('font-weight', 'bold'); txt1.setAttribute('font-size', '15');
-    txt1.textContent = '🎯 CORRETA';
-    this.svg.appendChild(txt1);
-
-    // 2. Desenha nota errada (Vermelho Pulsante)
-    const playedPos = (MUSICAL_DATA.staffPositions[this.clef] || {})[playedPitch] || { y: 90, ledger: [] };
-    const x2 = 410;
-
-    if (playedPos.ledger) {
-      playedPos.ledger.forEach(lY => {
-        const lLine = document.createElementNS(ns, 'line');
-        lLine.setAttribute('x1', (x2 - 25).toString()); lLine.setAttribute('y1', lY.toString());
-        lLine.setAttribute('x2', (x2 + 25).toString()); lLine.setAttribute('y2', lY.toString());
-        lLine.setAttribute('stroke', '#cbd5e1'); lLine.setAttribute('stroke-width', '2');
-        this.svg.appendChild(lLine);
-      });
+    const x1 = this.width * 0.4;
+    const x2 = this.width * 0.64;
+    this.drawNote(targetPitch, x1, { color: '#047857', label: `${this.noteLabel(targetPitch)} ✓`, labelColor: '#047857' });
+    if (playedPitch) {
+      this.drawNote(playedPitch, x2, { color: '#be123c', label: `${this.noteLabel(playedPitch)} ✗`, labelColor: '#be123c', className: 'note-wrong' });
     }
-
-    const ell2 = document.createElementNS(ns, 'ellipse');
-    ell2.setAttribute('cx', x2.toString()); ell2.setAttribute('cy', playedPos.y.toString());
-    ell2.setAttribute('rx', '14'); ell2.setAttribute('ry', '10');
-    ell2.setAttribute('fill', '#f43f5e'); ell2.setAttribute('transform', `rotate(-15, ${x2}, ${playedPos.y})`);
-    this.svg.appendChild(ell2);
-
-    const txt2 = document.createElementNS(ns, 'text');
-    txt2.setAttribute('x', x2.toString()); txt2.setAttribute('y', '230');
-    txt2.setAttribute('text-anchor', 'middle'); txt2.setAttribute('fill', '#f43f5e');
-    txt2.setAttribute('font-weight', 'bold'); txt2.setAttribute('font-size', '15');
-    txt2.textContent = '❌ TOCADA';
-    this.svg.appendChild(txt2);
-
-    // Linha conectora pontilhada entre as duas
-    const connector = document.createElementNS(ns, 'line');
-    connector.setAttribute('x1', (x1 + 20).toString()); connector.setAttribute('y1', targetPos.y.toString());
-    connector.setAttribute('x2', (x2 - 20).toString()); connector.setAttribute('y2', playedPos.y.toString());
-    connector.setAttribute('stroke', '#fbbf24'); connector.setAttribute('stroke-width', '2');
-    connector.setAttribute('stroke-dasharray', '5,5');
-    this.svg.appendChild(connector);
-
     this.animateError();
   }
 
   animateSuccess() {
-    const noteEl = document.getElementById('svg-note-0');
-    if (noteEl) noteEl.classList.add('note-hit-anim');
+    document.getElementById('svg-note-0')?.classList.add('note-hit-anim');
   }
 
   animateError() {
+    if (reduceMotion.matches) return;
     const wrapper = document.querySelector('.staff-display-card');
-    if (wrapper) {
-      wrapper.classList.add('staff-shake');
-      setTimeout(() => wrapper.classList.remove('staff-shake'), 450);
-    }
+    if (!wrapper) return;
+    wrapper.classList.remove('staff-shake');
+    void wrapper.offsetWidth;
+    wrapper.classList.add('staff-shake');
+    setTimeout(() => wrapper.classList.remove('staff-shake'), 450);
   }
 }
 
-// --- 5. INSTÂNCIAS E GERENCIAMENTO DE MODULOS ---
+// --- 5. INSTÂNCIAS E ESTADO DE JOGO --------------------------------------
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const synth = new WebAudioSynth();
 const gameManager = new MaestroGameManager();
 const renderer = new StaffSVGRenderer('staff-canvas');
 
 let currentMode = 'quiz';
 let currentClefSetting = 'treble';
+let questionClef = 'treble';
 let currentTargetPitch = 'G4';
-let currentTargetBaseNote = 'G';
-let useLatinNotation = true;
+let useLatinNotation = gameManager.state.prefs.latin !== false;
 let nextNoteTimer = null;
-let arcadeTimerInterval = null;
-let arcadeEndsAt = 0;
-let onArcadeTick = null;
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) onArcadeTick?.();
-});
-let arcadeTimeRemaining = 60;
-let arcadeIsRunning = false;
-let arcadeCurrentScore = 0;
-let scaleTimer = null;
+let questionHadError = false;
+let answerLocked = false;
 
-// --- 6. TECLADO VIRTUAL DE FÁ2 A DÓ5 E SINCRONIA GRAVE/AGUDO ---
+const arcade = { running: false, paused: false, endsAt: 0, remaining: 60000, score: 0, timer: null };
+const scalePlayback = { timers: [], playing: false };
+
+// --- 6. TECLADO VIRTUAL C2–C6 ----------------------------------------------
+const KB_FIRST = 36;
+const KB_LAST = 84;
+const BLACK_PCS = new Set([1, 3, 6, 8, 10]);
+const PC_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const midiToPitch = (m) => `${PC_NAMES[m % 12]}${Math.floor(m / 12) - 1}`;
+
 function setupVirtualKeyboard() {
-  const kbContainer = document.getElementById('piano-keyboard');
-  if (!kbContainer) return;
-  kbContainer.innerHTML = '';
-
-  // Faixa expandida abarcando os graves da Clave de Fá (Baixo) e os agudos de Sol
-  const whiteKeys = ['F2','G2','A2','B2','C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'];
-  const blackKeyMap = { 'F2':'F#2','G2':'G#2','A2':'A#2', 'C3':'C#3','D3':'D#3','F3':'F#3','G3':'G#3','A3':'A#3', 'C4':'C#4','D4':'D#4','F4':'F#4','G4':'G#4','A4':'A#4' };
-
-  whiteKeys.forEach((pitch, i) => {
-    const wKey = document.createElement('div');
-    wKey.className = 'white-key';
-    wKey.dataset.pitch = pitch;
-    const base = pitch.charAt(0);
-    wKey.textContent = useLatinNotation ? MUSICAL_DATA.latinNames[base] : base;
-    
-    wKey.addEventListener('mousedown', () => handleNoteInput(pitch));
-    wKey.addEventListener('touchstart', (e) => { e.preventDefault(); handleNoteInput(pitch); });
-    
-    kbContainer.appendChild(wKey);
-
-    if (blackKeyMap[pitch]) {
-      const bPitch = blackKeyMap[pitch];
-      const bKey = document.createElement('div');
-      bKey.className = 'black-key';
-      bKey.dataset.pitch = bPitch;
-      bKey.dataset.afterWhite = String(i + 1);
-      
-      bKey.addEventListener('mousedown', (e) => { e.stopPropagation(); handleNoteInput(bPitch); });
-      bKey.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); handleNoteInput(bPitch); });
-
-      kbContainer.appendChild(bKey);
-    }
-  });
-
-  updateKeyboardZones();
-  layoutPartituraKeys();
-}
-
-function layoutPartituraKeys() {
   const kb = document.getElementById('piano-keyboard');
   if (!kb) return;
-  const white = kb.querySelector('.white-key');
-  if (!white) return;
-  const step = white.getBoundingClientRect().width;
-  if (!step) return;
-  const pad = parseFloat(getComputedStyle(kb).paddingLeft) || 0;
-  kb.querySelectorAll('.black-key').forEach((key) => {
-    const after = Number(key.dataset.afterWhite);
-    key.style.left = `${pad + after * step - key.offsetWidth / 2}px`;
+  kb.textContent = '';
+  let white = 0;
+  for (let m = KB_FIRST; m <= KB_LAST; m++) {
+    const pc = m % 12;
+    const pitch = midiToPitch(m);
+    const key = document.createElement('div');
+    key.dataset.pitch = pitch;
+    key.dataset.midi = String(m);
+    if (BLACK_PCS.has(pc)) {
+      key.className = 'black-key';
+      key.style.setProperty('--i', String(white));
+    } else {
+      key.className = 'white-key';
+      if (pc === 0) key.classList.add('is-c');
+      if (m === 60) key.classList.add('is-middle-c');
+      const label = document.createElement('span');
+      label.className = 'wk-label';
+      key.appendChild(label);
+      white++;
+    }
+    kb.appendChild(key);
+  }
+  kb.style.setProperty('--whites', String(white));
+  refreshKeyboardLabels();
+
+  // Multitoque: cada ponteiro toca a tecla em que caiu.
+  kb.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const key = e.target.closest('[data-pitch]');
+    if (!key) return;
+    e.preventDefault();
+    handleNoteInput(key.dataset.pitch, e);
   });
+  kb.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+function refreshKeyboardLabels() {
+  document.querySelectorAll('#piano-keyboard .white-key').forEach((key) => {
+    const p = parsePitch(key.dataset.pitch);
+    const label = key.querySelector('.wk-label');
+    if (!label || !p) return;
+    const name = useLatinNotation ? LATIN[p.letter] : p.letter;
+    label.textContent = p.letter === 'C' ? `${name}${p.octave}` : name;
+  });
+}
+
+function flashKey(pitch) {
+  const p = parsePitch(pitch);
+  if (!p) return;
+  const key = document.querySelector(`#piano-keyboard [data-midi="${p.midi}"]`);
+  if (!key) return;
+  key.classList.remove('active-key');
+  void key.offsetWidth;
+  key.classList.add('active-key');
+  setTimeout(() => key.classList.remove('active-key'), 380);
+}
+
+// Mantém a região da clave visível no teclado rolável do celular.
+function scrollKeyboardTo(pitch) {
+  const wrap = document.getElementById('piano-scroll');
+  const p = parsePitch(pitch);
+  if (!wrap || !p || wrap.scrollWidth <= wrap.clientWidth + 2) return;
+  const key = document.querySelector(`#piano-keyboard [data-midi="${p.midi - (p.midi % 12)}"]`);
+  if (!key) return;
+  const target = key.offsetLeft - wrap.clientWidth / 2 + key.offsetWidth * 3.5;
+  wrap.scrollTo({ left: Math.max(0, target), behavior: reduceMotion.matches ? 'auto' : 'smooth' });
 }
 
 function updateKeyboardZones() {
-  const zoneLeft = document.getElementById('zone-left');
-  const zoneRight = document.getElementById('zone-right');
-  if (!zoneLeft || !zoneRight) return;
-
-  if (currentClefSetting === 'bass') {
-    zoneLeft.classList.add('active-zone');
-    zoneRight.classList.remove('active-zone');
-  } else if (currentClefSetting === 'treble') {
-    zoneRight.classList.add('active-zone');
-    zoneLeft.classList.remove('active-zone');
-  } else {
-    zoneLeft.classList.add('active-zone');
-    zoneRight.classList.add('active-zone');
-  }
+  const left = document.getElementById('zone-left');
+  const right = document.getElementById('zone-right');
+  if (!left || !right) return;
+  left.classList.toggle('active-zone', currentClefSetting !== 'treble');
+  right.classList.toggle('active-zone', currentClefSetting !== 'bass');
 }
 
 function updateNotationButtons() {
-  const btns = document.querySelectorAll('.trigger-pad, .note-btn');
-  btns.forEach(b => {
+  document.querySelectorAll('.trigger-pad').forEach((b) => {
     const note = b.dataset.note;
     const nameEl = b.querySelector('.note-name');
     const cifraEl = b.querySelector('.note-cifra');
-    const hintEl = b.querySelector('.note-octave-hint');
-
-    if (nameEl && cifraEl) {
-      if (useLatinNotation) {
-        nameEl.textContent = MUSICAL_DATA.latinNames[note];
-        cifraEl.textContent = note;
-      } else {
-        nameEl.textContent = note;
-        cifraEl.textContent = MUSICAL_DATA.latinNames[note];
-      }
-    }
-
-    // Atualiza dica de oitava (Baixo vs Agudo) nos botões da UI!
-    if (hintEl) {
-      if (currentClefSetting === 'bass') {
-        hintEl.textContent = 'Oitava 3 (Grave)';
-        hintEl.style.color = '#a855f7';
-      } else if (currentClefSetting === 'treble') {
-        hintEl.textContent = 'Oitava 4 (Agudo)';
-        hintEl.style.color = '#22d3ee';
-      } else {
-        hintEl.textContent = 'Grave / Agudo';
-        hintEl.style.color = '#fbbf24';
-      }
-    }
+    if (nameEl) nameEl.textContent = useLatinNotation ? LATIN[note] : note;
+    if (cifraEl) cifraEl.textContent = useLatinNotation ? note : LATIN[note];
   });
-
-  setupVirtualKeyboard();
-  const notDisp = document.getElementById('notation-mode-display');
-  if (notDisp) notDisp.textContent = useLatinNotation ? 'Notação: Dó Ré Mi' : 'Notação: C D E';
+  refreshKeyboardLabels();
+  setText('notation-mode-display', useLatinNotation ? 'Dó Ré Mi' : 'C D E');
 }
 
-// --- 7. FLUXO DE QUIZ E JOGOS ---
+// --- 7. FLUXO DE PERGUNTAS ------------------------------------------------
 function updateFeedback(msg, type = 'normal') {
   const banner = document.getElementById('feedback-display');
   const icon = document.getElementById('feedback-icon');
   const text = document.getElementById('feedback-text');
-  if (!banner) return;
-
-  banner.className = `feedback-bar-integrated ${type === 'normal' ? '' : type}`.trim();
-  if (type === 'success') {
-    icon.textContent = '🌟';
-    banner.classList.add('feedback-pop');
-  } else if (type === 'error') {
-    icon.textContent = '❌';
-    banner.classList.add('feedback-pop');
-  } else {
-    icon.textContent = '💡';
-  }
-  text.innerHTML = msg;
+  if (!banner || !text) return;
+  banner.classList.remove('success', 'error', 'feedback-pop');
   if (type === 'success' || type === 'error') {
-    clearTimeout(updateFeedback._popTimer);
-    updateFeedback._popTimer = setTimeout(() => banner.classList.remove('feedback-pop'), 420);
+    banner.classList.add(type);
+    if (!reduceMotion.matches) {
+      void banner.offsetWidth;
+      banner.classList.add('feedback-pop');
+    }
   }
+  if (icon) icon.textContent = type === 'success' ? '✅' : type === 'error' ? '↺' : '💡';
+  text.innerHTML = msg;
+}
+
+function nameOf(letter) {
+  return useLatinNotation ? LATIN[letter] : letter;
+}
+
+function pickTarget() {
+  let clef = currentClefSetting;
+  if (clef === 'both') clef = Math.random() < 0.5 ? 'treble' : 'bass';
+  const pool = poolFor(clef, gameManager.state.level);
+  let next = currentTargetPitch;
+  let guard = 0;
+  while ((next === currentTargetPitch || !pool.includes(next)) && guard++ < 20) {
+    next = pool[Math.floor(Math.random() * pool.length)];
+  }
+  questionClef = clef;
+  currentTargetPitch = next;
 }
 
 function setTargetClefAndPitch() {
   clearTimeout(nextNoteTimer);
   nextNoteTimer = null;
-  let selectedClef = document.getElementById('clef-select')?.value || 'treble';
-  currentClefSetting = selectedClef;
-  
-  if (selectedClef === 'both') {
-    selectedClef = Math.random() < 0.5 ? 'treble' : 'bass';
-  }
-
-  const availablePitches = Object.keys(MUSICAL_DATA.staffPositions[selectedClef])
-    .filter((pitch) => !pitch.includes('#') && !pitch.slice(1).includes('b'));
-  let nextPitch = currentTargetPitch;
-  while (nextPitch === currentTargetPitch && availablePitches.length > 1) {
-    nextPitch = availablePitches[Math.floor(Math.random() * availablePitches.length)];
-  }
-
-  currentTargetPitch = nextPitch;
-  currentTargetBaseNote = currentTargetPitch.charAt(0);
-  
-  updateNotationButtons();
+  answerLocked = false;
+  questionHadError = false;
+  currentClefSetting = document.getElementById('clef-select')?.value || 'treble';
+  pickTarget();
   updateKeyboardZones();
-  renderer.renderStaff(selectedClef);
+  renderer.renderStaff(questionClef);
 
   if (currentMode === 'ear') {
-    renderer.clear();
-    renderer.renderStaff(selectedClef);
-    const ns = 'http://www.w3.org/2000/svg';
-    const text = document.createElementNS(ns, 'text');
-    text.setAttribute('x', '310'); text.setAttribute('y', '135');
-    text.setAttribute('font-size', '70'); text.setAttribute('fill', selectedClef === 'bass' ? '#ec4899' : '#22d3ee');
-    text.setAttribute('class', 'note-glow'); text.textContent = '❓';
-    renderer.svg.appendChild(text);
-    
-    setTimeout(() => synth.playNote(currentTargetPitch, 1.3), 250);
+    renderer.drawMystery();
+    playTargetSound(0.25);
   } else {
     renderer.drawNotes([currentTargetPitch], 0);
   }
+  scrollKeyboardTo(currentTargetPitch);
 }
 
-function handleNoteInput(playedPitchOrNote, event) {
-  if (scaleTimer !== null) return;
+function playTargetSound(delay = 0) {
+  synth.unlock();
+  const t = synth.now() + delay;
+  synth.playNote(currentTargetPitch, { when: t, dur: 1.2, vel: 0.8 });
+}
 
-  const playedBaseNote = playedPitchOrNote.charAt(0);
-  
-  // SOLUÇÃO DO ÁUDIO DA CLAVE DE FÁ:
-  // Se o usuário clicou no botão "Dó" (sem oitava especificada) e estamos na Clave de Fá,
-  // reproduzimos o áudio na Oitava 3 (ou 2), soando grave e autêntico!
-  let soundPitch = playedPitchOrNote;
-  if (playedPitchOrNote.length === 1) {
-    const targetOctave = renderer.clef === 'bass' ? '3' : '4';
-    soundPitch = `${playedBaseNote}${targetOctave}`;
+// Botão de letra (sem oitava) soa na oitava mais próxima do alvo.
+function resolvePadPitch(letter) {
+  const target = parsePitch(currentTargetPitch);
+  const baseOct = target ? target.octave : (renderer.clef === 'bass' ? 3 : 4);
+  let best = `${letter}${baseOct}`;
+  let bestDist = Infinity;
+  for (let o = baseOct - 1; o <= baseOct + 1; o++) {
+    const c = parsePitch(`${letter}${o}`);
+    const d = target ? Math.abs(c.midi - target.midi) : 0;
+    if (d < bestDist) { bestDist = d; best = `${letter}${o}`; }
   }
-  
-  synth.playNote(soundPitch, 0.85);
+  return best;
+}
 
-  const keyEl = document.querySelector(`[data-pitch="${soundPitch}"]`);
-  if (keyEl) {
-    keyEl.classList.add('active-key');
-    setTimeout(() => keyEl.classList.remove('active-key'), 350);
+function eventPoint(event) {
+  if (event && Number.isFinite(event.clientX) && event.clientX > 0) return { x: event.clientX, y: event.clientY };
+  const banner = document.getElementById('feedback-display');
+  if (banner) {
+    const r = banner.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top };
+  }
+  return { x: window.innerWidth / 2, y: window.innerHeight / 3 };
+}
+
+function handleNoteInput(pitchOrLetter, event) {
+  synth.unlock();
+  hideAudioHintSoon();
+  const fromPad = pitchOrLetter.length === 1;
+  const soundPitch = fromPad ? resolvePadPitch(pitchOrLetter) : pitchOrLetter;
+  const played = parsePitch(soundPitch);
+  if (!played) return;
+
+  synth.playNote(soundPitch, { dur: 0.9, vel: 0.78 });
+  flashKey(soundPitch);
+
+  if (currentMode === 'scales') {
+    if (!scalePlayback.playing) updateFeedback(`Você tocou <strong>${renderer.noteLabel(soundPitch)}${played.octave}</strong>.`);
+    return;
   }
 
-  if (currentMode === 'quiz' || currentMode === 'ear' || (currentMode === 'arcade' && arcadeIsRunning)) {
-    if (nextNoteTimer !== null) return;
-    const isCorrect = (playedBaseNote === currentTargetBaseNote);
+  const answering = currentMode === 'quiz' || currentMode === 'ear' || (currentMode === 'arcade' && arcade.running && !arcade.paused);
+  if (!answering || answerLocked) return;
 
-    let clientX = window.innerWidth / 2;
-    let clientY = window.innerHeight / 3;
-    if (event && event.clientX) {
-      clientX = event.clientX;
-      clientY = event.clientY;
-    } else {
-      const banner = document.getElementById('feedback-display');
-      if (banner) {
-        const rect = banner.getBoundingClientRect();
-        clientX = rect.left + rect.width / 2;
-        clientY = rect.top;
-      }
+  const target = parsePitch(currentTargetPitch);
+  // Leitura pelo nome: a letra precisa bater e não pode haver acidente.
+  const isCorrect = played.letter === target.letter && played.acc === target.acc;
+  const exactOctave = played.midi === target.midi;
+  const pt = eventPoint(event);
+  const where = positionName(currentTargetPitch, questionClef);
+  const correctName = nameOf(target.letter);
+
+  if (isCorrect) {
+    answerLocked = true;
+    synth.playSFX('correct');
+    renderer.animateSuccess();
+    if (currentMode === 'ear') {
+      // Revela a nota que soou, para ligar som e escrita.
+      renderer.renderStaff(questionClef);
+      renderer.drawNotes([currentTargetPitch], 0);
+      document.getElementById('svg-note-0')?.classList.add('note-hit-anim');
     }
-
-    const targetPosInfo = (MUSICAL_DATA.staffPositions[renderer.clef] || {})[currentTargetPitch] || { name: currentTargetPitch };
-    const correctName = useLatinNotation ? MUSICAL_DATA.latinNames[currentTargetBaseNote] : currentTargetBaseNote;
-
-    if (isCorrect) {
-      synth.playSFX('correct');
-      renderer.animateSuccess();
-      gameManager.registerHit(true, currentMode === 'ear');
-      gameManager.addXP(10, clientX, clientY);
-
-      if (currentMode === 'arcade') {
-        arcadeCurrentScore += 10;
-        document.getElementById('arcade-score').textContent = arcadeCurrentScore;
-      }
-
-      updateFeedback(`Perfeito! É a nota <strong>${correctName}</strong> (${targetPosInfo.name})!`, 'success');
-
-      nextNoteTimer = setTimeout(setTargetClefAndPitch, 850);
-
-    } else {
-      synth.playSFX('error');
-      gameManager.registerHit(false, currentMode === 'ear');
-      
-      const playedName = useLatinNotation ? MUSICAL_DATA.latinNames[playedBaseNote] : playedBaseNote;
-      updateFeedback(`Quase! Você tocou <strong>${playedName}</strong>, mas a nota no pentagrama era <strong>${correctName}</strong> (${targetPosInfo.name}).`, 'error');
-
-      // Se não for modo auditivo, projeta a comparação na pauta!
-      if (currentMode !== 'ear') {
-        renderer.drawErrorComparison(currentTargetPitch, soundPitch);
-      }
+    // O erro desta pergunta já foi contado; a correção só rende XP reduzido.
+    if (!questionHadError) gameManager.registerHit(true, currentMode === 'ear');
+    gameManager.addXP(questionHadError ? 4 : 10, pt.x, pt.y);
+    if (currentMode === 'arcade') {
+      arcade.score += 10 + Math.min(10, gameManager.state.combo);
+      setText('arcade-score', String(arcade.score));
     }
-  } else if (currentMode === 'scales') {
-    updateFeedback(`Você tocou <strong>${soundPitch}</strong> no sintetizador!`, 'normal');
+    const octaveNote = !fromPad && !exactOctave ? ` (mesma nota, outra oitava — a da pauta é ${correctName}${target.octave})` : '';
+    updateFeedback(`<strong>${correctName}${target.octave}</strong> — ${where}.${octaveNote}`, 'success');
+    nextNoteTimer = setTimeout(setTargetClefAndPitch, currentMode === 'arcade' ? 420 : 900);
+  } else {
+    questionHadError = true;
+    synth.playSFX('error');
+    gameManager.registerHit(false, currentMode === 'ear');
+    const playedName = `${nameOf(played.letter)}${played.acc > 0 ? '♯' : played.acc < 0 ? '♭' : ''}`;
+    if (currentMode === 'ear') {
+      updateFeedback(`Não é <strong>${playedName}</strong>. Ouça de novo (<kbd>R</kbd>) e compare.`, 'error');
+      setTimeout(() => playTargetSound(0), 500);
+    } else if (currentMode === 'arcade') {
+      updateFeedback(`Era <strong>${correctName}</strong> (${where}).`, 'error');
+      renderer.animateError();
+      answerLocked = true;
+      nextNoteTimer = setTimeout(setTargetClefAndPitch, 650);
+    } else {
+      updateFeedback(`Você tocou <strong>${playedName}</strong>; a nota da pauta é <strong>${correctName}</strong> — ${where}. Toque ${correctName} para seguir.`, 'error');
+      renderer.drawErrorComparison(currentTargetPitch, soundPitch);
+    }
   }
 }
 
-// --- 8. LAB DE ESCALAS PRO (ASCENDENTE E DESCENDENTE) ---
+// --- 8. ESCALAS (agendadas no relógio do áudio) ---------------------------
+function stopScale(silent) {
+  scalePlayback.timers.forEach(clearTimeout);
+  scalePlayback.timers = [];
+  scalePlayback.playing = false;
+  const stopBtn = document.getElementById('btn-stop-scale');
+  if (stopBtn) stopBtn.disabled = true;
+  if (!silent) updateFeedback('Escala interrompida.');
+}
+
+function showScale(scaleId, highlight = -1, dir = 'asc') {
+  const scale = SCALES[scaleId];
+  if (!scale) return;
+  const notes = dir === 'asc' ? scale.notes : [...scale.notes].reverse();
+  renderer.renderStaff(scale.clef, scale.keySig);
+  renderer.drawNotes(notes, highlight);
+  const theory = document.getElementById('scale-theory-desc');
+  if (theory) theory.innerHTML = scale.theory;
+}
+
 function playSelectedScale(direction = 'asc') {
-  if (scaleTimer !== null) return;
-  const scaleSelect = document.getElementById('scale-select');
-  const scaleId = scaleSelect ? scaleSelect.value : 'C-major';
-  const scaleObj = MUSICAL_DATA.scales[scaleId];
-  if (!scaleObj) return;
-
-  updateFeedback(`🎶 Tocando arpejo ${direction === 'asc' ? 'ascendente' : 'descendente'} de <strong>${scaleObj.name}</strong>...`, 'normal');
-  renderer.renderStaff(scaleObj.clef);
-  
-  const notesToPlay = direction === 'asc' ? [...scaleObj.notes] : [...scaleObj.notes].reverse();
-  renderer.drawNotes(notesToPlay, -1);
-
+  stopScale(true);
+  synth.unlock();
+  const scaleId = document.getElementById('scale-select')?.value || 'C-major';
+  const scale = SCALES[scaleId];
+  if (!scale) return;
+  const notes = direction === 'asc' ? scale.notes : [...scale.notes].reverse();
+  const gap = 0.42;
+  scalePlayback.playing = true;
+  const stopBtn = document.getElementById('btn-stop-scale');
+  if (stopBtn) stopBtn.disabled = false;
+  updateFeedback(`🎶 ${scale.name} ${direction === 'asc' ? 'subindo' : 'descendo'}…`);
+  showScale(scaleId, -1, direction);
   gameManager.registerScaleExplored(scaleId);
 
-  function playNext(index) {
-    const pitch = notesToPlay[index];
-    synth.playNote(pitch, 0.65);
-    renderer.drawNotes(notesToPlay, index);
-
-    const keyEl = document.querySelector(`[data-pitch="${pitch}"]`);
-    if (keyEl) {
-      keyEl.classList.add('active-key');
-      setTimeout(() => keyEl.classList.remove('active-key'), 350);
-    }
-
-    if (index === notesToPlay.length - 1) {
-      scaleTimer = setTimeout(() => {
-        scaleTimer = null;
-        updateFeedback(`✅ Escala de ${scaleObj.name} concluída com sucesso!`, 'success');
-      }, 650);
-    } else {
-      scaleTimer = setTimeout(() => playNext(index + 1), 420);
-    }
-  }
-  playNext(0);
+  const start = synth.now() + 0.08;
+  notes.forEach((pitch, i) => {
+    synth.playNote(pitch, { when: start + i * gap, dur: i === notes.length - 1 ? 1.1 : 0.5, vel: 0.72 });
+    scalePlayback.timers.push(setTimeout(() => {
+      showScale(scaleId, i, direction);
+      flashKey(pitch);
+    }, 80 + i * gap * 1000));
+  });
+  scalePlayback.timers.push(setTimeout(() => {
+    scalePlayback.playing = false;
+    if (stopBtn) stopBtn.disabled = true;
+    updateFeedback(`✅ ${scale.name}: ${notes.map((n) => renderer.noteLabel(n)).join(' · ')}`, 'success');
+  }, 80 + notes.length * gap * 1000 + 400));
 }
 
-// --- 9. MODO CORRIDA 60s ---
+// --- 9. DESAFIO 60s ---------------------------------------------------------
+function renderArcadeButton() {
+  const btn = document.getElementById('btn-start-arcade');
+  if (!btn) return;
+  if (arcade.running && arcade.paused) {
+    btn.textContent = '▶ Continuar';
+    btn.disabled = false;
+    btn.classList.add('pulse-btn');
+  } else if (arcade.running) {
+    btn.textContent = '⏸ Pausar';
+    btn.disabled = false;
+    btn.classList.remove('pulse-btn');
+  } else {
+    btn.textContent = arcade.score > 0 ? '⚡ Jogar de novo' : '⚡ Iniciar';
+    btn.disabled = false;
+    btn.classList.add('pulse-btn');
+  }
+}
+
+function tickArcade() {
+  if (!arcade.running || arcade.paused) return;
+  const left = Math.max(0, arcade.endsAt - performance.now());
+  setText('timer-display', `${Math.ceil(left / 1000)}s`);
+  document.getElementById('timer-display')?.classList.toggle('hurry', left < 10000);
+  if (left <= 0) finishArcade();
+}
+
 function startArcadeMode() {
-  if (arcadeIsRunning) return;
-  arcadeIsRunning = true;
-  arcadeTimeRemaining = 60;
-  arcadeCurrentScore = 0;
-  
-  const timerEl = document.getElementById('timer-display');
-  const scoreEl = document.getElementById('arcade-score');
-  const btnStart = document.getElementById('btn-start-arcade');
-
-  if (scoreEl) scoreEl.textContent = '0';
-  if (btnStart) {
-    btnStart.textContent = '⏳ Desafio Em Curso...';
-    btnStart.disabled = true;
-    btnStart.classList.remove('pulse-btn');
+  synth.unlock();
+  if (arcade.running) {
+    if (arcade.paused) resumeArcade();
+    else pauseArcade('Pausado.');
+    return;
   }
-
-  updateFeedback('⚡ Valendo! Acerte o máximo de notas na pauta o mais rápido que puder!', 'normal');
+  arcade.running = true;
+  arcade.paused = false;
+  arcade.score = 0;
+  arcade.endsAt = performance.now() + 60000;
+  setText('arcade-score', '0');
+  updateFeedback('⚡ Valendo! Acerte o máximo de notas em 60 segundos.');
   setTargetClefAndPitch();
-
-  clearInterval(arcadeTimerInterval);
-  arcadeEndsAt = Date.now() + 60_000;
-
-  const finishArcade = () => {
-    clearInterval(arcadeTimerInterval);
-    arcadeTimerInterval = null;
-    onArcadeTick = null;
-    clearTimeout(nextNoteTimer);
-    nextNoteTimer = null;
-    arcadeIsRunning = false;
-    arcadeTimeRemaining = 0;
-    if (timerEl) timerEl.textContent = '0s';
-    if (btnStart) {
-      btnStart.textContent = '⚡ Jogar Novamente';
-      btnStart.disabled = false;
-      btnStart.classList.add('pulse-btn');
-    }
-
-    if (arcadeCurrentScore > gameManager.state.maxArcadeScore) {
-      gameManager.state.maxArcadeScore = arcadeCurrentScore;
-      gameManager.saveState();
-      document.getElementById('arcade-highscore').textContent = arcadeCurrentScore;
-      updateFeedback(`🏆 NOVO RECORDE PESSOAL! Você conquistou impressionantes ${arcadeCurrentScore} pontos!`, 'success');
-      synth.playSFX('levelup');
-    } else {
-      updateFeedback(`⏰ Fim de papo! Você conquistou ${arcadeCurrentScore} pontos neste round!`, 'normal');
-    }
-
-    if (arcadeCurrentScore >= 150) gameManager.unlockBadge('speed_demon');
-  };
-
-  const tickArcade = () => {
-    if (!arcadeIsRunning) return;
-    arcadeTimeRemaining = Math.max(0, Math.ceil((arcadeEndsAt - Date.now()) / 1000));
-    if (timerEl) timerEl.textContent = `${arcadeTimeRemaining}s`;
-    if (arcadeTimeRemaining <= 0) finishArcade();
-  };
-
-  onArcadeTick = tickArcade;
+  clearInterval(arcade.timer);
+  arcade.timer = setInterval(tickArcade, 200);
   tickArcade();
-  arcadeTimerInterval = setInterval(tickArcade, 250);
+  renderArcadeButton();
 }
 
-// --- 10. GALERIA DE TROFÉUS MODAL ---
+function pauseArcade(msg) {
+  if (!arcade.running || arcade.paused) return;
+  arcade.paused = true;
+  arcade.remaining = Math.max(0, arcade.endsAt - performance.now());
+  clearInterval(arcade.timer);
+  clearTimeout(nextNoteTimer);
+  nextNoteTimer = null;
+  updateFeedback(`${msg} Toque <strong>Continuar</strong> quando quiser.`);
+  renderArcadeButton();
+}
+
+function resumeArcade() {
+  if (!arcade.running || !arcade.paused) return;
+  arcade.paused = false;
+  arcade.endsAt = performance.now() + arcade.remaining;
+  arcade.timer = setInterval(tickArcade, 200);
+  setTargetClefAndPitch();
+  updateFeedback('Valendo de novo!');
+  renderArcadeButton();
+}
+
+function stopArcade() {
+  clearInterval(arcade.timer);
+  arcade.timer = null;
+  arcade.running = false;
+  arcade.paused = false;
+  setText('timer-display', '60s');
+  document.getElementById('timer-display')?.classList.remove('hurry');
+  renderArcadeButton();
+}
+
+function finishArcade() {
+  const score = arcade.score;
+  stopArcade();
+  clearTimeout(nextNoteTimer);
+  nextNoteTimer = null;
+  answerLocked = true;
+  setText('timer-display', '0s');
+  if (score > gameManager.state.maxArcadeScore) {
+    gameManager.state.maxArcadeScore = score;
+    gameManager.saveState();
+    updateFeedback(`🏆 Novo recorde: <strong>${score}</strong> pontos!`, 'success');
+    synth.playSFX('levelup');
+  } else {
+    updateFeedback(`⏰ Tempo! <strong>${score}</strong> pontos. Recorde: ${gameManager.state.maxArcadeScore}.`);
+  }
+  if (score >= 150) gameManager.unlockBadge('speed_demon');
+}
+
+// --- 10. MODAL DE TROFÉUS ---------------------------------------------------
 function renderBadgesModal() {
   const container = document.getElementById('badges-grid-container');
   if (!container) return;
-  container.innerHTML = '';
-
-  Object.values(BADGES_DEFINITIONS).forEach(b => {
-    const isUnlocked = gameManager.state.unlockedBadges.includes(b.id);
+  container.textContent = '';
+  Object.values(BADGES_DEFINITIONS).forEach((b) => {
+    const unlocked = gameManager.state.unlockedBadges.includes(b.id);
     const card = document.createElement('div');
-    card.className = `badge-card ${isUnlocked ? 'unlocked' : 'locked'}`;
-    card.innerHTML = `
-      <div class="badge-icon">${isUnlocked ? b.icon : '🔒'}</div>
-      <div class="badge-info">
-        <h3>${b.title}</h3>
-        <p>${b.desc}</p>
-        <small style="color: ${isUnlocked ? '#34d399' : '#64748b'}; font-weight: 700; margin-top: 6px; display: block;">
-          ${isUnlocked ? '✓ Desbloqueada & Conquistada!' : '🔒 Travada no localStorage'}
-        </small>
-      </div>
-    `;
+    card.className = `badge-card ${unlocked ? 'unlocked' : 'locked'}`;
+    const icon = document.createElement('div');
+    icon.className = 'badge-icon';
+    icon.textContent = unlocked ? b.icon : '🔒';
+    const info = document.createElement('div');
+    info.className = 'badge-info';
+    const h3 = document.createElement('h3');
+    h3.textContent = b.title;
+    const p = document.createElement('p');
+    p.textContent = b.desc;
+    info.append(h3, p);
+    card.append(icon, info);
     container.appendChild(card);
   });
 }
 
-function setupModalListeners() {
+let lastFocus = null;
+function openModal() {
   const modal = document.getElementById('modal-badges');
-  const btnOpen = document.getElementById('btn-open-badges');
-  const btnClose = document.getElementById('btn-close-badges');
-  const btnReset = document.getElementById('btn-reset-data');
-
-  if (btnOpen && modal) {
-    btnOpen.addEventListener('click', () => {
-      gameManager.updateDashboardUI();
-      renderBadgesModal();
-      modal.classList.remove('hidden');
-    });
-  }
-
-  if (btnClose && modal) {
-    btnClose.addEventListener('click', () => modal.classList.add('hidden'));
-  }
-
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.classList.add('hidden');
-    });
-  }
-
-  if (btnReset) {
-    btnReset.addEventListener('click', () => gameManager.resetProgress());
-  }
+  if (!modal) return;
+  lastFocus = document.activeElement;
+  gameManager.updateDashboardUI();
+  renderBadgesModal();
+  modal.classList.remove('hidden');
+  document.getElementById('btn-close-badges')?.focus();
+  if (arcade.running) pauseArcade('Pausado.');
 }
 
-// --- 11. ABAS E INTERATIVIDADE COMPLETA ---
+function closeModal() {
+  const modal = document.getElementById('modal-badges');
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.add('hidden');
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+
+function setupModalListeners() {
+  document.getElementById('btn-open-badges')?.addEventListener('click', openModal);
+  document.getElementById('btn-close-badges')?.addEventListener('click', closeModal);
+  document.getElementById('modal-badges')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-badges') closeModal();
+  });
+  document.getElementById('btn-reset-data')?.addEventListener('click', () => gameManager.resetProgress());
+}
+
+// --- 11. ABAS E CONTROLES ---------------------------------------------------
+const MODE_COPY = {
+  quiz: { instr: 'Qual é esta nota?', feedback: 'Leia a nota em destaque e toque o nome dela.' },
+  ear: { instr: 'Que nota soou?', feedback: 'Ouça e responda. <kbd>R</kbd> ou 🔁 repete o som.' },
+  arcade: { instr: 'Quantas em 60 s?', feedback: 'Toque <strong>Iniciar</strong> para disparar o cronômetro.' },
+  scales: { instr: 'Ouça e veja a escala', feedback: 'Escolha uma escala e toque ▲ ou ▼.' }
+};
+
+function switchMode(mode) {
+  if (!MODE_COPY[mode]) return;
+  stopScale(true);
+  clearTimeout(nextNoteTimer);
+  nextNoteTimer = null;
+  if (arcade.running) stopArcade();
+  arcade.score = 0;
+  setText('arcade-score', '0');
+  renderArcadeButton();
+
+  currentMode = mode;
+  document.querySelectorAll('.tab-btn').forEach((t) => {
+    const on = t.dataset.mode === mode;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
+  });
+  document.getElementById('toolbar-scales')?.classList.toggle('hidden', mode !== 'scales');
+  document.getElementById('toolbar-arcade')?.classList.toggle('hidden', mode !== 'arcade');
+  const replay = document.getElementById('btn-replay');
+  if (replay) replay.hidden = mode !== 'ear';
+  document.body.dataset.mode = mode;
+  setText('mode-instruction-text', MODE_COPY[mode].instr);
+  updateFeedback(MODE_COPY[mode].feedback);
+
+  if (mode === 'scales') {
+    showScale(document.getElementById('scale-select')?.value || 'C-major');
+  } else if (mode === 'arcade') {
+    answerLocked = true;
+    renderer.renderStaff(currentClefSetting === 'bass' ? 'bass' : 'treble');
+    renderer.drawMystery();
+  } else {
+    setTargetClefAndPitch();
+  }
+  savePrefs();
+}
+
+function savePrefs() {
+  gameManager.state.prefs = {
+    latin: useLatinNotation,
+    guide: renderer.guideMode,
+    clef: document.getElementById('clef-select')?.value,
+    instrument: synth.instrument,
+    mode: currentMode
+  };
+  gameManager.saveState();
+}
+
 function setupTabs() {
-  const tabs = document.querySelectorAll('.tab-btn');
-  const toolScales = document.getElementById('toolbar-scales');
-  const toolArcade = document.getElementById('toolbar-arcade');
-  const instrText = document.getElementById('mode-instruction-text');
-
-  tabs.forEach(tab => {
+  const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+  tabs.forEach((tab, i) => {
     tab.addEventListener('click', () => {
-      if (currentMode === tab.dataset.mode) return;
-      clearTimeout(scaleTimer);
-      scaleTimer = null;
-      clearTimeout(nextNoteTimer);
-      nextNoteTimer = null;
-      if (arcadeIsRunning) {
-        clearInterval(arcadeTimerInterval);
-        onArcadeTick = null;
-        arcadeIsRunning = false;
-        const start = document.getElementById('btn-start-arcade');
-        start.disabled = false;
-        start.classList.add('pulse-btn');
-        start.textContent = '⚡ Iniciar Desafio';
-        document.getElementById('timer-display').textContent = '60s';
-        document.getElementById('arcade-score').textContent = '0';
-      }
-      tabs.forEach(t => {
-        t.classList.remove('active');
-        t.setAttribute('aria-selected', 'false');
-      });
-      tab.classList.add('active');
-      tab.setAttribute('aria-selected', 'true');
-      
-      currentMode = tab.dataset.mode;
-
-      if (toolScales) toolScales.classList.add('hidden');
-      if (toolArcade) toolArcade.classList.add('hidden');
-
-      if (currentMode === 'quiz') {
-        if (instrText) instrText.textContent = '🎯 Desafio da Clave: Toque no piano ou botão correspondente à nota iluminada!';
-        updateFeedback('Qual é esta nota no pentagrama?', 'normal');
-        setTargetClefAndPitch();
-      } else if (currentMode === 'scales') {
-        if (toolScales) toolScales.classList.remove('hidden');
-        if (instrText) instrText.textContent = '📈 Laboratório de Escalas: Estude a estrutura teórica e ouça as notas ao vivo!';
-        updateFeedback('Escolha uma escala abaixo e toque para ver na pauta!', 'normal');
-        
-        const select = document.getElementById('scale-select');
-        if (select && MUSICAL_DATA.scales[select.value]) {
-          const scaleObj = MUSICAL_DATA.scales[select.value];
-          renderer.renderStaff(scaleObj.clef);
-          renderer.drawNotes(scaleObj.notes, -1);
-          const theoryEl = document.getElementById('scale-theory-desc');
-          if (theoryEl && scaleObj.theory) theoryEl.innerHTML = scaleObj.theory;
-        }
-      } else if (currentMode === 'ear') {
-        if (instrText) instrText.textContent = '👂 Treino Auditivo: Ouça o timbre com atenção e descubra qual tom foi tocado!';
-        updateFeedback('Ouça a nota misteriosa e toque a sua resposta no teclado!', 'normal');
-        setTargetClefAndPitch();
-      } else if (currentMode === 'arcade') {
-        if (toolArcade) toolArcade.classList.remove('hidden');
-        if (instrText) instrText.textContent = '⚡ Corrida 60s: Frenesi musical contra o tempo! Quebre o recorde!';
-        updateFeedback('Pressione Iniciar Desafio para acionar o cronômetro!', 'normal');
-      }
+      if (currentMode !== tab.dataset.mode) switchMode(tab.dataset.mode);
+    });
+    // Setas navegam entre abas (padrão WAI-ARIA de tablist).
+    tab.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+      next.focus();
+      next.click();
     });
   });
 }
 
+const PHYS_KEYS = { KeyA: 0, KeyW: 1, KeyS: 2, KeyE: 3, KeyD: 4, KeyF: 5, KeyT: 6, KeyG: 7, KeyY: 8, KeyH: 9, KeyU: 10, KeyJ: 11, KeyK: 12 };
+
 function setupControlBars() {
+  const prefs = gameManager.state.prefs || {};
   const instrumentSelect = document.getElementById('instrument-select');
   if (instrumentSelect) {
-    instrumentSelect.addEventListener('change', (e) => synth.setInstrument(e.target.value));
+    if (prefs.instrument && instrumentSelect.querySelector(`option[value="${prefs.instrument}"]`)) instrumentSelect.value = prefs.instrument;
+    synth.setInstrument(instrumentSelect.value);
+    instrumentSelect.addEventListener('change', () => {
+      synth.setInstrument(instrumentSelect.value);
+      synth.unlock();
+      synth.playNote(currentMode === 'scales' ? 'C4' : currentTargetPitch, { dur: 0.8 });
+      savePrefs();
+    });
   }
 
   const clefSelect = document.getElementById('clef-select');
   if (clefSelect) {
+    if (prefs.clef && clefSelect.querySelector(`option[value="${prefs.clef}"]`)) clefSelect.value = prefs.clef;
+    currentClefSetting = clefSelect.value;
     clefSelect.addEventListener('change', () => {
-      if (currentMode !== 'scales') setTargetClefAndPitch();
+      currentClefSetting = clefSelect.value;
+      updateKeyboardZones();
+      if (currentMode === 'quiz' || currentMode === 'ear') setTargetClefAndPitch();
+      else if (currentMode === 'arcade' && arcade.running && !arcade.paused) setTargetClefAndPitch();
+      savePrefs();
     });
   }
 
-  const btnNotation = document.getElementById('toggle-notation-btn');
-  if (btnNotation) {
-    btnNotation.addEventListener('click', () => {
-      useLatinNotation = !useLatinNotation;
-      updateNotationButtons();
-      synth.playSFX('coin');
-    });
-  }
+  document.getElementById('toggle-notation-btn')?.addEventListener('click', () => {
+    useLatinNotation = !useLatinNotation;
+    updateNotationButtons();
+    if (currentMode === 'scales') showScale(document.getElementById('scale-select').value);
+    else if (currentMode !== 'ear' && !answerLocked) { renderer.renderStaff(questionClef); renderer.drawNotes([currentTargetPitch], 0); }
+    savePrefs();
+  });
 
   const btnHint = document.getElementById('toggle-hint-btn');
-  const hintStatus = document.getElementById('hint-status');
-  if (btnHint && hintStatus) {
-    btnHint.addEventListener('click', () => {
-      renderer.guideMode = !renderer.guideMode;
-      hintStatus.textContent = renderer.guideMode ? 'ON (Ativado)' : 'OFF';
-      btnHint.classList.toggle('active-guide', renderer.guideMode);
-      synth.playSFX('coin');
-      if (currentMode !== 'ear' && currentMode !== 'scales') {
-        renderer.renderStaff(renderer.clef);
-        renderer.drawNotes([currentTargetPitch], 0);
-      }
-    });
-  }
+  const applyGuide = () => {
+    setText('hint-status', renderer.guideMode ? 'on' : 'off');
+    btnHint?.classList.toggle('active', renderer.guideMode);
+    btnHint?.setAttribute('aria-pressed', String(renderer.guideMode));
+  };
+  renderer.guideMode = !!prefs.guide;
+  applyGuide();
+  btnHint?.addEventListener('click', () => {
+    renderer.guideMode = !renderer.guideMode;
+    applyGuide();
+    if ((currentMode === 'quiz' || currentMode === 'arcade') && !answerLocked) {
+      renderer.renderStaff(questionClef);
+      renderer.drawNotes([currentTargetPitch], 0);
+    }
+    savePrefs();
+  });
 
-  const btnPlayScale = document.getElementById('btn-play-scale');
-  if (btnPlayScale) btnPlayScale.addEventListener('click', () => playSelectedScale('asc'));
+  document.getElementById('btn-play-scale')?.addEventListener('click', () => playSelectedScale('asc'));
+  document.getElementById('btn-play-scale-desc')?.addEventListener('click', () => playSelectedScale('desc'));
+  document.getElementById('btn-stop-scale')?.addEventListener('click', () => stopScale(false));
+  document.getElementById('scale-select')?.addEventListener('change', (e) => {
+    stopScale(true);
+    showScale(e.target.value);
+    updateFeedback(`Escala: <strong>${SCALES[e.target.value].name}</strong>. Toque ▲ ou ▼ para ouvir.`);
+  });
 
-  const btnPlayScaleDesc = document.getElementById('btn-play-scale-desc');
-  if (btnPlayScaleDesc) btnPlayScaleDesc.addEventListener('click', () => playSelectedScale('desc'));
+  document.getElementById('btn-start-arcade')?.addEventListener('click', startArcadeMode);
+  document.getElementById('btn-replay')?.addEventListener('click', () => playTargetSound(0));
 
-  const scaleSelect = document.getElementById('scale-select');
-  if (scaleSelect) {
-    scaleSelect.addEventListener('change', (e) => {
-      clearTimeout(scaleTimer);
-      scaleTimer = null;
-      const scaleObj = MUSICAL_DATA.scales[e.target.value];
-      if (scaleObj) {
-        renderer.renderStaff(scaleObj.clef);
-        renderer.drawNotes(scaleObj.notes, -1);
-        const theoryEl = document.getElementById('scale-theory-desc');
-        if (theoryEl && scaleObj.theory) theoryEl.innerHTML = scaleObj.theory;
-        updateFeedback(`Escala selecionada: <strong>${scaleObj.name}</strong>`, 'normal');
-      }
-    });
-  }
-
-  const btnStartArcade = document.getElementById('btn-start-arcade');
-  if (btnStartArcade) btnStartArcade.addEventListener('click', () => startArcadeMode());
-
-  const noteBtns = document.querySelectorAll('.trigger-pad, .note-btn');
-  noteBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const note = btn.dataset.note;
+  document.querySelectorAll('.trigger-pad').forEach((btn) => {
+    btn.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault(); // resposta no toque, sem esperar o "click" (~0 ms de latência)
       btn.classList.remove('active-hit');
       void btn.offsetWidth;
       btn.classList.add('active-hit');
-      setTimeout(() => btn.classList.remove('active-hit'), 320);
-      handleNoteInput(note, e);
+      setTimeout(() => btn.classList.remove('active-hit'), 300);
+      handleNoteInput(btn.dataset.note, e);
+    });
+    btn.addEventListener('click', (e) => {
+      if (e.detail === 0) handleNoteInput(btn.dataset.note); // teclado (Enter/Espaço)
     });
   });
 
-  // Teclado físico prático: A=Dó, S=Ré, D=Mi, F=Fá, G=Sol...
   window.addEventListener('keydown', (e) => {
-    if (e.repeat) return;
-    const oct = renderer.clef === 'bass' ? '3' : '4';
-    const octHigh = renderer.clef === 'bass' ? '4' : '5';
-    const keyMap = {
-      'a': `C${oct}`, 'w': `C#${oct}`, 's': `D${oct}`, 'e': `D#${oct}`, 'd': `E${oct}`,
-      'f': `F${oct}`, 't': `F#${oct}`, 'g': `G${oct}`, 'y': `G#${oct}`, 'h': `A${oct}`, 'u': `A#${oct}`, 'j': `B${oct}`, 'k': `C${octHigh}`
-    };
-    const mapped = keyMap[e.key.toLowerCase()];
-    if (mapped) handleNoteInput(mapped);
+    if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    const t = e.target;
+    if (t instanceof HTMLElement && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+    if (e.key === 'Escape') { closeModal(); return; }
+    if (!document.getElementById('modal-badges')?.classList.contains('hidden')) return;
+
+    if (/^Digit[1-7]$/.test(e.code)) {
+      e.preventDefault();
+      const letter = LETTERS[Number(e.code.slice(5)) - 1];
+      document.querySelector(`.trigger-pad[data-note="${letter}"]`)?.classList.add('active-hit');
+      setTimeout(() => document.querySelector(`.trigger-pad[data-note="${letter}"]`)?.classList.remove('active-hit'), 250);
+      handleNoteInput(letter);
+      return;
+    }
+    if (e.code === 'KeyR') {
+      e.preventDefault();
+      if (currentMode === 'scales') playSelectedScale('asc');
+      else playTargetSound(0);
+      return;
+    }
+    const semi = PHYS_KEYS[e.code];
+    if (semi !== undefined) {
+      e.preventDefault();
+      const target = parsePitch(currentTargetPitch);
+      const baseOct = currentMode === 'scales' ? 4 : target ? target.octave : 4;
+      handleNoteInput(midiToPitch((baseOct + 1) * 12 + semi));
+    }
   });
 }
 
-// --- 12. INICIALIZAÇÃO AO CARREGAR A PÁGINA ---
-document.addEventListener('DOMContentLoaded', () => {
+// --- 12. STATUS DO ÁUDIO E CICLO DE VIDA -----------------------------------
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let audioHintTimer = 0;
+let lastAudioState = 'idle';
+
+function renderAudioStatus() {
+  const el = document.getElementById('audio-status');
+  if (!el) return;
+  const st = synth.state();
+  el.dataset.state = st;
+  const text = el.querySelector('.audio-status-text');
+  clearTimeout(audioHintTimer);
+  if (st === 'running') {
+    el.hidden = lastAudioState === 'running';
+    text.textContent = 'Som ativo';
+    if (!el.hidden) audioHintTimer = setTimeout(() => { el.hidden = true; }, 1300);
+  } else if (st === 'unsupported') {
+    el.hidden = false;
+    text.textContent = 'Este navegador não tem Web Audio — dá para ler, mas não para ouvir.';
+  } else {
+    el.hidden = false;
+    const base = st === 'paused' ? 'Som pausado — toque aqui para retomar.' : 'Toque uma nota (ou aqui) para ligar o som.';
+    text.textContent = isIOS ? `${base} No iPhone, suba o volume e confira o modo silencioso.` : base;
+  }
+  lastAudioState = st;
+}
+
+function hideAudioHintSoon() { /* o chip some sozinho quando o áudio roda */ }
+
+function setupLifecycle() {
+  synth.onState = renderAudioStatus;
+  document.getElementById('audio-status')?.addEventListener('click', () => {
+    synth.unlock();
+    setTimeout(renderAudioStatus, 120);
+  });
+  let suspendTimer = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (arcade.running) pauseArcade('Pausado porque você saiu da aba.');
+      if (scalePlayback.playing) stopScale(true);
+      suspendTimer = setTimeout(() => synth.suspend(), 1200);
+    } else {
+      clearTimeout(suspendTimer);
+      if (synth.state() === 'paused') synth.unlock();
+      renderAudioStatus();
+    }
+  });
+  window.addEventListener('blur', () => {
+    if (arcade.running) pauseArcade('Pausado.');
+  });
+  const wake = () => { if (synth.state() === 'paused') synth.unlock(); };
+  window.addEventListener('pointerdown', wake, true);
+  window.addEventListener('keydown', wake, true);
+}
+
+// --- 13. INICIALIZAÇÃO ------------------------------------------------------
+function init() {
+  renderer.fitWidth();
   setupVirtualKeyboard();
-  if (window.LabRuntime) LabRuntime.debounceResize(layoutPartituraKeys);
-  else window.addEventListener('resize', layoutPartituraKeys);
   updateNotationButtons();
   setupTabs();
   setupControlBars();
   setupModalListeners();
-  
+  setupLifecycle();
   gameManager.updateDashboardUI();
-  
-  // Inicia com primeira pergunta na Clave de Sol
-  setTargetClefAndPitch();
-});
+  renderAudioStatus();
+
+  const startMode = ['quiz', 'ear', 'scales'].includes(gameManager.state.prefs.mode) ? gameManager.state.prefs.mode : 'quiz';
+  switchMode(startMode);
+
+  const onResize = () => {
+    const before = renderer.width;
+    renderer.fitWidth();
+    if (renderer.width === before) return;
+    if (currentMode === 'scales') showScale(document.getElementById('scale-select').value);
+    else if (currentMode === 'ear') { renderer.renderStaff(questionClef); renderer.drawMystery(); }
+    else if (currentMode === 'arcade' && !arcade.running) { renderer.renderStaff(questionClef); renderer.drawMystery(); }
+    else { renderer.renderStaff(questionClef); renderer.drawNotes([currentTargetPitch], 0); }
+  };
+  if (window.LabRuntime) LabRuntime.debounceResize(onResize);
+  else window.addEventListener('resize', onResize);
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();

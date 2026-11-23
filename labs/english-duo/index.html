@@ -24,7 +24,7 @@
     <meta name="twitter:title" content="Talk — treino de pronúncia e escuta | Diogo Paulino">
     <meta name="twitter:description" content="Treine pronúncia, escuta e frases úteis em vários idiomas com lições interativas, áudio e progresso salvo no navegador.">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
     <link rel="stylesheet" href="/assets/fonts/nunito/font.css">
     <script type="application/ld+json">
     {
@@ -101,7 +101,7 @@
                             </defs>
                         </svg>
                     </div>
-                    Talk
+                    <span class="logo-text">Talk</span>
                 </div>
             </template>
             <template data-slot="actions">
@@ -311,8 +311,8 @@
                             <h3 id="feedback-title">Correto!</h3>
                             <p id="feedback-message"></p>
                         </div>
-                        <button id="next-btn" class="btn-next">
-                            Continuar
+                        <button id="next-btn" class="btn-next" type="button">
+                            <span class="next-label">Continuar</span>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
                                 <path d="M5 12h14M12 5l7 7-7 7" />
@@ -340,7 +340,7 @@
                             </div>
                         </div>
                         <h2>Sem vidas!</h2>
-                        <p>Não desista, você está aprendendo!</p>
+                        <p>Errar faz parte. As palavras que você errou voltam primeiro na próxima lição.</p>
                         <div class="final-stats">
                             <div class="final-stat">
                                 <span class="final-stat-value" id="final-streak">0</span>
@@ -380,6 +380,7 @@
                         </div>
                         <h2>Parabéns!</h2>
                         <p>Você completou a lição!</p>
+                        <p id="lesson-summary" class="lesson-summary"></p>
                         <div class="rewards">
                             <div class="reward">
                                 <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
@@ -417,7 +418,7 @@
 
     <div id="toast-container" class="toast-container"></div>
     <script src="/labs/shared.js?v=16" defer></script>
-    <script src="script.js?v=3" defer></script>
+    <script src="script.js?v=4" defer></script>
 </body>
 
 </html>

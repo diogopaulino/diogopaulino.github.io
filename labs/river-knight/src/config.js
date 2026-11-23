@@ -14,25 +14,92 @@ export const CASTLE_Z = -COURSE_LENGTH;
 /** Ponto em que a barcaça do vilão bloqueia o rio. */
 export const BOSS_Z = CASTLE_Z + 240;
 
+/**
+ * Navegação do drakkar — modelo físico simplificado, em unidades reais (m, s, rad).
+ *
+ * Referência: um drakkar de 15 m remava a ~5–6 nós e, com vela e correnteza a
+ * favor, passava de 10 nós. A versão anterior andava a 32 m/s (115 km/h) e
+ * "deslizava" de lado sem virar a proa — irreal. Agora:
+ *
+ *   Avanço (surge), por marcha de remo g:
+ *     du/dt = F[g] − brake[g]·u − b1·u − b2·u·|u|   (empuxo − remos segurando − arrasto)
+ *     velocidade terminal U[g] resolve F = b1·U + b2·U²  →  0 / 3,5 / 7 / 10 m/s sobre a água
+ *     (+ ~2 m/s de correnteza ⇒ cruzeiro ≈ 17 nós e ataque ≈ 23 nós sobre o fundo)
+ *     constante de tempo perto do cruzeiro: 1/(b1 + 2·b2·U) ≈ 4 s (o barco tem massa).
+ *
+ *   Leme (modelo de Nomoto de 1ª ordem):
+ *     δ segue o comando com velocidade limitada (cana do leme: rudderRate rad/s)
+ *     r_alvo = K · max(u, uSteerMin) · δ          (o leme só "morde" com água passando)
+ *     dr/dt  = (r_alvo − r) / Tyaw
+ *     raio de giro ≈ u / r ≈ 30 m a qualquer velocidade (r ∝ u); |r| ≤ maxYawRate (2 comprimentos de casco).
+ *
+ *   Deriva lateral (sway): a quilha amortece; na curva o casco escorrega para fora:
+ *     dv/dt = −kSway·(v − v_alvo),   v_alvo = −slip · u · r
+ *
+ *   Correnteza: o rio corre a `current` m/s rio abaixo (mais lento junto às margens,
+ *   perfil parabólico) e soma à velocidade sobre a água → velocidade sobre o fundo.
+ *
+ *   Adernamento: mola amortecida; na curva o casco aderna para FORA (deslocamento),
+ *   somado à inclinação das ondas sob o casco.
+ */
 export const BOAT = {
-    baseSpeed: 32,
-    boostSpeed: 49,
-    brakeSpeed: 15,
-    accel: 18,
-    strafeSpeed: 17.5,
-    strafeAccel: 52,
+    /** Marchas do "telégrafo" de remo: 0 parado · 1 lento · 2 cruzeiro · 3 ataque. */
+    gears: [
+        { id: 'stop', label: 'Segurar remos', short: 'Parar', thrust: 0, brake: 0.15 },
+        { id: 'slow', label: 'Ritmo lento', short: 'Lento', thrust: 0.427 },
+        { id: 'cruise', label: 'Ritmo de cruzeiro', short: 'Cruzeiro', thrust: 1.148 },
+        { id: 'ram', label: 'Ataque!', short: 'Ataque', thrust: 2.0 }
+    ],
+    startGear: 2,
+    /** Arrasto: b1 (1/s) e b2 (1/m). */
+    dragLinear: 0.08,
+    dragQuadratic: 0.012,
+    /** Correnteza média no meio do rio (m/s) e fração que sobra junto à margem. */
+    current: 2.2,
+    currentAtBank: 0.45,
+    /** Leme. */
+    rudderMax: 0.6,
+    rudderRate: 1.7,
+    rudderReturn: 2.4,
+    yawGain: 0.055,
+    yawTime: 1.1,
+    uSteerMin: 2.6,
+    /** Teto da guinada (rad/s ≈ 20°/s): um casco de 15 m não gira como um caiaque. */
+    maxYawRate: 0.35,
+    /** Ângulo máximo entre a proa e o rio (rad). Além disso a correnteza vence. */
+    maxDrift: 1.2,
+    /** Deriva lateral. */
+    swayDamping: 1.8,
+    slip: 0.35,
+    /** Adernamento (rad por (m/s · rad/s)) e mola de roll/pitch. */
+    heelGain: 0.03,
+    rollOmega: 2.2,
+    rollZeta: 0.28,
+    /** Fôlego dos remadores no Ataque: drena em ~14 s, recupera em ~20 s no cruzeiro. */
+    staminaDrain: 1 / 14,
+    staminaRegen: [1 / 7, 1 / 9, 1 / 20, 0],
+    staminaMinRam: 0.18,
+    /** Casco: meio comprimento e meia boca (m), usados nas margens e colisões. */
+    halfLength: 7.5,
+    halfBeam: 1.8,
+    bankMargin: 1.2,
     maxHull: 5,
     /** Recarga de canhão (uma salva). */
-    throwCooldown: 0.56,
-    furyCooldown: 0.26,
+    throwCooldown: 0.8,
+    furyCooldown: 0.32,
     invulnAfterHit: 1.65,
+    /** Referências de HUD/câmera: cruzeiro e ataque sobre o fundo (água + correnteza). */
+    baseSpeed: 9.1,
+    boostSpeed: 12.1,
+    brakeSpeed: 2.2,
     bankLimitPadding: 3.2
 };
 
 /** Canhão de bordo — mira automática (estilo jogos de navio). */
 export const CANNON = {
     speed: 118,
-    gravity: 11,
+    /** Gravidade real (m/s²) — a balística usa a mesma no cálculo do arco. */
+    gravity: 9.81,
     life: 3.4,
     damage: 1,
     /** Alcance de trava automática. */
@@ -50,12 +117,14 @@ export const DIFFICULTY = {
     squire: {
         id: 'squire',
         label: 'Escudeiro',
-        blurb: 'Fácil: o canhão atira sozinho e o casco aguenta mais. Ótimo para crianças.',
+        blurb: 'Fácil: o canhão atira sozinho, o leme ajuda a seguir o rio e o casco aguenta mais.',
         spawnScale: 0.62,
         enemyFireScale: 0.58,
         damageScale: 1,
         hull: 7,
         scoreScale: 0.8,
+        /** Assistência de leme: a proa tende a seguir o rio (0 = nenhuma, 1 = forte). */
+        helmAssist: 1,
         /** Dispara sozinho quando a mira trava num alvo: o jogador só governa o navio. */
         autoFire: true
     },
@@ -67,7 +136,8 @@ export const DIFFICULTY = {
         enemyFireScale: 1,
         damageScale: 1,
         hull: 5,
-        scoreScale: 1
+        scoreScale: 1,
+        helmAssist: 0.45
     },
     legend: {
         id: 'legend',
@@ -77,7 +147,8 @@ export const DIFFICULTY = {
         enemyFireScale: 1.35,
         damageScale: 1,
         hull: 4,
-        scoreScale: 1.35
+        scoreScale: 1.35,
+        helmAssist: 0.2
     }
 };
 

@@ -21,13 +21,13 @@
 //   quadro, então um quadro longo nunca "teleporta" a física. Para em aba oculta.
 // ==========================================================================
 
-import { STEP, FIGHTERS, STAGES, GROUND, GRAVITY, LEFT_WALL, RIGHT_WALL, AI_CONFIG, DEFAULT_DIFFICULTY } from './constants.js';
+import { STEP, FIGHTERS, STAGES, GROUND, GRAVITY, LEFT_WALL, RIGHT_WALL, AI_CONFIG, DEFAULT_DIFFICULTY } from './constants.js?v=23';
 import { $, $$, approach, clamp } from './utils.js';
 import { InputBuffer, bindKeyboard, bindTouch } from './input.js';
 import audio from './audio.js';
 import { Fighter } from './fighter.js';
 import { resolveCombat, bodyPush, updateProjectiles, updateEffects, addDust } from './combat.js';
-import { updateCpu } from './ai.js';
+import { updateCpu } from './ai.js?v=23';
 import { initRenderer, render } from './renderer.js';
 import { updateHud, announce, showCombo, showCallout, showScreen, renderRoster, fillVersus, resetCallouts } from './ui.js';
 

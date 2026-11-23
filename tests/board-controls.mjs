@@ -28,8 +28,16 @@ export function minefield() {
     const select = document.querySelector('#difficulty-select');
     select.value = 'beginner';
     select.dispatchEvent(new Event('change'));
+    // Tabuleiro fixo: desliga o "Sem chute" pela própria caixa (senão o gerador
+    // pode sortear de novo até achar um campo resolvível só com lógica).
+    const noGuess = document.querySelector('#noguess-toggle');
+    const noGuessWas = noGuess?.checked;
+    if (noGuess?.checked) noGuess.click();
     const reset = document.querySelector('#reset-btn');
     const mines = [1, 10, 14, 18, 32, 40, 61, 70, 73, 78];
+    // Primeiro toque em (5,1): a zona segura 3x3 em volta dele não tem mina
+    // da lista, então o sorteio semeado reproduz exatamente as 10 minas.
+    const first = 46;
     const results = [];
     for (const win of [false, true]) {
         reset.click();
@@ -40,11 +48,12 @@ export function minefield() {
         const random = Math.random;
         try {
             Math.random = () => coords.length ? coords.shift() : random();
-            cells[0].click();
+            cells[first].click();
         } finally { Math.random = random; }
         if (win) cells.forEach((cell, i) => { if (!mines.includes(i)) cell.click(); });
         else cells[1].click();
         results.push(reset.textContent.trim());
     }
+    if (noGuess && noGuess.checked !== noGuessWas) noGuess.click();
     return results;
 }

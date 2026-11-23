@@ -28,7 +28,7 @@
         content="Quanto cafeína ainda circula em você — e a que horas parar de beber café.">
     <link rel="stylesheet" href="/assets/fonts/outfit/font.css">
     <link rel="stylesheet" href="/labs/shared.css?v=15">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -112,7 +112,7 @@
             <section class="card hero-card" aria-labelledby="level-heading">
                 <p class="hero-kicker" id="greeting">Bom dia</p>
                 <h2 id="level-heading" class="sr-only">Cafeína agora</h2>
-                <div class="hero-level">
+                <div class="hero-level" id="hero-level">
                     <span class="hero-value" id="current-mg">0</span>
                     <span class="hero-unit">mg</span>
                 </div>
@@ -127,13 +127,17 @@
                 </div>
                 <div class="chart-frame">
                     <canvas id="curve" aria-hidden="true"></canvas>
+                    <div class="chart-cursor" id="chart-cursor" hidden aria-hidden="true">
+                        <i class="chart-dot" id="chart-dot"></i>
+                    </div>
                     <div class="chart-hover" id="chart-hover" hidden>
                         <span id="chart-hover-time"></span>
                         <strong id="chart-hover-mg"></strong>
                     </div>
                 </div>
                 <p class="chart-caption" id="chart-caption">
-                    A linha pontilhada é o teto na hora de dormir. Passe o cursor (ou o dedo) para ver o mg em cada
+                    A curva sobe enquanto o café é absorvido (pico ~50 min depois) e cai pela meia-vida. A
+                    linha pontilhada é o teto na hora de dormir — passe o cursor (ou o dedo) para ver o mg em cada
                     horário.
                 </p>
             </section>
@@ -280,7 +284,7 @@
     <p class="sr-only" id="live-region" role="status" aria-live="polite"></p>
 
     <script src="/labs/shared.js?v=16" defer></script>
-    <script type="module" src="script.js?v=2"></script>
+    <script type="module" src="script.js?v=3"></script>
 </body>
 
 </html>

@@ -1,10 +1,13 @@
 /**
- * IA heads-up — decisões por força de mão + pot odds + rua.
+ * IA de mesa (2 a 6 lugares) — decisões por força de mão + pot odds + rua.
  *
  * Heurística (não é solver GTO):
  * - Pré-flop: holeStrength → fold / call / raise por faixas.
- * - Pós-flop: equity Monte Carlo contra uma mão ALEATÓRIA (equityVsRandom,
- *   ~140 sorteios, < 15 ms). A IA nunca vê as cartas do herói.
+ * - Pós-flop: equity Monte Carlo contra k mãos ALEATÓRIAS, k = rivais ainda
+ *   na mão (equityVsRandom, ~140 sorteios, < 20 ms). A IA nunca vê cartas
+ *   de ninguém.
+ * - Pré-flop multiway: força^(1 + 0,4·(k−1)) — mão média perde valor quando
+ *   mais gente disputa (AA segue forte; K7 vira fold).
  *   Diante de aposta grande a equity é descontada: quem aposta forte costuma
  *   ter mão melhor que a média →  eq' = eq − 0,15 · min(1, call/pote).
  * - Pot odds: call se eq' >= toCall/(pot+toCall) + margem.
@@ -22,7 +25,7 @@ import {
     legalActions,
     potOdds,
     STREET
-} from './engine.js?v=4';
+} from './engine.js?v=5';
 
 const DIFFICULTY = {
     easy: { aggression: 0.4, bluff: 0.45, callMargin: 0.2, raiseAt: 2, noise: 0.12, size: 0.5, slowplay: 0.7, shove: false, thinkMs: [550, 950] },
@@ -48,11 +51,15 @@ export function chooseAction(match, level = 'normal') {
     const pot = h.pot;
     const odds = potOdds(toCall, pot);
 
+    let opponents = 0;
+    for (let s = 0; s < h.folded.length; s++) if (s !== seat && !h.folded[s]) opponents += 1;
+    opponents = Math.max(1, Math.min(4, opponents));
+
     let strength;
     if (h.street === STREET.PREFLOP || board.length === 0) {
-        strength = holeStrength(hole);
+        strength = Math.pow(holeStrength(hole), 1 + 0.4 * (opponents - 1));
     } else {
-        strength = equityVsRandom(hole, board, 140, match.rng);
+        strength = equityVsRandom(hole, board, 140, match.rng, opponents);
         if (toCall > 0) strength -= 0.15 * Math.min(1, toCall / Math.max(1, pot - toCall));
     }
     if (cfg.noise) strength += (match.rng() * 2 - 1) * cfg.noise;
@@ -136,5 +143,7 @@ export function aiThinkDelay(level = 'normal') {
 export function coachingEquity(match) {
     const h = match.hand;
     if (!h || h.board.length < 3) return null;
-    return estimateEquity(h.holes[0], h.holes[1], h.board, 80, match.rng);
+    const rival = h.holes.findIndex((cards, s) => s !== match.heroSeat && !h.folded[s] && cards.length === 2);
+    if (rival < 0) return null;
+    return estimateEquity(h.holes[match.heroSeat], h.holes[rival], h.board, 80, match.rng);
 }

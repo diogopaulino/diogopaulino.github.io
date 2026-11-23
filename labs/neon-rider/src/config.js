@@ -3,7 +3,9 @@
  * A cidade inteira retuna as cores quando o jogador coleta uma fita VHS.
  */
 
-export const STORAGE_KEY = 'neon-rider-v1';
+export const STORAGE_KEY = 'neon-rider-v2';
+/** Chave antiga (escala de 2,4 m por unidade): só os ajustes são migrados, recordes não. */
+const LEGACY_KEY = 'neon-rider-v1';
 
 export const ROAD = {
     laneWidth: 3.6,
@@ -18,15 +20,21 @@ export const CHUNK = {
     count: 14
 };
 
+/**
+ * Escala: 1 unidade do mundo = 1 metro (faixa de 3,6 m, carro de 4,2 m, moto de 2,1 m).
+ * A física da moto (potência, marchas, arrasto, freio, inclinação) está em physics.js.
+ * Aqui ficam só os números de jogo ligados a ela.
+ */
 export const BIKE = {
-    accel: 28,
-    brake: 38,
-    coast: 8,
-    maxSpeed: 62,
-    boostSpeed: 86,
-    steer: 22,
-    grip: 9.5,
-    lean: 0.42
+    /** Caixa de colisão da moto no plano XZ (m): guidão + piloto, entre-eixos + pneus. */
+    width: 0.8,
+    length: 2.1,
+    /** Velocidade de largada ao apertar Jogar (m/s) — sai já rodando, em 2ª/3ª. */
+    startSpeed: 50 / 3.6,
+    /** Invulnerabilidade após batida (s): a moto pisca e atravessa carros. */
+    invuln: 2.2,
+    /** Raio visual da roda do modelo 3D (m), só para o giro da roda casar com o chão. */
+    wheelVisualRadius: 0.38
 };
 
 /** Estações: cada fita troca o "broadcast" da cidade (néon + rádio). Sem astros. */
@@ -90,45 +98,55 @@ export const STATIONS = [
 ];
 
 /**
- * Dificuldades. `goal` é a distância da linha de chegada em metros do placar
- * (placar = 2,4 m por unidade do mundo, ver main.js), escolhida para ~1,5 min de corrida
- * na velocidade de cruzeiro: tempo ≈ goal / (maxSpeed · 2,4).
+ * Dificuldades: cada uma é uma moto real da categoria (physics.js#BIKES) e um trânsito.
+ *   goal     — distância até a chegada (m), ~70–90 s de corrida no ritmo da moto.
+ *   density  — carros por 100 m de avenida (4 faixas).
+ *   kmh      — faixa de velocidade dos carros (trânsito urbano noturno, 40–80 km/h).
+ *              A faixa da esquerda é a mais rápida (+15 %), a da direita a mais lenta (−15 %).
+ *   shift    — chance por segundo de um carro à frente trocar de faixa (com seta antes).
+ *   Tempo estimado ≈ goal / v_média; v_média ≈ 75 % da vmax da moto descontando frenagens.
  */
 export const DIFFICULTY = {
     cruise: {
         id: 'cruise',
         label: 'Passeio',
-        blurb: 'Pouco trânsito e 5 créditos. Bom para começar.',
-        traffic: 0.55,
-        trafficSpeed: 0.42,
+        blurb: 'Naked 700 (0–100 em 4,2 s, 192 km/h). Pouco trânsito, 5 créditos, 3 km.',
+        bike: 'naked',
+        density: 1.8,
+        kmh: [40, 60],
+        shift: 0.05,
         tapes: 1.35,
         lives: 5,
-        maxSpeed: 54,
-        goal: 10000
+        goal: 3000
     },
     night: {
         id: 'night',
         label: 'Madrugada',
-        blurb: 'Avenida cheia e 3 créditos. O ritmo certo.',
-        traffic: 1,
-        trafficSpeed: 0.58,
+        blurb: 'Street 765 (0–100 em 3,5 s, 233 km/h). Avenida cheia, 3 créditos, 4,5 km.',
+        bike: 'sport',
+        density: 2.7,
+        kmh: [45, 70],
+        shift: 0.1,
         tapes: 1,
         lives: 3,
-        maxSpeed: 66,
-        goal: 15000
+        goal: 4500
     },
     turbo: {
         id: 'turbo',
         label: 'Turbo',
-        blurb: 'Rápido, trânsito agressivo e só 2 créditos.',
-        traffic: 1.45,
-        trafficSpeed: 0.78,
+        blurb: 'Superbike 1000 (0–100 em 3,1 s, 308 km/h). Trânsito agressivo, 2 créditos, 6 km.',
+        bike: 'superbike',
+        density: 3.4,
+        kmh: [50, 80],
+        shift: 0.16,
         tapes: 0.75,
         lives: 2,
-        maxSpeed: 84,
-        goal: 24000
+        goal: 6000
     }
 };
+
+/** Pontos: placar = metros percorridos + 300 por fita + 150 por ultrapassagem raspando. */
+export const SCORE = { tape: 300, nearMiss: 150 };
 
 export const QUALITY = {
     low: {
@@ -146,7 +164,7 @@ export const QUALITY = {
     medium: {
         id: 'medium',
         antialias: false,
-        pixelRatio: 1.15,
+        pixelRatio: 1.25,
         bloom: false,
         shadows: false,
         lamps: 2,
@@ -158,7 +176,7 @@ export const QUALITY = {
     high: {
         id: 'high',
         antialias: true,
-        pixelRatio: 1.5,
+        pixelRatio: 1.75,
         bloom: true,
         shadows: true,
         lamps: 6,
@@ -169,26 +187,46 @@ export const QUALITY = {
     }
 };
 
+const CAMERA_COUNT = 3;
+
+function readJson(key) {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+        return null;
+    }
+}
+
 export function loadSettings() {
     const fallback = {
         difficulty: 'cruise',
         quality: 'auto',
         volume: 72,
         muted: false,
-        best: 0
+        autoThrottle: true,
+        shake: true,
+        camera: 0,
+        /** Recordes por dificuldade: { [id]: { time: s | null, dist: m, score } } */
+        records: {}
     };
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return fallback;
-        const saved = { ...fallback, ...JSON.parse(raw) };
-        // valor antigo/corrompido no localStorage não pode derrubar o menu
-        if (!DIFFICULTY[saved.difficulty]) saved.difficulty = fallback.difficulty;
-        if (!['auto', 'low', 'medium', 'high'].includes(saved.quality)) saved.quality = 'auto';
-        saved.volume = Number.isFinite(saved.volume) ? Math.min(100, Math.max(0, saved.volume)) : fallback.volume;
-        return saved;
-    } catch (err) {
-        return fallback;
-    }
+    const saved = readJson(STORAGE_KEY) || (() => {
+        const old = readJson(LEGACY_KEY);
+        if (!old || typeof old !== 'object') return null;
+        return { difficulty: old.difficulty, quality: old.quality, volume: old.volume, muted: old.muted };
+    })();
+    if (!saved || typeof saved !== 'object') return fallback;
+    const out = { ...fallback, ...saved };
+    // valor antigo/corrompido no localStorage não pode derrubar o menu
+    if (!DIFFICULTY[out.difficulty]) out.difficulty = fallback.difficulty;
+    if (!['auto', 'low', 'medium', 'high'].includes(out.quality)) out.quality = 'auto';
+    out.volume = Number.isFinite(out.volume) ? Math.min(100, Math.max(0, out.volume)) : fallback.volume;
+    out.muted = Boolean(out.muted);
+    out.autoThrottle = out.autoThrottle !== false;
+    out.shake = out.shake !== false;
+    out.camera = Number.isInteger(out.camera) && out.camera >= 0 && out.camera < CAMERA_COUNT ? out.camera : 0;
+    if (!out.records || typeof out.records !== 'object') out.records = {};
+    return out;
 }
 
 export function saveSettings(settings) {
@@ -198,9 +236,12 @@ export function saveSettings(settings) {
             quality: settings.quality,
             volume: settings.volume,
             muted: settings.muted,
-            best: settings.best
+            autoThrottle: settings.autoThrottle,
+            shake: settings.shake,
+            camera: settings.camera,
+            records: settings.records
         }));
     } catch (err) {
-        /* private mode */
+        /* modo privado / cota cheia: o jogo segue sem salvar */
     }
 }

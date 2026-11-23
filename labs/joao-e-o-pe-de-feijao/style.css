@@ -307,7 +307,7 @@ body[data-state="playing"] .game-shell > header .app-logo {
 .message {
     position: absolute;
     left: 50%;
-    bottom: calc(6.5rem + var(--safe-bottom));
+    bottom: calc(7.8rem + var(--safe-bottom));
     translate: -50% 0;
     margin: 0;
     max-width: min(520px, 86vw);
@@ -552,10 +552,12 @@ kbd {
 
 .field select, .field input[type="range"] {
     width: 100%;
+    min-height: 44px;
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid var(--line-soft);
     border-radius: 8px;
     padding: 0.4rem 0.5rem;
+    accent-color: var(--leaf);
 }
 
 .section-note { margin: 0.7rem 0 0; font-size: 0.78rem; color: var(--text-dim); }
@@ -923,11 +925,12 @@ button.prompt:hover { border-color: var(--gold); }
 .howto-arrow { display: inline-block; rotate: -90deg; }
 .howto-note { margin: 0.6rem 0 0; font-size: 0.78rem; color: var(--text-dim); }
 @media (pointer: coarse) { .keys--board { display: none; } }
-@media (pointer: fine) { .keys--touch { display: none; } }
+@media not (pointer: coarse) { .keys--touch { display: none; } }
 
 @media (max-width: 860px) {
     .guide { top: calc(11rem + var(--safe-top)); }
-    .skip-button { top: calc(11rem + var(--safe-top)); right: calc(0.75rem + var(--safe-right)); }
+    /* no estreito o objetivo quebra em várias linhas: "Pular" entra no fluxo logo abaixo dele */
+    .skip-button { position: static; display: block; margin: 0.5rem 0 0 auto; }
     .stealth { top: calc(14rem + var(--safe-top)); }
     .howto { order: -1; }
 }
@@ -940,7 +943,7 @@ button.prompt:hover { border-color: var(--gold); }
     .guide { top: calc(7rem + var(--safe-top)); padding: 0.2rem 0.7rem 0.2rem 0.25rem; }
     .guide i { width: 28px; height: 28px; }
     .guide i::before { top: 3px; border-left-width: 7px; border-right-width: 7px; border-bottom-width: 18px; }
-    .skip-button { top: calc(7rem + var(--safe-top)); }
+    .skip-button { position: static; display: block; margin: 0.4rem 0 0 auto; }
     .stealth { top: calc(9.8rem + var(--safe-top)); width: min(220px, 40vw); }
     .prompt { bottom: calc(3.7rem + var(--safe-bottom)); }
     .message { bottom: calc(6.8rem + var(--safe-bottom)); font-size: 0.9rem; }
@@ -998,4 +1001,11 @@ body[data-state="dialogue"] .lab-foot { visibility: hidden; pointer-events: none
 }
 @media (max-width: 560px) {
     .menu-foot .primary-button { flex: 1; justify-content: center; min-height: 48px; }
+}
+/* Tablet deitado (toque com tela larga): som/pausa saem de baixo dos pads e vão para o centro da base */
+.hud:has(.touch-controls:not([hidden])) .hud-actions {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(0.7rem + var(--safe-bottom));
 }
