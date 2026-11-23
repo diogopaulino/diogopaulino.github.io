@@ -23,8 +23,8 @@
 
 import { STEP, FIGHTERS, STAGES, GROUND, GRAVITY, LEFT_WALL, RIGHT_WALL, AI_CONFIG, DEFAULT_DIFFICULTY } from './constants.js?v=23';
 import { $, $$, approach, clamp } from './utils.js';
-import { InputBuffer, bindKeyboard, bindTouch } from './input.js';
-import audio from './audio.js';
+import { InputBuffer, bindKeyboard, bindTouch } from './input.js?v=24';
+import audio from './audio.js?v=24';
 import { Fighter } from './fighter.js';
 import { resolveCombat, bodyPush, updateProjectiles, updateEffects, addDust } from './combat.js';
 import { updateCpu } from './ai.js?v=23';

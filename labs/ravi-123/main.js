@@ -4,8 +4,8 @@
    Um único requestAnimationFrame com delta time real e passo lógico fixo.
    ========================================================================== */
 
-import { initScreen, fit, toBuffer } from './screen.js';
-import { Audio } from './audio.js';
+import { initScreen, fit, toBuffer } from './screen.js?v=29';
+import { Audio } from './audio.js?v=29';
 import { hitTest } from './scenes.js';
 import { initGame, update, draw, handleNumber, currentSpots, debugApi, setHover } from './game.js';
 import { buildSprites } from './sprites.js';

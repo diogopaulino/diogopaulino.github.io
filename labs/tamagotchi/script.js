@@ -1431,7 +1431,10 @@
   document.querySelectorAll('[data-btn]').forEach((element) => {
     const code = element.dataset.btn;
     element.addEventListener('pointerdown', (event) => {
+      // Safari/iOS: toque pode chegar com button === -1.
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
       event.preventDefault();
+      audioUnlocked = true;
       // Best-effort: lança InvalidStateError se o ponteiro já terminou.
       try {
           element.setPointerCapture(event.pointerId);
@@ -1439,7 +1442,7 @@
           /* segue sem captura */
       }
       pressButton(element, code);
-    });
+    }, { passive: false });
     element.addEventListener('pointerup', (event) => {
       event.preventDefault();
       releaseButton(element, code);

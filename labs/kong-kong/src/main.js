@@ -1,6 +1,6 @@
 import { VIEW_W, VIEW_H, STEP } from './config.js?v=5';
-import { KongAudio } from './audio.js?v=5';
-import { createInput } from './input.js?v=5';
+import { KongAudio } from './audio.js?v=6';
+import { createInput } from './input.js?v=6';
 import { KongGame } from './game.js?v=5';
 import { LEVELS } from './levels.js?v=5';
 

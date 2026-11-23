@@ -1359,6 +1359,8 @@ if (screenEl) {
         if (gesture || (event.pointerType === 'mouse' && event.button !== 0)) return;
         // Botões do overlay (modo, jogar, continuar) cuidam do próprio clique.
         if (event.target.closest('button')) return;
+        event.preventDefault();
+        audio?.unlock?.();
         capturePointer(screenEl, event.pointerId);
         const now = performance.now();
         gesture = {
@@ -1373,7 +1375,7 @@ if (screenEl) {
             done: false,
             acted: false,
         };
-    });
+    }, { passive: false });
 
     screenEl.addEventListener('pointermove', event => {
         if (gesture?.pointerId !== event.pointerId || state !== 'playing') return;
