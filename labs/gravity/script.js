@@ -2562,9 +2562,14 @@
         return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
 
+    const gravityPointerOpts = { passive: false };
     canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         const p = canvasPoint(e);
-        try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+        // Capture só mouse/caneta — no iOS o capture do 1º dedo impede a pinça.
+        if (e.pointerType !== 'touch') {
+            try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+        }
         pointers.set(e.pointerId, p);
         dismissHint();
         if (pointers.size === 2) {
@@ -2578,10 +2583,11 @@
         if (pointers.size > 2) return;
         const pan = e.button === 1 || e.button === 2 || e.shiftKey;
         beginGesture(p.x, p.y, pan);
-    });
+    }, gravityPointerOpts);
 
-    canvas.addEventListener('pointermove', (e) => {
+    function onGravityPointerMove(e) {
         if (!pointers.has(e.pointerId)) return;
+        e.preventDefault();
         const p = canvasPoint(e);
         pointers.set(e.pointerId, p);
         if (pinch && pointers.size >= 2) {
@@ -2603,7 +2609,8 @@
         }
         if (pinch) return;
         moveGesture(p.x, p.y);
-    });
+    }
+    window.addEventListener('pointermove', onGravityPointerMove, gravityPointerOpts);
 
     function pointerEnd(e) {
         if (!pointers.has(e.pointerId)) return;
@@ -2614,12 +2621,14 @@
         }
         if (pointers.size === 0) endGesture(e.type !== 'pointercancel');
     }
-    canvas.addEventListener('pointerup', pointerEnd);
-    canvas.addEventListener('pointercancel', pointerEnd);
+    window.addEventListener('pointerup', pointerEnd);
+    window.addEventListener('pointercancel', pointerEnd);
     canvas.addEventListener('lostpointercapture', (e) => {
         if (pointers.has(e.pointerId)) pointerEnd(e);
     });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); }, gravityPointerOpts);
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); }, gravityPointerOpts);
     canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
         const p = canvasPoint(e);

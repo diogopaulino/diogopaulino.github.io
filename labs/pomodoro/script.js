@@ -759,6 +759,8 @@
                 }
                 this.syncFromTimestamp();
                 if (this.running) this.requestWakeLock();
+                // iOS deixa o AudioContext suspenso ao sair da aba.
+                this.sound.unlock();
             });
             // Celular que volta do bfcache / relógio do sistema ajustado.
             window.addEventListener('pageshow', () => this.syncFromTimestamp());

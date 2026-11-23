@@ -3065,7 +3065,22 @@ function renderListenWriteExercise(lesson) {
     DOM.optionsContainer.appendChild(inputWrapper);
     DOM.optionsContainer.appendChild(cantListenButton());
 
-    setTimeout(() => input.focus({ preventScroll: true }), 100);
+    const keepInputVisible = () => {
+        try { input.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' }); }
+        catch { input.scrollIntoView(true); }
+    };
+    input.addEventListener('focus', () => setTimeout(keepInputVisible, 50));
+    if (window.visualViewport) {
+        const onVv = () => { if (document.activeElement === input) keepInputVisible(); };
+        window.visualViewport.addEventListener('resize', onVv);
+        window.visualViewport.addEventListener('scroll', onVv);
+    }
+
+    setTimeout(() => {
+        try { input.focus({ preventScroll: true }); }
+        catch { input.focus(); }
+        keepInputVisible();
+    }, 100);
     document.onkeydown = null;
 }
 

@@ -716,21 +716,25 @@ select {
     justify-content: center;
     gap: 0.4rem;
     min-height: var(--touch-target);
+    border: 0;
     border-radius: 12px;
     background: var(--accent-muted);
     color: var(--accent);
+    font: inherit;
     font-weight: 600;
     font-size: 0.9rem;
     text-decoration: none;
+    cursor: pointer;
     transition: background 0.18s ease, color 0.18s ease;
 }
 
-.dl-btn:hover:not([aria-disabled="true"]) {
+.dl-btn:hover:not([aria-disabled="true"]):not(:disabled) {
     background: var(--accent);
     color: #fff;
 }
 
-.dl-btn[aria-disabled="true"] {
+.dl-btn[aria-disabled="true"],
+.dl-btn:disabled {
     opacity: 0.45;
     pointer-events: none;
 }

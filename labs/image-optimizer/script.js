@@ -677,8 +677,8 @@ function renderItem(item) {
         status.textContent = item.error;
         status.dataset.tone = 'error';
         bar.style.width = '0%';
-        dl.removeAttribute('href');
         dl.setAttribute('aria-disabled', 'true');
+        dl.disabled = true;
         thumb.disabled = true;
         return;
     }
@@ -686,8 +686,8 @@ function renderItem(item) {
         meta.textContent = `${fmtBytes(item.file.size)}${item.result ? ` · ${item.result.srcW}×${item.result.srcH}` : ''}`;
         status.textContent = item.status === 'working' ? 'Comprimindo…' : 'Na fila…';
         status.dataset.tone = 'muted';
-        dl.removeAttribute('href');
         dl.setAttribute('aria-disabled', 'true');
+        dl.disabled = true;
         thumb.disabled = !item.result;
         return;
     }
@@ -726,9 +726,8 @@ function renderItem(item) {
     status.textContent = msg;
     status.dataset.tone = tone;
     li.classList.toggle('is-larger', tone === 'warn');
-    dl.href = out.url;
-    dl.download = out.name;
     dl.removeAttribute('aria-disabled');
+    dl.disabled = false;
     dl.setAttribute('aria-label', `Baixar ${out.name}`);
     thumb.disabled = false;
 }
