@@ -235,6 +235,7 @@ function ensureEngineAudio() {
         if (!Ctx) return null;
 
         const ctxAudio = new Ctx();
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
         const seconds = 2;
         const buffer = ctxAudio.createBuffer(1, ctxAudio.sampleRate * seconds, ctxAudio.sampleRate);
         const data = buffer.getChannelData(0);

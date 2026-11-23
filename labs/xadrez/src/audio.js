@@ -19,6 +19,7 @@ export class SalonAudio {
         // Áudio é enfeite: se o navegador recusar, o jogo segue mudo.
         let ctx;
         try { ctx = new Ctx(); } catch { return; }
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
         this.ctx = ctx;
         this.master = ctx.createGain();
         this.master.gain.value = this.enabled ? this.volume : 0;

@@ -72,6 +72,7 @@
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return null;
         actx = new AC();
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
       }
       if (actx.state === 'suspended') actx.resume().catch(() => {});
       return actx;

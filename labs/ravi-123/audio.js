@@ -56,6 +56,7 @@ function ensure() {
     if (!AC) return null;
     // Som é enfeite: se o navegador recusar o contexto, o jogo segue mudo.
     try { ctx = new AC(); } catch (_) { ctx = null; return null; }
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
 
     const lowpass = ctx.createBiquadFilter();
     lowpass.type = 'lowpass';

@@ -36,6 +36,7 @@ export function createAudio() {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
         const a = new Ctx();
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
         st.ctx = a;
         st.master = a.createGain();
         st.master.gain.value = st.enabled ? st.volume : 0;

@@ -48,6 +48,7 @@ export class AudioManager {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
         this.ctx = new Ctx();
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
         /* ruído branco reaproveitado por duração (passos e impactos tocam toda hora) */
         this._noise = new Map();
         this.master = this.ctx.createGain();

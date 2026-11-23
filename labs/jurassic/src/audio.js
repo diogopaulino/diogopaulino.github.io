@@ -43,6 +43,7 @@ export class ParkAudio {
     boot() {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AudioCtx();
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
         this.master = this.ctx.createGain();
         this.master.gain.value = this.volume;
         this.master.connect(this.ctx.destination);

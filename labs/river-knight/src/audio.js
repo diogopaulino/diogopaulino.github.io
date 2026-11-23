@@ -47,6 +47,7 @@ export class GameAudio {
         if (!Ctx) return;
 
         const ctx = new Ctx();
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
         this.ctx = ctx;
 
         this.master = ctx.createGain();

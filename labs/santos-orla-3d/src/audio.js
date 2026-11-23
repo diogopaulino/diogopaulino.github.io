@@ -21,6 +21,7 @@ export class OrlaAudio {
             const Ctx = window.AudioContext || window.webkitAudioContext;
             if (!Ctx) return;
             const ctx = new Ctx();
+            try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
             this.ctx = ctx;
             this.master = ctx.createGain();
             this.master.gain.value = this.enabled ? this.volume : 0;

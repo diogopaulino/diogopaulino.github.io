@@ -32,6 +32,7 @@ export class GameAudio {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
         this.ctx = new Ctx();
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
         this.master = this.ctx.createGain();
         this.master.gain.value = this.muted ? 0 : this.volume;
         this.master.connect(this.ctx.destination);

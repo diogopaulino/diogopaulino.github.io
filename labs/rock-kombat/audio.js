@@ -21,6 +21,7 @@ function ensure() {
     const AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!AudioCtx) return null;
     context = new AudioCtx();
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
     master = context.createGain();
     master.gain.value = muted ? 0 : 0.68;
     const limiter = context.createDynamicsCompressor();

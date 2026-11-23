@@ -8,6 +8,7 @@ export class Soundscape {
                 const Audio = window.AudioContext || window.webkitAudioContext;
                 if (!Audio) return;
                 const c = this.context = new Audio();
+                try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* iOS 17+ */ }
                 this.master = c.createGain(); this.master.connect(c.destination);
                 this.noise = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
                 const samples = this.noise.getChannelData(0);
